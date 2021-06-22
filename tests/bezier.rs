@@ -214,42 +214,56 @@ fn test_cubic<Point> ()
 
 //fi test_straight
 fn test_straight <Point> ()
-    where Point:Vector<f32,2> {
-        let p0 = Point::from_array([0.,0.]);
-        let p1 = Point::from_array([10.,0.]);
-        let p2 = Point::from_array([10.,1.]);
-        let p3 = Point::from_array([20.,0.]);
-        let p4 = Point::from_array([20.,1.]);
-        let sp0 = p0 * 10.;
-        let sp1 = p1 * 10.;
-        let sp2 = p2 * 10.;
-        let sp3 = p3 * 10.;
-        let sp4 = p4 * 10.;
+where Point:Vector<f32,2> {
+    let p0 = Point::from_array([0.,0.]);
+    let p1 = Point::from_array([10.,0.]);
+    let p2 = Point::from_array([10.,1.]);
+    let p3 = Point::from_array([20.,0.]);
+    let p4 = Point::from_array([20.,1.]);
+    let sp0 = p0 * 10.;
+    let sp1 = p1 * 10.;
+    let sp2 = p2 * 10.;
+    let sp3 = p3 * 10.;
+    let sp4 = p4 * 10.;
 
-        bezier_straight_as( &Bezier::line(&p0, &p1), 1E-10 );
-        bezier_straight_as( &Bezier::line(&p0, &p2), 1E-10 );
-        bezier_straight_as( &Bezier::line(&p0, &p3), 1E-10 );
-        bezier_straight_as( &Bezier::line(&p0, &p4), 1E-10 );
-        bezier_straight_as( &Bezier::line(&sp0, &sp1), 1E-10 );
-        bezier_straight_as( &Bezier::line(&sp0, &sp2), 1E-10 );
-        bezier_straight_as( &Bezier::line(&sp0, &sp3), 1E-10 );
-        bezier_straight_as( &Bezier::line(&sp0, &sp4), 1E-10 );
+    let mut b = Bezier::line(&p0, &p1);
+    let sb = Bezier::line(&sp0, &sp1);
+    b.scale(10.);
+    vec_eq(b.borrow_pt(0), sb.borrow_pt(0));
+    vec_eq(b.borrow_pt(1), sb.borrow_pt(1));
 
-        bezier_straight_as( &Bezier::quadratic(&p0, &p1, &p3),  1E-10 );
-        bezier_straight_as( &Bezier::quadratic(&sp0, &sp1, &sp3), 1E-10 );
+    bezier_straight_as( &Bezier::line(&p0, &p1), 1E-10 );
+    bezier_straight_as( &Bezier::line(&p0, &p2), 1E-10 );
+    bezier_straight_as( &Bezier::line(&p0, &p3), 1E-10 );
+    bezier_straight_as( &Bezier::line(&p0, &p4), 1E-10 );
+    bezier_straight_as( &Bezier::line(&sp0, &sp1), 1E-10 );
+    bezier_straight_as( &Bezier::line(&sp0, &sp2), 1E-10 );
+    bezier_straight_as( &Bezier::line(&sp0, &sp3), 1E-10 );
+    bezier_straight_as( &Bezier::line(&sp0, &sp4), 1E-10 );
 
-        bezier_straight_as( &Bezier::quadratic(&p0, &p2, &p3), 0.05 );
-        bezier_straight_as( &Bezier::quadratic(&sp0, &sp2, &sp3), 0.05 );
+    bezier_straight_as( &Bezier::quadratic(&p0, &p1, &p3),  1E-10 );
+    bezier_straight_as( &Bezier::quadratic(&sp0, &sp1, &sp3), 1E-10 );
 
-        bezier_straight_as( &Bezier::quadratic(&p0, &p1, &p4),  0.03 );
-        bezier_straight_as( &Bezier::quadratic(&sp0, &sp1, &sp4), 0.03 );
+    bezier_straight_as( &Bezier::quadratic(&p0, &p2, &p3), 0.05 );
+    bezier_straight_as( &Bezier::quadratic(&sp0, &sp2, &sp3), 0.05 );
 
-        bezier_straight_as( &Bezier::cubic(&p0, &p1, &p2, &p3), 0.05 );
-        bezier_straight_as( &Bezier::cubic(&sp0, &sp1, &sp2, &sp3), 0.05 );
+    bezier_straight_as( &Bezier::quadratic(&p0, &p1, &p4),  0.03 );
+    bezier_straight_as( &Bezier::quadratic(&sp0, &sp1, &sp4), 0.03 );
 
-        bezier_straight_as( &Bezier::cubic(&p0, &p1, &p2, &p4), 0.065 );
-        bezier_straight_as( &Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 0.065 );
-    }
+    bezier_straight_as( &Bezier::cubic(&p0, &p1, &p2, &p3), 0.05 );
+    bezier_straight_as( &Bezier::cubic(&sp0, &sp1, &sp2, &sp3), 0.05 );
+
+    let mut b = Bezier::cubic(&p0, &p1,&p2,&p4);
+    let sb = Bezier::cubic(&sp0, &sp1,&sp2,&sp4);
+    b.scale(10.);
+    vec_eq(b.borrow_pt(0), sb.borrow_pt(0));
+    vec_eq(b.borrow_pt(1), sb.borrow_pt(1));
+    vec_eq(b.borrow_pt(2), sb.borrow_pt(2));
+    vec_eq(b.borrow_pt(3), sb.borrow_pt(3));
+
+    bezier_straight_as( &Bezier::cubic(&p0, &p1, &p2, &p4), 0.065 );
+    bezier_straight_as( &Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 0.065 );
+}
 
 //fi test_arc
 fn test_arc <Point> ()

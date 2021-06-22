@@ -169,21 +169,19 @@ where F:Float, V:Vector<F,D> {
     //mp scale
     /// Consume the Bezier and return a new Bezier scaled separately in X and Y by two scaling parameters
     pub fn scale(&mut self, s:F)  {
-        for i in 0..self.pts.len() {
-            self.pts[i] *= s;
-        }
+        //for i in 0..self.pts.len() {
+        //self.pts[i] *= s;
+        //}
+        self.map_pts(|p| p*s);
     }
 
-    //mp rotate_around
-    /// Rotate the Bezier and return a new Bezier rotated around a
-    /// *pivot* point anticlockwise by the specified angle
-    /*
-    pub fn rotate_around(&mut self, pivot:&V, angle:F, c0:usize, c1:usize) {
+    //mp map_pts
+    /// Apply a function to all of the points in the Bezier
+    pub fn map_pts<Map:Fn(V)->V> (&mut self, map:Map) {
         for p in self.pts.iter_mut() {
-            *p = vector::rotate_around(*p, pivot, angle, c0, c1);
+            *p = map(*p);
         }
     }
-     */
 
     //mp vector_of
     /// Returns a vector of a combination of the vectors of the bezier
