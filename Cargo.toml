@@ -1,0 +1,20 @@
+[package]
+name = "bezier-nd"
+edition = "2018"
+version = "0.1.0"
+readme = "README.md"
+authors = ["Gavin J Stark"]
+# exclude = ["/bors.toml", "/ci/*", "/.github/*"]
+description = "Bezier curve implementations using N-dimensional vectors\n"
+homepage = "https://github.com/atthecodeface/bezier-nd-rs"
+documentation = "https://docs.rs/bezier-nd"
+keywords = ["geometry", "vector"]
+categories = ["graphics"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/atthecodeface/bezier-nd-rs"
+
+[dependencies.geo-nd]
+version="0.1.0"
+
+[dependencies.num-traits]
+version = "0.2.1"
