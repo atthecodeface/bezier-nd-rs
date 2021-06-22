@@ -505,7 +505,10 @@ where F:Float, V:Vector<F,D> {
     ///
     /// We know cos(alpha) = v0.v1 (assuming unit vectors).
     ///
-    /// cos(alpha) = cos(180-2*theta) = -cos(2*theta) = 1 - 2cos^2(theta)
+    /// cos(alpha) = cos(180-2*theta)
+    ///            = -cos(2*theta)
+    ///            = -(2cos^2(theta) - 1)
+    ///            = 1 - 2cos^2(theta)
     ///
     /// cos^2(theta) = (1 - cos(alpha)) / 2 = r^2/d^2
     ///
@@ -532,6 +535,9 @@ where F:Float, V:Vector<F,D> {
         let mut v1    = v1.clone();
         v0.normalize();
         v1.normalize();
+        println!("{}, {}",v0,v1);
+        // let reverse = v0[0]*v1[1] - v1[0]*v0[1] > F::zero();
+        // println!("Round rev {}",reverse);
         let cos_alpha = v0.dot(&v1);
         if cos_alpha >= nearly_one {
             // v0 and v1 point in the same direction
@@ -549,16 +555,48 @@ where F:Float, V:Vector<F,D> {
             let k2 = d2 - r2;
             let d = d2.sqrt();
             let k = k2.sqrt();
+            /*
+            println!("{} r^2 {} d^2 {} {} {} {}", cos_alpha, r2, d2, k2, d, k);
+            println!("alpha {} theta {}, sin(theta) {} : {}",
+                     cos_alpha.acos().to_degrees(),
+                     (F::int(180) - cos_alpha.acos().to_degrees())/F::int(2),
+                     ((F::int(180) - cos_alpha.acos().to_degrees())/F::int(2)).to_radians().sin(),
+                     k/d,
+            );
+             */
             // let v0_plus_v1_u = vector::normalize(vector::add(v0.clone(), &v1, one));
             // let center = vector::add(corner.clone(), &v0_plus_v1_u, d);
             // let lambda = four/three * radius * ((two / (one + cos_alpha)).sqrt() - one);
 
-            let lambda = four_thirds * radius * (d/k - one);
+            // let lambda = four_thirds * radius * (d/k - one);
+            let theta = (k/d).asin() / F::int(4);
+            let lambda = four_thirds * theta.tan();
+            // println!("lambda {} : {} ", lambda, theta);
+
             let p0 = *corner - (v0 * k);
             let p1 = *corner - (v1 * k);
+            // let k = radius / (n1u.dot(&v0u));
+            // let center = Point::new( corner.x-k*(v0u.x+v1u.x), corner.y-k*(v0u.y+v1u.y) );
+            // let normal_diff = Point::new(n0u.x-n1u.x, n0u.y-n1u.y);
+            // let vector_sum  = Point::new(v0u.x+v1u.x, v0u.y+v1u.y);
+            // let l2 = vector_sum.x*vector_sum.x + vector_sum.y*vector_sum.y;
+            // let l = l2.sqrt();
+            // let lambda = 4.0*radius/(3.*l2) * (2.*l + (normal_diff.x*vector_sum.x + normal_diff.y*vector_sum.y));
+            // let c0 = Point::new(p0.x + lambda * v0u.x, p0.y + lambda * v0u.y);
+            // let c1 = Point::new(p1.x + lambda * v1u.x, p1.y + lambda * v1u.y);
             let c0 = p0 + (v0 * lambda);
             let c1 = p1 + (v1 * lambda);
-            Self::cubic(&p0, &c0, &c1, &p1)
+
+            let b = Self::cubic(&p0, &c0, &c1, &p1);
+            /*
+            let mut v0_p_v1 = (v0 + v1); v0_p_v1.normalize();
+            let center = *corner - v0_p_v1 * d;
+            println!("center {} p0 {} p1 {} p0_2_c {} p1_2_c {}",
+                     center, p0, p1, p0.distance(&center), p1.distance(&center) );
+
+            println!("b(0.5) {} b(0.5)_2_c {}\n\n", b.point_at(F::frac(1,2)), b.point_at(F::frac(1,2)).distance(&center));
+            */
+            b
         }
     }
 

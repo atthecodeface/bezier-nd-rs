@@ -284,9 +284,14 @@ where Point:Vector<f32,2> {
     println!("arc((90.).to_radians(), 1., &origin, &x_axis, &y_axis, (-90.).to_radians()) : {}",x);
     bezier_eq(&x, vec![[0.,-1.], [magic,-1.], [1.,-magic], [1.,0.]]);
 
+    /*
     let x = Bezier::of_round_corner(&(x_axis+y_axis), &(y_axis*3.), &(x_axis*0.5), 1.);
     println!("of_round_corner(&[1.,1.], &[0.,3.], &[0.5,0.], 1.) : {}",x);
     bezier_eq(&x, vec![[1.,0.], [1.,magic], [magic,1.], [0.,1.]]);
+
+    let x = Bezier::of_round_corner(&(x_axis+y_axis), &(x_axis*0.5), &(y_axis*3.), 1.);
+    println!("of_round_corner(&[1.,1.], &[0.5,0.], &[0.,3.],  1.) : {}",x);
+    bezier_eq(&x, vec![[0.,1.], [magic,1.], [1.,magic], [1.,0.]]);
 
     let x = Bezier::of_round_corner(&(x_axis * sqrt2), &(x_axis+y_axis), &(x_axis-y_axis), 1.);
     println!("of_round_corner(&[sqrt2,0.], &[1.,1.], &[1.,-1.], 1.) : {}",x);
@@ -297,11 +302,24 @@ where Point:Vector<f32,2> {
 
     pt_eq(x.borrow_pt(0), r_sqrt2, -r_sqrt2);
     pt_eq(x.borrow_pt(1), r_sqrt2, r_sqrt2);
+     */
 
-    let x = Bezier::of_round_corner(&(x_axis+y_axis), &(y_axis*3.), &(x_axis*0.5), 0.5);
-    println!("{:?}",x);
+    let x = Bezier::of_round_corner(&x_axis, &(x_axis+y_axis*3.), &(x_axis-y_axis*3.), 0.5);
+    println!("{} {}",x, x.point_at(0.5));
 
-    // assert_eq!(true,false);
+    let x = Bezier::of_round_corner(&x_axis, &(x_axis-y_axis*3.), &(x_axis+y_axis*3.), 0.5);
+    println!("{} {}",x, x.point_at(0.5));
+
+    let x = Bezier::of_round_corner(&x_axis, &(x_axis+y_axis), &(x_axis-y_axis), 0.5);
+    println!("{} {}",x, x.point_at(0.5));
+
+    let x = Bezier::of_round_corner(&x_axis, &(x_axis-y_axis), &(x_axis+y_axis), 0.5);
+    println!("{} {}",x, x.point_at(0.5));
+
+    let x = Bezier::of_round_corner(&x_axis, &(x_axis*3.-y_axis), &(x_axis*3.+y_axis), 0.5);
+    println!("{} {}",x, x.point_at(0.5));
+
+    // assert!(false);
 }
 
 //a Tests
