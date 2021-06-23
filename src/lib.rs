@@ -123,10 +123,68 @@ rounding radius.
 
 # Examples
 
+An example using 2-dimensional vectors of f32
+
 ```
 use geo_nd::Vector;
 type Point  = geo_nd::FArray<f32,2>;
 type Bezier = bezier_nd::Bezier<f32, Point, 2>;
+
+let dx = Point::from_array([1.,0.]);
+let dy = Point::from_array([0.,1.]);
+let line = Bezier::line( &dx, &dy );
+assert!( line.is_line());
+assert!(!line.is_quadratic());
+assert!(!line.is_cubic());
+assert!( line.is_straight(0.));
+
+// A 30-degree arc of radius 3; has length of PI/2,
+// it is fairly close to being a straight line, subjectively...
+let arc = Bezier::arc( 30.0f32.to_radians(), 3.0, &Point::from_array([3.,4.]), &dx, &dy, 0.);
+assert!(!arc.is_line());
+assert!(!arc.is_quadratic());
+assert!( arc.is_cubic());
+assert!(!arc.is_straight(0.));
+
+// Breaking the arc with a large value of straightness yields only 3 points:
+assert_eq!( arc.as_points(0.1).count(), 3);
+// This is 1.5662874
+println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
+
+// Breaking the arc with a small value of straightness yields 33 points!
+assert_eq!( arc.as_points(0.01).count(), 33);
+// This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
+println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
+
+for (a,b) in arc.as_lines(0.05) {
+    println!("Line from {} to {}\n", a, b);
+}
+
+let q = Bezier::quadratic( &Point::from_array([2.,6.]),
+                           &Point::from_array([3.5,8.]),
+                           &Point::from_array([4.,7.]));
+assert_eq!( q.borrow_pt(0)[0], 2., "Start point X of Bezier" );
+assert_eq!( q.borrow_pt(0)[1], 6., "Start point Y of Bezier" );
+assert_eq!( q.borrow_pt(1)[0], 4., "End point X of Bezier" );
+assert_eq!( q.borrow_pt(1)[1], 7., "End point Y of Bezier" );
+```
+
+An example using 3D vectors of f64
+
+```
+use geo_nd::Vector;
+type Point  = geo_nd::FArray<f64,3>;
+type Bezier = bezier_nd::Bezier<f64, Point, 3>;
+
+let c = Bezier::cubic( &Point::from_array([1.,0.,0.]),
+                           &Point::from_array([2.5,0.,-1.]),
+                           &Point::from_array([0.,2.5,1.]),
+                           &Point::from_array([0.,1.,0.]));
+// This is just over 3.283
+println!( "3D cubic length when straightened to '0.1' is {}", c.length(0.1) );
+// But this is just over 3.29
+println!( "3D cubic length when straightened to '0.01' is {}", c.length(0.01) );
+
 ```
 
 # Circular arc algorithm
