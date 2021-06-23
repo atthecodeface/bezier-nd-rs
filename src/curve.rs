@@ -22,6 +22,19 @@ use geo_nd::{Float, Vector};
 use crate::BezierLineIter;
 use crate::BezierPointIter;
 
+//a Utils
+#[allow(dead_code)]
+fn arc_ave_square_error <F, Point, const D:usize> (arc:&Bezier<F,Point,D>, center:&Point, radius:F, t0:F, t1:F, n:isize) -> F
+where F:Float, Point:Vector<F,D> {
+    let delta_t = (t1 - t0) / F::int(n-1);
+    let mut error2 = F::zero();
+    for i in 0..n {
+        let e = arc.point_at(F::int(i) * delta_t + t0).distance(center) - radius;
+        error2 += e*e;
+    }
+    error2 / F::int(n)
+}
+
 //a Bezier
 //tp Bezier
 /// This library supports Bezier curves of up to order 3 - i.e. up to
@@ -453,6 +466,104 @@ where F:Float, V:Vector<F,D> {
         }
     }
 
+    //fi lambda_of_k_d
+    fn lambda_of_k_d(k:F, d:F) -> F {
+        // There are numerous versions of calculating
+        // the lambda for the arc from the angle of the arc
+        //
+        // For a 90 degree arc the *best* values is 0.2652165 apparently
+        //
+        // One equation that provides this  is
+        //   lambda = four_thirds * radius * (d/k - one);
+        //
+        // Another is:
+        //   theta = (k/d).asin() / F::int(4);
+        //   lambda = four_thirds * theta.tan();
+        //
+        // This table is captures the values for this second
+        //
+        // Actually attempting a better approximation leads to the following for (k/d)^2 -> lambda
+        //
+        // 0.0011099165 0.009397572
+        // 0.004424813 0.04415609
+        // 0.008196682 0.06044403
+        // 0.012195113 0.07385845
+        // 0.019999988 0.09472578
+        // 0.038461603 0.13201918
+        // 0.100000046 0.21637033
+        // 0.100000046 0.21637033
+        // 0.137931 0.2567711
+        // 0.20000009 0.314736
+        // 0.3076923 0.40363038
+        // 0.5 0.5519717
+        // 0.6923078 0.71254206
+        // 0.8000001 0.822074
+        // 0.862069 0.89976513
+        // 0.8999999 0.9571549
+        // 0.9615385 1.0864261
+        // 0.98 1.1479391
+        // 0.99180335 1.2072284
+        // 0.9955752 1.2359663
+        // 0.9988901 1.2764238
+        //
+        // With a quintic polynomial of coeffs (x^0 + x^1 +... + x^5):
+        // 3.1603235091816735e-002
+        // 2.7950542994656820e+000
+        // -1.1486743224812313e+001
+        // 2.8975368657401102e+001
+        // -3.2845222512637491e+001
+        // 1.3779429574112177e+001
+        //
+        // Or for r^2/d^2 -> lambda
+        // 0.9988901 0.009397572
+        // 0.9955752 0.04415609
+        // 0.99180335 0.06044403
+        // 0.9878049 0.07385845
+        // 0.98 0.09472578
+        // 0.9615384 0.13201918
+        // 0.9 0.21637033
+        // 0.9 0.21637033
+        // 0.862069 0.2567711
+        // 0.79999995 0.314736
+        // 0.6923077 0.40363038
+        // 0.5 0.5519717
+        // 0.3076923 0.71254206
+        // 0.20000002 0.822074
+        // 0.13793105 0.89976513
+        // 0.10000005 0.9571549
+        // 0.038461536 1.0864261
+        // 0.02000001 1.1479391
+        // 0.008196682 1.2072284
+        // 0.0044247806 1.2359663
+        // 0.0011098981 1.2764238
+        //
+        // 1.2494900596889080e+000
+        // -4.2639321404424191e+000
+        // 1.6162330324360198e+001
+        // -3.5388797293367219e+001
+        // 3.6051953254575963e+001
+        // -1.3779440945693199e+001
+
+        let k_d = k/d;
+        // let four_thirds  = F::frac(4,3);
+        // let  theta = (k/d).asin() / F::int(4);
+        // let  lambda = four_thirds * theta.tan();
+        // lambda
+        let k_d = k_d * k_d;
+        let a0 = F::frac( 316_032, 100_000_00 );
+        let a1 = F::frac( 279_505,   1_000_00 );
+        let a2 = F::frac(-114_867,  10_000 );
+        let a3 = F::frac( 289_753,  10_000 );
+        let a4 = F::frac(-328_452,  10_000 );
+        let a5 = F::frac( 137_794,  10_000 );
+        let lambda = a0
+            + a1 * k_d
+            + a2 * k_d * k_d
+            + a3 * k_d * k_d  * k_d
+            + a4 * k_d * k_d  * k_d  * k_d
+            + a5 * k_d * k_d  * k_d  * k_d  * k_d ;
+        lambda
+    }
     //fp arc
     /// Create a Cubic Bezier that approximates closely a circular arc
     ///
@@ -465,12 +576,10 @@ where F:Float, V:Vector<F,D> {
     /// The arc will be between an angle A1 and A2, where A2-A1 == angle, and A1==rotate
     ///
     pub fn arc(angle:F, radius:F, center:&V, unit:&V, normal:&V, rotate:F) -> Self {
-        let one    = F::int(1);
         let two    = F::int(2);
-        let four_thirds  = F::frac(4,3);
         let half_angle = angle / two;
         let s = half_angle.sin();
-        let lambda = radius * four_thirds * (one/s - one);
+        let lambda = radius * Self::lambda_of_k_d(s, F::one());
 
         let d0a = rotate;
         let (d0s,d0c) = d0a.sin_cos();
@@ -530,14 +639,10 @@ where F:Float, V:Vector<F,D> {
         let nearly_one = F::frac(99_999, 100_000);
         let one    = F::int(1);
         let two    = F::int(2);
-        let four_thirds  = F::frac(4,3);
         let mut v0    = v0.clone();
         let mut v1    = v1.clone();
         v0.normalize();
         v1.normalize();
-        println!("{}, {}",v0,v1);
-        // let reverse = v0[0]*v1[1] - v1[0]*v0[1] > F::zero();
-        // println!("Round rev {}",reverse);
         let cos_alpha = v0.dot(&v1);
         if cos_alpha >= nearly_one {
             // v0 and v1 point in the same direction
@@ -556,48 +661,115 @@ where F:Float, V:Vector<F,D> {
             let d = d2.sqrt();
             let k = k2.sqrt();
             /*
-            println!("{} r^2 {} d^2 {} {} {} {}", cos_alpha, r2, d2, k2, d, k);
-            println!("alpha {} theta {}, sin(theta) {} : {}",
-                     cos_alpha.acos().to_degrees(),
-                     (F::int(180) - cos_alpha.acos().to_degrees())/F::int(2),
-                     ((F::int(180) - cos_alpha.acos().to_degrees())/F::int(2)).to_radians().sin(),
-                     k/d,
-            );
-             */
-            // let v0_plus_v1_u = vector::normalize(vector::add(v0.clone(), &v1, one));
-            // let center = vector::add(corner.clone(), &v0_plus_v1_u, d);
-            // let lambda = four/three * radius * ((two / (one + cos_alpha)).sqrt() - one);
+            let lambda = radius * Self::lambda_of_k_d(k, d);
+            let p0 = *corner - (v0 * k);
+            let p1 = *corner - (v1 * k);
+            let c0 = p0 + (v0 * lambda);
+            let c1 = p1 + (v1 * lambda);
+            Self::cubic(&p0, &c0, &c1, &p1);
+            */
 
-            // let lambda = four_thirds * radius * (d/k - one);
-            let theta = (k/d).asin() / F::int(4);
-            let lambda = four_thirds * theta.tan();
-            // println!("lambda {} : {} ", lambda, theta);
+            let lambda = radius * Self::lambda_of_k_d(k, d);
+            /* Best 'lambda' calculation
+            let mut lambda = radius * Self::lambda_of_k_d(k, d);
+
+            let mut n = 0;
+            let mut adjust = F::frac(110,100);
+            println!("lambda in {}",lambda/radius);
+            let p0 = *corner - (v0 * k);
+            let p1 = *corner - (v1 * k);
+            let zero = F::zero();
+            let mut e = zero;
+            for _ in 0..300 {
+                let c0 = p0 + (v0 * lambda);
+                let c1 = p1 + (v1 * lambda);
+                let b = Self::cubic(&p0, &c0, &c1, &p1);
+                let (c, r) = b.center_radius_of_bezier_arc();
+                let e2 = arc_ave_square_error(&b, &c, radius, zero, one, 10);
+                e = e2;
+
+                let c0 = p0 + (v0 * lambda * adjust);
+                let c1 = p1 + (v1 * lambda * adjust);
+                let b = Self::cubic(&p0, &c0, &c1, &p1);
+                let (c, r) = b.center_radius_of_bezier_arc();
+                let e2_p = arc_ave_square_error(&b, &c, radius, zero, one, 10);
+
+                if e2_p < e2 {
+                    lambda = lambda * adjust;
+                    println!("e2_p {} e2 {}", e2_p, e2);
+                    continue;
+                }
+
+                let c0 = p0 + (v0 * lambda / adjust);
+                let c1 = p1 + (v1 * lambda / adjust);
+                let b = Self::cubic(&p0, &c0, &c1, &p1);
+                let (c, r) = b.center_radius_of_bezier_arc();
+                let e2_n = arc_ave_square_error(&b, &c, radius, zero, one, 10);
+
+                if e2_n < e2 {
+                    lambda = lambda / adjust;
+                    println!("e2_n {} e2 {}", e2_n, e2);
+                    continue;
+                }
+                adjust = adjust.sqrt();
+            }
+            println!("lambda out {} e {}",lambda/radius, e);
+            println!("** {} {}", r2/d2, lambda / radius);
+            // println!("** {} {}", k/d, lambda / radius);
+            // println!("** {} {}", k*k/d/d, lambda / radius);
+             */
 
             let p0 = *corner - (v0 * k);
             let p1 = *corner - (v1 * k);
-            // let k = radius / (n1u.dot(&v0u));
-            // let center = Point::new( corner.x-k*(v0u.x+v1u.x), corner.y-k*(v0u.y+v1u.y) );
-            // let normal_diff = Point::new(n0u.x-n1u.x, n0u.y-n1u.y);
-            // let vector_sum  = Point::new(v0u.x+v1u.x, v0u.y+v1u.y);
-            // let l2 = vector_sum.x*vector_sum.x + vector_sum.y*vector_sum.y;
-            // let l = l2.sqrt();
-            // let lambda = 4.0*radius/(3.*l2) * (2.*l + (normal_diff.x*vector_sum.x + normal_diff.y*vector_sum.y));
-            // let c0 = Point::new(p0.x + lambda * v0u.x, p0.y + lambda * v0u.y);
-            // let c1 = Point::new(p1.x + lambda * v1u.x, p1.y + lambda * v1u.y);
             let c0 = p0 + (v0 * lambda);
             let c1 = p1 + (v1 * lambda);
-
-            let b = Self::cubic(&p0, &c0, &c1, &p1);
-            /*
-            let mut v0_p_v1 = (v0 + v1); v0_p_v1.normalize();
-            let center = *corner - v0_p_v1 * d;
-            println!("center {} p0 {} p1 {} p0_2_c {} p1_2_c {}",
-                     center, p0, p1, p0.distance(&center), p1.distance(&center) );
-
-            println!("b(0.5) {} b(0.5)_2_c {}\n\n", b.point_at(F::frac(1,2)), b.point_at(F::frac(1,2)).distance(&center));
-            */
-            b
+            Self::cubic(&p0, &c0, &c1, &p1)
         }
+    }
+
+    //mp center_radius_of_bezier_arc
+    /// Find the center and radius of a bezier arc if it is assumed to
+    /// be a circular arc
+    ///
+    /// what is the center of the circle
+    /// given point p0 and unit tangent t0
+    /// and point p1 and unit tangent t1
+    ///
+    /// |p0-c|^2 = |p1-c|^2 = r^2
+    /// (p0-c) . t0 = 0
+    /// (p1-c) . t1 = 0
+    ///
+    /// Consider c = k0.t0 + k1.t1
+    ///
+    /// (given t0.t0 == 1 and t1.t1==1)
+    ///
+    /// (p0-c) . t0 = (p0 - k0.t0 - k1.t1).t0 = 0
+    ///       p0.t0 = k0 + k1(t1.t0)
+    /// similarly
+    ///       p1.t1 = k1 + k0(t1.t0)
+    ///
+    /// hence
+    ///  (t1.t0) * (p1.t1)         = k0.(t1.t0)^2 + k1(t1.t0)
+    ///  p0.t0 - (t1.t0) * (p1.t1) = k0 ( 1 - (t1.t0)^2)
+    ///  k0 = (p0.t0 - p1.t1 * t1.t0) / ( 1 - (t1.t0)^2)
+    ///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
+    pub fn center_radius_of_bezier_arc(&self) -> (V, F) {
+        let zero   = F::zero();
+        let one    = F::int(1);
+        let p0 = self.point_at(zero);
+        let p1 = self.point_at(one);
+        let mut t0 = self.tangent_at(zero);
+        let mut t1 = self.tangent_at(one);
+        t0.normalize();
+        t1.normalize();
+        let t1_d_t0 = t1.dot(&t0);
+        let p0_d_t0 = p0.dot(&t0);
+        let p1_d_t1 = p1.dot(&t1);
+        let k0 = (p0_d_t0 - p1_d_t1 * t1_d_t0) / (one - t1_d_t0*t1_d_t0);
+        let k1 = (p1_d_t1 - p0_d_t0 * t1_d_t0) / (one - t1_d_t0*t1_d_t0);
+        let c = t0 * k0 + t1 * k1;
+        let r = (c.distance(&p0) + c.distance(&p1)) / F::int(2);
+        (c, r)
     }
 
     //zz All done

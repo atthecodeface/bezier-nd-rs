@@ -1,7 +1,7 @@
 [package]
 name = "bezier-nd"
 edition = "2018"
-version = "0.1.2"
+version = "0.1.3"
 readme = "README.md"
 authors = ["Gavin J Stark"]
 # exclude = ["/bors.toml", "/ci/*", "/.github/*"]

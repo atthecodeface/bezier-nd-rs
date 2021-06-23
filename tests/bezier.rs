@@ -265,61 +265,146 @@ where Point:Vector<f32,2> {
     bezier_straight_as( &Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 0.065 );
 }
 
+//fi arc_ave_square_error
+fn arc_ave_square_error <Point> (arc:&Bezier<f32,Point,2>, center:&Point, radius:f32, t0:f32, t1:f32, n:usize) -> f32
+where Point:Vector<f32,2> {
+    let delta_t = (t1 - t0) / (n-1) as f32;
+    let mut error2 = 0.;
+    for i in 0..n {
+        let e = arc.point_at((i as f32) * delta_t + t0).distance(center) - radius;
+        error2 += e*e;
+    }
+    error2 / (n as f32)
+}
+
 //fi test_arc
 fn test_arc <Point> ()
 where Point:Vector<f32,2> {
-    let origin = Point::from_array([0.0,0.0]);
     let x_axis = Point::from_array([1.0,0.0]);
     let y_axis = Point::from_array([0.0,1.0]);
+
+    for (angle, radius, cx, cy, rotate) in [
+        (90.0f32, 1., 0., 0., 0.0f32),
+        (90.0f32, 1., 0., 0., 10.),
+        (90.0f32, 1., 0., 0., 20.),
+        (90.0f32, 1., 0., 0., 30.),
+        (10.0f32, 1., 0., 0., 0.),
+        (20.0f32, 1., 0., 0., 0.),
+        (30.0f32, 1., 0., 0., 0.),
+        (40.0f32, 1., 0., 0., 0.),
+        (50.0f32, 1., 0., 0., 0.),
+        (60.0f32, 1., 0., 0., 0.),
+        (60.0f32, 1., 0., 0., 0.),
+        (70.0f32, 1., 0., 0., 0.),
+        (80.0f32, 1., 0., 0., 0.),
+        (100.0f32, 1., 0., 0., 0.),
+        (110.0f32, 1., 0., 0., 0.),
+        (120.0f32, 1., 0., 0., 0.),
+        (130.0f32, 1., 0., 0., 0.),
+        (140.0f32, 1., 0., 0., 0.),
+        (150.0f32, 1., 0., 0., 0.),
+        (160.0f32, 1., 0., 0., 0.),
+        (170.0f32, 1., 0., 0., 0.),
+        (10.0f32,  2., 0., 0., 0.),
+        (30.0f32,  2., 0., 0., 0.),
+        (60.0f32,  2., 0., 0., 0.),
+        (80.0f32,  2., 0., 0., 0.),
+        (90.0f32,  2., 0., 0., 30.),
+        (100.0f32, 2., 0., 0., 0.),
+        (120.0f32, 2., 0., 0., 0.),
+        (150.0f32, 2., 0., 0., 0.),
+        (170.0f32, 2., 0., 0., 0.),
+        (10.0f32,  2., 1., 9., 0.),
+        (30.0f32,  2., 2., 8., 0.),
+        (60.0f32,  2., 3., 7., 0.),
+        (80.0f32,  2., 4., 6., 0.),
+        (90.0f32,  2., 5., 5., 30.),
+        (100.0f32, 2., 6., 4., 0.),
+        (120.0f32, 2., 7., 3., 0.),
+        (150.0f32, 2., 8., 2., 0.),
+        (170.0f32, 2., 9., 1., 0.),
+    ] {
+        let center = Point::from_array([cx,cy]);
+        let x = Bezier::arc(angle.to_radians(), radius, &center, &x_axis, &y_axis, rotate.to_radians());
+        let (c, r) = x.center_radius_of_bezier_arc();
+        let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
+        println!("c {} r {} arc_ave_square_error {}", c, r, e2);
+        approx_eq( radius, r, 0.00001, "Radius of arc should be as requested");
+        assert!(c.distance(&center) < 0.0001, "Center {} should match {}",c, center);
+        assert!(e2 < 0.001, "Eccentricity of arc should be < 0.001");
+    }
+}
+
+//fi test_round
+fn test_round <Point> ()
+where Point:Vector<f32,2> {
+    let x_axis = Point::from_array([1.0,0.0]);
+    let y_axis = Point::from_array([0.0,1.0]);
+
     let sqrt2 = 2.0_f32.sqrt();
     let r_sqrt2 = 1.0 / sqrt2;
-    let magic = 0.5522847498307935;
-    let magic2 = magic * r_sqrt2;
 
-    let x = Bezier::arc((90.0f32).to_radians(), 1., &origin, &x_axis, &y_axis, 0.);
-    println!("arc((90.).to_radians(), 1., &origin, &x_axis, &y_axis, 0.) : {}",x);
-    bezier_eq(&x, vec![[1.,0.], [1.,magic], [magic,1.], [0.,1.]]);
-
-    let x = Bezier::arc((90.0f32).to_radians(), 1., &origin, &x_axis, &y_axis, (-90.0f32).to_radians());
-    println!("arc((90.).to_radians(), 1., &origin, &x_axis, &y_axis, (-90.).to_radians()) : {}",x);
-    bezier_eq(&x, vec![[0.,-1.], [magic,-1.], [1.,-magic], [1.,0.]]);
-
-    /*
     let x = Bezier::of_round_corner(&(x_axis+y_axis), &(y_axis*3.), &(x_axis*0.5), 1.);
     println!("of_round_corner(&[1.,1.], &[0.,3.], &[0.5,0.], 1.) : {}",x);
-    bezier_eq(&x, vec![[1.,0.], [1.,magic], [magic,1.], [0.,1.]]);
+    let (c, r) = x.center_radius_of_bezier_arc();
+    let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
+    println!("arc_ave_square_error {}", e2);
+    assert!(e2 < 0.01, "Eccentricity of 90deg rounded corner should be <1%");
+    pt_eq( &c, 0., 0.);
+    pt_eq( &x.point_at(0.), 1., 0.);
+    pt_eq( &x.point_at(1.), 0., 1.);
 
     let x = Bezier::of_round_corner(&(x_axis+y_axis), &(x_axis*0.5), &(y_axis*3.), 1.);
     println!("of_round_corner(&[1.,1.], &[0.5,0.], &[0.,3.],  1.) : {}",x);
-    bezier_eq(&x, vec![[0.,1.], [magic,1.], [1.,magic], [1.,0.]]);
+    let (c, r) = x.center_radius_of_bezier_arc();
+    let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
+    println!("arc_ave_square_error {}", e2);
+    assert!(e2 < 0.01, "Eccentricity of 90deg rounded corner should be <1%");
+    pt_eq( &c, 0., 0.);
+    pt_eq( &x.point_at(0.), 0., 1.);
+    pt_eq( &x.point_at(1.), 1., 0.);
 
     let x = Bezier::of_round_corner(&(x_axis * sqrt2), &(x_axis+y_axis), &(x_axis-y_axis), 1.);
     println!("of_round_corner(&[sqrt2,0.], &[1.,1.], &[1.,-1.], 1.) : {}",x);
-    bezier_eq(&x, vec![[r_sqrt2, -r_sqrt2],
-                       [r_sqrt2+magic2 , -r_sqrt2+magic2],
-                       [r_sqrt2+magic2, r_sqrt2-magic2],
-                       [r_sqrt2, r_sqrt2]]);
+    let (c, r) = x.center_radius_of_bezier_arc();
+    let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
+    println!("arc_ave_square_error {}", e2);
+    assert!(e2 < 0.01, "Eccentricity of 90deg rounded corner should be <1%");
+    pt_eq( &c, 0., 0.);
+    pt_eq( &x.point_at(0.), r_sqrt2, -r_sqrt2);
+    pt_eq( &x.point_at(1.), r_sqrt2,  r_sqrt2);
 
-    pt_eq(x.borrow_pt(0), r_sqrt2, -r_sqrt2);
-    pt_eq(x.borrow_pt(1), r_sqrt2, r_sqrt2);
-     */
-
-    let x = Bezier::of_round_corner(&x_axis, &(x_axis+y_axis*3.), &(x_axis-y_axis*3.), 0.5);
-    println!("{} {}",x, x.point_at(0.5));
-
-    let x = Bezier::of_round_corner(&x_axis, &(x_axis-y_axis*3.), &(x_axis+y_axis*3.), 0.5);
-    println!("{} {}",x, x.point_at(0.5));
-
-    let x = Bezier::of_round_corner(&x_axis, &(x_axis+y_axis), &(x_axis-y_axis), 0.5);
-    println!("{} {}",x, x.point_at(0.5));
-
-    let x = Bezier::of_round_corner(&x_axis, &(x_axis-y_axis), &(x_axis+y_axis), 0.5);
-    println!("{} {}",x, x.point_at(0.5));
-
-    let x = Bezier::of_round_corner(&x_axis, &(x_axis*3.-y_axis), &(x_axis*3.+y_axis), 0.5);
-    println!("{} {}",x, x.point_at(0.5));
-
-    // assert!(false);
+    let radius = 0.5;// F::frac(1,2);
+    // let radius = 1.0;// F::frac(1,2);
+    for (dx,dy,ase) in [(1.,1., 0.001),
+                        (1.,30., 0.001),
+                         (1.,15., 0.001),
+                          (1.,11., 0.001),
+                          (1.,9., 0.001),
+                          (1.,7., 0.001),
+                          (1.,5., 0.001),
+                          (1.,3., 0.001),
+                          (1.,-3., 0.001),
+                          (1.,2.5, 0.001),
+                          (1.,2.,  0.001),
+                          (1.,1.5, 0.001),
+                          (1.,1.,  0.001),
+                          (1.5,1., 0.001),
+                          (2.0,1., 0.001),
+                          (2.5,1., 0.001),
+                          (3.,1.,  0.001),
+                          (5.,1.,  0.001),
+                          (7.,1.,  0.001),
+                          (11.,1., 0.001),
+                          (15.,1., 0.001),
+                          (30.,1., 0.001),
+    ] {
+        let x = Bezier::of_round_corner(&x_axis, &(x_axis*dx+y_axis*dy), &(x_axis*dx-y_axis*dy), radius);
+        let (c, r) = x.center_radius_of_bezier_arc();
+        let e2 = arc_ave_square_error(&x, &c, radius, 0., 1., 10);
+        println!("arc_ave_square_error for dx {} dy {} is {} (radius found {})", dx, dy, e2, r);
+        assert!(e2 < ase, "Eccentricity of rounded corner {} {} should be < {}", dx, dy, ase);
+    }
 }
 
 //a Tests
@@ -330,5 +415,6 @@ fn test_f32() {
     test_cubic::<FArray<f32,2>>();
     test_straight::<FArray<f32,2>>();
     test_arc::<FArray<f32,2>>();
+    test_round::<FArray<f32,2>>();
 }
 
