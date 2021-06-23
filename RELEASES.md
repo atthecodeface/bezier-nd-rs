@@ -1,3 +1,9 @@
+# Release 0.1.4 (2021-06-23)
+
+- Added documentation for the library and some simple code examples
+
+**Contributors**: @atthecodeface
+
 # Release 0.1.3 (2021-06-23)
 
 - Bezier arcs and rounded corners now use
