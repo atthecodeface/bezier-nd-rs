@@ -124,13 +124,11 @@ rounding radius.
 # Examples
 
 ```
-use geo_nd::{FArray, Float, Vector};
-use bezier_nd::{Bezier};
-type Point  = geo_nd::FArray<f32,2;
-type Bezier = bezier_nd::Bezier<f32, Point, 2>
-    test_line::>();
-
+use geo_nd::Vector;
+type Point  = geo_nd::FArray<f32,2>;
+type Bezier = bezier_nd::Bezier<f32, Point, 2>;
 ```
+
 # Circular arc algorithm
 
 There are many papers and articles on constructing Bezier curves that
