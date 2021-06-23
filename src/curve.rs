@@ -17,6 +17,7 @@ limitations under the License.
  */
 
 //a Imports
+use std::marker::PhantomData;
 use geo_nd::vector;
 use geo_nd::{Float, Vector};
 use crate::BezierLineIter;
@@ -37,25 +38,7 @@ where F:Float, Point:Vector<F,D> {
 
 //a Bezier
 //tp Bezier
-/// This library supports Bezier curves of up to order 3 - i.e. up to
-/// Cubic; these have two control poits.
-///
-/// Note: in this section we use u=1-t
-///
-/// A linear Bezier has two points, p0 and p1, and provides points
-/// along the line as:
-///    p(t,u=1-t) = u*p0 + t*p1
-///
-/// A linear Bezier may be split at t into (p0, u*p0+t*p1); (u*p0+t*p1, p1).
-///
-/// A quadratic Bezier has three points, p0, c and p1, and provides
-/// points along the curve as:
-///
-///    p(t,u=1-t) = u^2.p0 + 2.t.u.c + t^2.p1
-///
-/// or, viewing it is a linear Bezier between two linear beziers:
-///
-///    p(t) = u(u.p0 + t.c) + t(u.c + t.p1)
+/// A [Bezier] is an implementation of a linear, quadratic or cubic Bezier curve using a parameter which has the [Float] trait, and consists of points that have the [Vector] trait.
 ///
 /// To split a quadratic bezier at t is simple: the split point is p(t),
 /// and the two control points (cl, cr) are:
@@ -66,14 +49,17 @@ where F:Float, Point:Vector<F,D> {
 /// by splitting to get the right-hand Bezier of t0->1, and splitting
 /// this to get the left-hand Bezier at (t1-t0)/u0 = (t2,u2)
 ///
-///    Note t2 = (t1-t0)/u0; u2=1-t2 = (u0+t0-t1)/u0 = (1-t1)/u0 = u1/u0
+///    Note `t2 = (t1-t0)/u0; u2=1-t2 = (u0+t0-t1)/u0 = (1-t1)/u0 = u1/u0`
 ///
+/// ```text
 ///    cl(t0) = u0.p0 + t0.c
 ///    cr(t0) = u0.c  + t1.p1
 ///     p(t0) = u0.cl(t0)  + t0.cr(t0)
+/// ```
 ///
 ///    Bezier t0->1 : p(t0), cr(t0), p1
 ///
+/// ```text
 ///  c(t0,t1)  = u2.p(t0)  + t2.cr(t0)
 ///            = u2.u0.cl(t0) + u2.t0.cr(t0) + t2.cr(t0)
 ///            = u2.u0.cl(t0) + (u2.t0+t2).cr(t0)
@@ -84,15 +70,19 @@ where F:Float, Point:Vector<F,D> {
 ///               = (t1 - t1.t0) / u0
 ///               = t1(1-t0) / (1-t0)
 ///               = t1
+/// ```
 ///  Hence
+/// ```text
 ///  c(t0,t1)  = u1.cl(t0) + t1.cr(t0)
 ///            = u0.u1.p0 + u1.t0.c + u0.t1.c + t0.t1.p1
 ///            = u0.u1.p0 + (u1.t0+u0.t1).c + t0.t1.p1
+/// ```
 ///  And the points are:
+/// ```text
 ///      p(t0) = u0.u0.p0 + 2(u0.t0).c + t0.t0.p1
 ///      p(t1) = u1.u1.p0 + 2(u1.t1).c + t1.t1.p1
+/// ```
 ///
-use std::marker::PhantomData;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Bezier<F, V, const D:usize>
 where F:Float, V:Vector<F,D> {
@@ -129,8 +119,13 @@ where F:Float, V:Vector<F,D> {
 impl <F, V, const D:usize> Bezier<F, V, D>
 where F:Float, V:Vector<F,D> {
     //mp borrow_pt
-    /// Get the start or end point of the Bezier - index 0 gives the
+    /// Borrow the start or end point of the Bezier - index 0 gives the
     /// start point, index 1 the end point
+    ///
+    /// It can also be used to borrow the control points (which are
+    /// index 2 and 3) if they are used for the Bezier; this is not
+    /// generally required, as a Bezier is designed to be rendered
+    /// into straight lines.
     pub fn borrow_pt(&self, index:usize) -> &V {
         &self.pts[index]
     }
@@ -143,6 +138,9 @@ where F:Float, V:Vector<F,D> {
 
     //mp get_distance
     /// Get the distance between the start and end points
+    ///
+    /// This is not the same as the length of the Bezier, as it may be
+    /// a curve.
     pub fn get_distance(&self) -> F {
         self.pts[0].distance(&self.pts[1])
     }
@@ -180,11 +178,10 @@ where F:Float, V:Vector<F,D> {
     pub fn is_cubic(&self) -> bool { self.num == 4 }
 
     //mp scale
-    /// Consume the Bezier and return a new Bezier scaled separately in X and Y by two scaling parameters
+    /// Scale the Bezier by applying the scale factor to all of the points
+    ///
+    /// This is an example of the [Bezier::map_pts] method
     pub fn scale(&mut self, s:F)  {
-        //for i in 0..self.pts.len() {
-        //self.pts[i] *= s;
-        //}
         self.map_pts(|p| p*s);
     }
 
@@ -196,10 +193,10 @@ where F:Float, V:Vector<F,D> {
         }
     }
 
-    //mp vector_of
+    //mi vector_of
     /// Returns a vector of a combination of the vectors of the bezier
     #[inline]
-    pub fn vector_of(&self, sc:&[F], reduce:F) -> V {
+    fn vector_of(&self, sc:&[F], reduce:F) -> V {
         let mut r = self.pts[0] * sc[0];
         for i in 1..sc.len() {
             r += self.pts[i] * sc[i];
@@ -234,7 +231,7 @@ where F:Float, V:Vector<F,D> {
     //mp tangent_at
     /// Returns the tangent vector at parameter 't' along the Bezier
     ///
-    /// This is not necessarily a unit vector
+    /// Note that this is not necessarily a unit vector
     pub fn tangent_at(&self, t:F) -> V {
         let one   = F::int(1);
         let two   = F::int(2);
@@ -294,7 +291,7 @@ where F:Float, V:Vector<F,D> {
     }
 
     //mp bezier_between
-    /// Returns the Bezier between two parameters 0 <= t0 < t1 <= 1
+    /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
     pub fn bezier_between(&self, t0:F, t1:F) -> Self {
         let two = F::int(2);
         let p0 = &self.pts[0];
@@ -332,13 +329,17 @@ where F:Float, V:Vector<F,D> {
     }
 
     //mp as_lines
-    /// Iterate over line segments that are 'straight' enough
+    /// Return a [BezierLineIter] iterator that provides line segments
+    /// when the Bezier is broken down into 'straight' enough through
+    /// bisection.
     pub fn as_lines(&self, straightness:F) -> BezierLineIter<F, V, D> {
         BezierLineIter::new(self, straightness)
     }
 
     //mp as_points
-    /// Iterate over points that make 'straight' enough lines
+    /// Return a [BezierPointIter] iterator that provides points along
+    /// the curve when the Bezier is broken down into 'straight'
+    /// enough through bisection.
     pub fn as_points(&self, straightness:F) -> BezierPointIter<F, V, D> {
         BezierPointIter::new(BezierLineIter::new(self, straightness))
     }
@@ -407,7 +408,8 @@ where F:Float, V:Vector<F,D> {
     }
 
     //mp length
-    /// Calculates the length given a straightness
+    /// Calculates the length of the Bezier when it is rendered down
+    /// to the given a straightness
     ///
     /// `straightness` is independent of the length of the Bezier
     pub fn length(&self, straightness:F) -> F {
@@ -419,14 +421,8 @@ where F:Float, V:Vector<F,D> {
         }
     }
 
-    //mp t_of_distance
-    /// Calculates the parameter 't' at a certain distance along the Bezier given a straightness
-    ///
-    /// `straightness` is independent of the length of the Bezier
-    ///
-    /// Returns t,true if the distance is along the Bezier
-    /// Returns 0.,false if the distance is before the start of the Bezier
-    /// Returns 1.,false if the distance is beyond the end of the Bezier
+    //fi t_of_distance_rec
+    /// Internal function used to find the distance recursively
     fn t_of_distance_rec(&self, straightness:F, distance:F, t_start:F, t_scale:F, acc_length:F) -> (Option<F>, F) {
         let zero   = F::zero();
         let two    = F::int(2);
@@ -453,6 +449,17 @@ where F:Float, V:Vector<F,D> {
             }
         }
     }
+
+    //mp t_of_distance
+    /// Calculates the parameter 't' at a certain distance along the Bezier given a straightness
+    ///
+    /// `straightness` is independent of the length of the Bezier
+    ///
+    /// Returns t,true if the distance is along the Bezier
+    ///
+    /// Returns 0.,false if the distance is before the start of the Bezier
+    ///
+    /// Returns 1.,false if the distance is beyond the end of the Bezier
     pub fn t_of_distance(&self, straightness:F, distance:F) -> (F, bool) {
         let zero   = F::zero();
         let one    = F::int(1);
@@ -601,7 +608,9 @@ where F:Float, V:Vector<F,D> {
     ///
     /// As it is a circular arc we have a kite P, P+k.v0, C, P+k.v1, where
     ///
+    /// ```text
     /// |P+k.v0 - C| = |P+k.v1 - C| = r; |P-C| = d (i.e. side lengths are r, r, k, k)
+    /// ```
     ///
     /// with two corners being right-angles. (and d is the length of
     /// the kite diagonal opposite these right-angles).
@@ -614,6 +623,7 @@ where F:Float, V:Vector<F,D> {
     ///
     /// We know cos(alpha) = v0.v1 (assuming unit vectors).
     ///
+    /// ```text
     /// cos(alpha) = cos(180-2*theta)
     ///            = -cos(2*theta)
     ///            = -(2cos^2(theta) - 1)
@@ -624,17 +634,11 @@ where F:Float, V:Vector<F,D> {
     /// sin^2(theta) = (1 + cos(alpha)) / 2
     ///
     /// => d^2 = 2*r^2  / (1 - cos(alpha))
+    /// ```
     ///
     /// Hence also k^2, and hence d and k.
     ///
-    /// Then we require an arc given the angle of the arc is 2*theta, which requires a lambda of
-    /// 4/3 * r * (1/sin(theta)-1) = 4/3 * r * (d/k - 1)
-    ///
-    /// Note though that d^2/k^2 = 1/sin^2(theta) = 2/(1+cos(alpha))
-    ///
-    /// hence d/k = sqrt(2/(1+cos(alpha)))
-    ///
-    /// hence lambda = 4/3 * r * (sqrt(2/(1+cos(alpha))) - 1)
+    /// Then we require an arc given the angle of the arc is 2*theta
     pub fn of_round_corner(corner:&V, v0:&V, v1:&V, radius:F) -> Self {
         let nearly_one = F::frac(99_999, 100_000);
         let one    = F::int(1);
@@ -728,31 +732,39 @@ where F:Float, V:Vector<F,D> {
     }
 
     //mp center_radius_of_bezier_arc
-    /// Find the center and radius of a bezier arc if it is assumed to
+    /// Find the center and radius of a Bezier if it is assumed to
     /// be a circular arc
     ///
     /// what is the center of the circle
     /// given point p0 and unit tangent t0
     /// and point p1 and unit tangent t1
     ///
+    /// ```text
     /// |p0-c|^2 = |p1-c|^2 = r^2
     /// (p0-c) . t0 = 0
     /// (p1-c) . t1 = 0
+    /// ```
     ///
     /// Consider c = k0.t0 + k1.t1
     ///
     /// (given t0.t0 == 1 and t1.t1==1)
     ///
+    /// ```text
     /// (p0-c) . t0 = (p0 - k0.t0 - k1.t1).t0 = 0
     ///       p0.t0 = k0 + k1(t1.t0)
+    /// ```
     /// similarly
+    /// ```text
     ///       p1.t1 = k1 + k0(t1.t0)
+    /// ```
     ///
     /// hence
+    /// ```text
     ///  (t1.t0) * (p1.t1)         = k0.(t1.t0)^2 + k1(t1.t0)
     ///  p0.t0 - (t1.t0) * (p1.t1) = k0 ( 1 - (t1.t0)^2)
     ///  k0 = (p0.t0 - p1.t1 * t1.t0) / ( 1 - (t1.t0)^2)
     ///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
+    /// ```
     pub fn center_radius_of_bezier_arc(&self) -> (V, F) {
         let zero   = F::zero();
         let one    = F::int(1);

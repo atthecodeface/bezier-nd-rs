@@ -1,24 +1,25 @@
-# geo-nd
+# bezier-nd
 
-A collection of vector, matrix and quaternion types and traits for
-Rust, particularly aimed at 2D, 3D and OpenGL/Vulkan applications,
-where the elements use arrays and slices of floats.
+A Bezier curve class supporting linear, quadratic and cubic Bezier curves,
+using an arbitrary point class.
 
-The usage model in 3D graphics is through ownership of large arrays of
-floats by the application, encompassing sets of vertices and matrices,
-with the library enabling in-place operations on those vertices and
-matrices.
+Example uses would be for 2-dimensional Bezier curves whose
+coordinates are `[f64; 2]`, or for 3-dimensional Bezier curves using
+coordinates of `[f32; 3]`.
 
-The library takes advantage of the developiong
-[core_simd](https://rust-lang.github.io/stdsimd/core_simd/) crate to
-provide architecture-specific implementations, without attempting to
-support architectural SIMD implementations within this crate.
+The Bezier curve supports bisection, and then splitting into straight
+lines within a given `straightness` bound; iterators are provided to
+automatically trace a Bezier as lines or points within such a
+straightness, for rendering puroses.
 
-This crate is in alpha; it is used in a small number of applications,
-and the functionality is mature, but the API may undergo some changes
-in the near future (through Q3 2021) to ensure high performance OpenGL
-and Vulkan operation while maintaining simplicity of operation for
-other applications.
+The Bezier type also supports rounding of corners and circular arc
+generation, utilizing a very accurate function for any angle of
+rounding up to 180 degrees, derived from a curve-fit from experimental
+data, rather than an explicit mathematical function for the control
+point generation (the standard analytical approach).
+
+This crate is in beta; it is used in a small number of applications,
+and the functionality is mature; the API is stable, but may be enhanced.
 
 ## Usage
 
@@ -26,20 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-geo-nd = "0.1"
-```
-
-## Features
-
-*NOTE* Until *core_simd* is part of std or on crates.io the following does not work - the dependency in the geo-nd/Cargo.toml for core_simd must be commented out on crates.io; so a locally modified clone of this crate is required until that point.
-
-This crate can be used with the upcoming [core_simd](https://rust-lang.github.io/stdsimd/core_simd/) crate by enabling
-the default `simd` feature. Use this in `Cargo.toml`:
-
-```toml
-[dependencies.geo-nd]
-version = "0.1"
-features = ["simd"]
+bezier-nd = "0.1.4"
 ```
 
 ## Releases
