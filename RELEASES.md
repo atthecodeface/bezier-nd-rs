@@ -1,3 +1,9 @@
+# Release 0.5.0. (2023-02-18)
+
+- Migrated to geo-nd version 0.5; firming up the API as it is now in use
+
+**Contributors**: @atthecodeface
+
 # Release 0.1.4 (2021-06-23)
 
 - Added documentation for the library and some simple code examples
