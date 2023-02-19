@@ -200,11 +200,11 @@ where
     //mp degree
     /// Returns number of points used for the Bezier (2 to 4)
     ///
-    /// Cubic beziers return 4
-    /// Quadratic beziers return 3
-    /// Linear beziers (lines...) return 2
+    /// Cubic beziers return 3
+    /// Quadratic beziers return 2
+    /// Linear beziers (lines...) return 1
     pub fn degree(&self) -> usize {
-        self.num
+        self.num - 1
     }
 
     //mp scale
@@ -228,8 +228,8 @@ where
     #[inline]
     fn vector_of(&self, sc: &[F], reduce: F) -> V {
         let mut r = self.pts[0] * sc[0];
-        for i in 1..sc.len() {
-            r += self.pts[i] * sc[i];
+        for (i, sc) in sc.iter().enumerate().skip(1) {
+            r += self.pts[i] * (*sc);
         }
         r / reduce
     }
@@ -603,19 +603,17 @@ where
         // let  lambda = four_thirds * theta.tan();
         // lambda
         let k_d = k_d * k_d;
-        let a0 = F::frac(316_032, 100_000_00);
-        let a1 = F::frac(279_505, 1_000_00);
+        let a0 = F::frac(316_032, 10_000_000);
+        let a1 = F::frac(279_505, 100_000);
         let a2 = F::frac(-114_867, 10_000);
         let a3 = F::frac(289_753, 10_000);
         let a4 = F::frac(-328_452, 10_000);
         let a5 = F::frac(137_794, 10_000);
-        let lambda = a0
-            + a1 * k_d
+        a0 + a1 * k_d
             + a2 * k_d * k_d
             + a3 * k_d * k_d * k_d
             + a4 * k_d * k_d * k_d * k_d
-            + a5 * k_d * k_d * k_d * k_d * k_d;
-        lambda
+            + a5 * k_d * k_d * k_d * k_d * k_d
     }
     //fp arc
     /// Create a Cubic Bezier that approximates closely a circular arc
@@ -689,18 +687,11 @@ where
         let nearly_one = F::frac(99_999, 100_000);
         let one = F::int(1);
         let two = F::int(2);
-        let mut v0 = v0.clone();
-        let mut v1 = v1.clone();
-        v0.normalize();
-        v1.normalize();
+        let v0 = v0.normalize();
+        let v1 = v1.normalize();
         let cos_alpha = v0.dot(&v1);
-        if cos_alpha >= nearly_one {
+        if cos_alpha.abs() >= nearly_one {
             // v0 and v1 point in the same direction
-            let p0 = *corner - (v0 * radius);
-            let p1 = *corner - (v1 * radius);
-            Self::quadratic(&p0, corner, &p1)
-        } else if cos_alpha <= -nearly_one {
-            // basically 180 degress apart
             let p0 = *corner - (v0 * radius);
             let p1 = *corner - (v1 * radius);
             Self::quadratic(&p0, corner, &p1)
@@ -816,10 +807,8 @@ where
         let one = F::int(1);
         let p0 = self.point_at(zero);
         let p1 = self.point_at(one);
-        let mut t0 = self.tangent_at(zero);
-        let mut t1 = self.tangent_at(one);
-        t0.normalize();
-        t1.normalize();
+        let t0 = self.tangent_at(zero).normalize();
+        let t1 = self.tangent_at(one).normalize();
         let t1_d_t0 = t1.dot(&t0);
         let p0_d_t0 = p0.dot(&t0);
         let p1_d_t1 = p1.dot(&t1);

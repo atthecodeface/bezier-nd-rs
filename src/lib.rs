@@ -18,7 +18,6 @@ limitations under the License.
 
 //a Documentation
 #![warn(missing_docs)]
-#![warn(missing_doc_code_examples)]
 /*!
 
 # Bezier curve library
@@ -133,17 +132,13 @@ type Bezier = bezier_nd::Bezier<f32, Point, 2>;
 let dx = Point::from_array([1.,0.]);
 let dy = Point::from_array([0.,1.]);
 let line = Bezier::line( &dx, &dy );
-assert!( line.is_line());
-assert!(!line.is_quadratic());
-assert!(!line.is_cubic());
+assert_eq!( line.degree(), 1);
 assert!( line.is_straight(0.));
 
 // A 30-degree arc of radius 3; has length of PI/2,
 // it is fairly close to being a straight line, subjectively...
 let arc = Bezier::arc( 30.0f32.to_radians(), 3.0, &Point::from_array([3.,4.]), &dx, &dy, 0.);
-assert!(!arc.is_line());
-assert!(!arc.is_quadratic());
-assert!( arc.is_cubic());
+assert_eq!( arc.degree(), 3);
 assert!(!arc.is_straight(0.));
 
 // Breaking the arc with a large value of straightness yields only 3 points:
@@ -232,7 +227,6 @@ mod point;
 
 /*a Exports
 */
-pub use self::line::BezierLineIter as BezierLineIter;
-pub use self::point::BezierPointIter as BezierPointIter;
-pub use curve::Bezier as Bezier;
-
+pub use self::line::BezierLineIter;
+pub use self::point::BezierPointIter;
+pub use curve::Bezier;
