@@ -590,12 +590,12 @@ where
         // let  lambda = four_thirds * theta.tan();
         // lambda
         let k_d = k_d * k_d;
-        let a0: F = (3.1603235091816735e-002_f32).into();
-        let a1: F = (2.7950542994656820e+000_f32).into();
-        let a2: F = (-1.1486743224812313e+001_f32).into();
-        let a3: F = (2.8975368657401102e+001_f32).into();
-        let a4: F = (-3.2845222512637491e+001_f32).into();
-        let a5: F = (1.3779429574112177e+001_f32).into();
+        let a0: F = 3.160_323_6e-2_f32.into();
+        let a1: F = 2.795_054_2_f32.into();
+        let a2: F = (-1.148_674_3e1_f32).into();
+        let a3: F = 2.897_536_8e1_f32.into();
+        let a4: F = (-3.284_522_2e1_f32).into();
+        let a5: F = 1.377_942_9e1_f32.into();
         a0 + a1 * k_d
             + a2 * k_d * k_d
             + a3 * k_d * k_d * k_d

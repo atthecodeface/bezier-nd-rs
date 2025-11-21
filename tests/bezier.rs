@@ -11,6 +11,7 @@ use geo_nd::{FArray, Float, Vector};
 ///a 'equality' tests
 //fi vec_eq
 pub fn vec_eq<F: Float, V: Vector<F, D>, const D: usize>(v0: &V, v1: &V) {
+    #[allow(non_snake_case)]
     let EPSILON: F = (1E-5_f32).into();
     let d = v0.distance(v1);
     assert!(d < EPSILON, "mismatch in {:?} {:?}", v0, v1);
@@ -18,6 +19,7 @@ pub fn vec_eq<F: Float, V: Vector<F, D>, const D: usize>(v0: &V, v1: &V) {
 
 //fi pt_eq
 pub fn pt_eq<F: Float, V: Vector<F, D>, const D: usize>(v: &V, x: F, y: F) {
+    #[allow(non_snake_case)]
     let EPSILON: F = (1E-5_f32).into();
     assert!(
         (v[0] - x).abs() < EPSILON,
@@ -83,6 +85,7 @@ fn does_bisect<F: Float, V: Vector<F, D>, const D: usize>(bezier: &Bezier<F, V, 
 
 //fi does_split
 fn does_split<F: Float, V: Vector<F, D>, const D: usize>(bezier: &Bezier<F, V, D>, t0: F, t1: F) {
+    #[allow(non_snake_case)]
     let EPSILON: F = (1E-5_f32).into();
     let b = bezier.bezier_between(t0, t1);
     for i in 0..21 {
