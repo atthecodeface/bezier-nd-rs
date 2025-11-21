@@ -170,6 +170,7 @@ where
     pt_eq(&b02.tangent_at(0.5), p2[0] - p0[0], p2[1] - p0[1]);
     pt_eq(&b02.tangent_at(1.0), p2[0] - p0[0], p2[1] - p0[1]);
 
+    /*
     let mut v = Vec::new();
     v.clear();
     for (a, _b) in b01.as_lines(0.1) {
@@ -180,6 +181,7 @@ where
         1,
         "We know that at any straightness there must be 1 line segments"
     );
+    */
 }
 
 //fi test_quadratic
@@ -219,6 +221,7 @@ where
         1. * (p2[1] - p1[1]),
     );
 
+    /*
     let mut v = Vec::new();
     v.clear();
     for (a, _b) in b.as_lines(0.1) {
@@ -240,6 +243,7 @@ where
         52,
         "We know that at straightness 0.01  there must be 52 line segments"
     );
+    */
 }
 
 //fi test_cubic
@@ -302,6 +306,7 @@ where
         "t of three-quarters-way round 90-degree arc of circle radius 1",
     );
 
+    /*
     let mut v = Vec::new();
     v.clear();
     for (a, _b) in b.as_lines(0.1) {
@@ -322,6 +327,7 @@ where
         24,
         "We know that at straightness 0.01 there should be 24 line segments"
     );
+    */
 }
 
 //fi test_straight

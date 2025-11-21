@@ -23,6 +23,7 @@ pub struct BezierPointIter<F: Float, V: Vector<F, D>, const D: usize> {
     /// When this returns none, the end-point of the previous
     /// iteration needs to be returned as the last point.
     lines: BezierLineIter<F, V, D>,
+
     /// The last point to be returned - if this is valid then the line
     /// iterator has finished, and just the last point on the Bezier
     /// needs to be returned.

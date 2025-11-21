@@ -1,9 +1,10 @@
 //a Imports
-use crate::BezierLineIter;
-use crate::BezierPointIter;
+use std::marker::PhantomData;
+
 use geo_nd::vector;
 use geo_nd::{Float, Vector};
-use std::marker::PhantomData;
+
+// use crate::{BezierLineIter, BezierPointIter};
 
 //a Utils
 #[allow(dead_code)]
@@ -348,21 +349,24 @@ where
     }
 
     //mp as_lines
+    /*
     /// Return a [BezierLineIter] iterator that provides line segments
     /// when the Bezier is broken down into 'straight' enough through
     /// bisection.
     pub fn as_lines(&self, straightness: F) -> BezierLineIter<F, V, D> {
         BezierLineIter::new(self, straightness)
     }
+    */
 
     //mp as_points
     /// Return a [BezierPointIter] iterator that provides points along
     /// the curve when the Bezier is broken down into 'straight'
     /// enough through bisection.
+    /*
     pub fn as_points(&self, straightness: F) -> BezierPointIter<F, V, D> {
         BezierPointIter::new(BezierLineIter::new(self, straightness))
     }
-
+    */
     //mp is_straight
     /// Returns true if the Bezier is straighter than a 'straightness' measure
     ///

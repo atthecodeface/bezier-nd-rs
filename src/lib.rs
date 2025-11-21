@@ -204,11 +204,11 @@ to this problem!
 /*a Imports
 */
 mod curve;
-mod line;
-mod point;
+// mod line;
+// mod point;
 
 /*a Exports
 */
-pub use self::line::BezierLineIter;
-pub use self::point::BezierPointIter;
+// pub use self::line::BezierLineIter;
+// pub use self::point::BezierPointIter;
 pub use curve::Bezier;
