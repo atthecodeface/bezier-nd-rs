@@ -11,21 +11,23 @@ use geo_nd::{FArray, Float, Vector};
 ///a 'equality' tests
 //fi vec_eq
 pub fn vec_eq<F: Float, V: Vector<F, D>, const D: usize>(v0: &V, v1: &V) {
+    let EPSILON: F = (1E-5_f32).into();
     let d = v0.distance(v1);
-    assert!(d < F::frac(1, 100_000), "mismatch in {:?} {:?}", v0, v1);
+    assert!(d < EPSILON, "mismatch in {:?} {:?}", v0, v1);
 }
 
 //fi pt_eq
 pub fn pt_eq<F: Float, V: Vector<F, D>, const D: usize>(v: &V, x: F, y: F) {
+    let EPSILON: F = (1E-5_f32).into();
     assert!(
-        (v[0] - x).abs() < F::frac(1, 100_000),
+        (v[0] - x).abs() < EPSILON,
         "mismatch in x {:?} {:?} {:?}",
         v,
         x,
         y
     );
     assert!(
-        (v[1] - y).abs() < F::frac(1, 100_000),
+        (v[1] - y).abs() < EPSILON,
         "mismatch in y {:?} {:?} {:?}",
         v,
         x,
@@ -41,17 +43,17 @@ pub fn approx_eq<F: Float>(a: F, b: F, tolerance: F, msg: &str) {
 //fi bezier_eq
 pub fn bezier_eq<F: Float, V: Vector<F, D>, const D: usize>(bez: &Bezier<F, V, D>, v: Vec<[F; D]>) {
     assert_eq!(bez.degree(), 4, "bezier_eq works only for cubics");
-    vec_eq(bez.borrow_pt(0), &V::from_array(v[0]));
-    vec_eq(bez.borrow_pt(2), &V::from_array(v[1]));
-    vec_eq(bez.borrow_pt(3), &V::from_array(v[2]));
-    vec_eq(bez.borrow_pt(1), &V::from_array(v[3]));
+    vec_eq(bez.borrow_pt(0), &v[0].into());
+    vec_eq(bez.borrow_pt(2), &v[1].into());
+    vec_eq(bez.borrow_pt(3), &v[2].into());
+    vec_eq(bez.borrow_pt(1), &v[3].into());
 }
 
 //a Bezier test subfns
 //fi bezier_straight_as
 fn bezier_straight_as<F: Float, V: Vector<F, 2>>(bezier: &Bezier<F, V, 2>, straightness: F) {
     for i in 0..30 {
-        let s = F::frac(14, 10).powf(F::int(i - 15));
+        let s: F = (1.4_f32).powi(i - 15).into();
         println!("{} {} {}", s, straightness, bezier.is_straight(s));
         assert_eq!(
             straightness < s,
@@ -69,8 +71,8 @@ fn does_bisect<F: Float, V: Vector<F, D>, const D: usize>(bezier: &Bezier<F, V, 
     let (b0, b1) = bezier.bisect();
     println!("Test bisection of {} into {}, {}", bezier, b0, b1);
     for i in 0..21 {
-        let t = F::frac(i, 20);
-        let half = F::frac(1, 2);
+        let t: F = ((i as f32) / 20.0).into();
+        let half = 0.5_f32.into();
         let p0 = bezier.point_at(t * half);
         let p1 = bezier.point_at(t * half + half);
         println!("t {} : {:?} : {:?}", t, p0, p1);
@@ -81,14 +83,15 @@ fn does_bisect<F: Float, V: Vector<F, D>, const D: usize>(bezier: &Bezier<F, V, 
 
 //fi does_split
 fn does_split<F: Float, V: Vector<F, D>, const D: usize>(bezier: &Bezier<F, V, D>, t0: F, t1: F) {
+    let EPSILON: F = (1E-5_f32).into();
     let b = bezier.bezier_between(t0, t1);
     for i in 0..21 {
-        let bt = F::frac(i, 20);
+        let bt: F = ((i as f32) / 20.0).into();
         let t = t0 + (t1 - t0) * bt;
         let p = bezier.point_at(t);
         let pb = b.point_at(bt);
         println!("t {} : {:?} : {:?}", t, p, pb);
-        let close_enough = F::frac(1, 100_000);
+        let close_enough = EPSILON;
         approx_eq(
             p[0],
             pb[0],
@@ -110,9 +113,9 @@ fn test_line<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let p0 = Point::from_array([0., 0.]);
-    let p1 = Point::from_array([10., 0.]);
-    let p2 = Point::from_array([10., 1.]);
+    let p0: Point = [0., 0.].into();
+    let p1: Point = [10., 0.].into();
+    let p2: Point = [10., 1.].into();
     let b01 = Bezier::line(&p0, &p1);
     let b02 = Bezier::line(&p0, &p2);
 
@@ -181,9 +184,9 @@ fn test_quadratic<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let p0 = Point::from_array([0., 0.]);
-    let p1 = Point::from_array([10., 0.]);
-    let p2 = Point::from_array([10., 1.]);
+    let p0: Point = [0., 0.].into();
+    let p1: Point = [10., 0.].into();
+    let p2: Point = [10., 1.].into();
     let b = Bezier::quadratic(&p0, &p1, &p2);
 
     pt_eq(&b.point_at(0.), p0[0], p0[1]);
@@ -241,10 +244,10 @@ fn test_cubic<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let p0 = Point::from_array([0., 0.]);
-    let p1 = Point::from_array([10., 0.]);
-    let p2 = Point::from_array([6., 1.]);
-    let p3 = Point::from_array([20., 5.]);
+    let p0: Point = [0., 0.].into();
+    let p1: Point = [10., 0.].into();
+    let p2: Point = [6., 1.].into();
+    let p3: Point = [20., 5.].into();
     let b = Bezier::cubic(&p0, &p1, &p2, &p3);
 
     pt_eq(&b.point_at(0.), p0[0], p0[1]);
@@ -264,8 +267,8 @@ where
         (90.0f32).to_radians(),
         1.,
         &p0,
-        &Point::from_array([1., 0.]),
-        &Point::from_array([0., 1.]),
+        &[1., 0.].into(),
+        &[0., 1.].into(),
         0.,
     );
     println!("{}", x);
@@ -323,11 +326,12 @@ fn test_straight<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let p0 = Point::from_array([0., 0.]);
-    let p1 = Point::from_array([10., 0.]);
-    let p2 = Point::from_array([10., 1.]);
-    let p3 = Point::from_array([20., 0.]);
-    let p4 = Point::from_array([20., 1.]);
+    let p0: Point = [0., 0.].into();
+    let p1: Point = [10., 0.].into();
+    let p2: Point = [10., 1.].into();
+    let p3: Point = [20., 0.].into();
+    let p4: Point = [20., 1.].into();
+
     let sp0 = p0 * 10.;
     let sp1 = p1 * 10.;
     let sp2 = p2 * 10.;
@@ -399,8 +403,8 @@ fn test_arc<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let x_axis = Point::from_array([1.0, 0.0]);
-    let y_axis = Point::from_array([0.0, 1.0]);
+    let x_axis = [1.0, 0.0].into();
+    let y_axis = [0.0, 1.0].into();
 
     for (angle, radius, cx, cy, rotate) in [
         (90.0f32, 1., 0., 0., 0.0f32),
@@ -443,7 +447,7 @@ where
         (150.0f32, 2., 8., 2., 0.),
         (170.0f32, 2., 9., 1., 0.),
     ] {
-        let center = Point::from_array([cx, cy]);
+        let center: Point = [cx, cy].into();
         let x = Bezier::arc(
             angle.to_radians(),
             radius,
@@ -455,7 +459,7 @@ where
         let (c, r) = x.center_radius_of_bezier_arc();
         let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
         println!("c {} r {} arc_ave_square_error {}", c, r, e2);
-        approx_eq(radius, r, 0.00001, "Radius of arc should be as requested");
+        approx_eq(radius, r, 0.000015, "Radius of arc should be as requested");
         assert!(
             c.distance(&center) < 0.0001,
             "Center {} should match {}",
@@ -471,8 +475,8 @@ fn test_round<Point>()
 where
     Point: Vector<f32, 2>,
 {
-    let x_axis = Point::from_array([1.0, 0.0]);
-    let y_axis = Point::from_array([0.0, 1.0]);
+    let x_axis: Point = [1.0, 0.0].into();
+    let y_axis: Point = [0.0, 1.0].into();
 
     let sqrt2 = 2.0_f32.sqrt();
     let r_sqrt2 = 1.0 / sqrt2;
@@ -577,11 +581,31 @@ where
 
 //a Tests
 #[test]
-fn test_f32() {
+fn test_f32_line() {
     test_line::<FArray<f32, 2>>();
+}
+
+#[test]
+fn test_f32_quadratic() {
     test_quadratic::<FArray<f32, 2>>();
+}
+
+#[test]
+fn test_f32_cubic() {
     test_cubic::<FArray<f32, 2>>();
+}
+
+#[test]
+fn test_f32_straight() {
     test_straight::<FArray<f32, 2>>();
+}
+
+#[test]
+fn test_f32_arc() {
     test_arc::<FArray<f32, 2>>();
+}
+
+#[test]
+fn test_f32_round() {
     test_round::<FArray<f32, 2>>();
 }
