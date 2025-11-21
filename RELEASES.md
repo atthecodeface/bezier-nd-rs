@@ -1,4 +1,10 @@
-# Release 0.5.0. (2023-02-18)
+# Release 0.5.1 (2025-11-12)
+
+- Migrated to geo-nd version 0.6; API should be the same
+
+**Contributors**: @atthecodeface
+
+# Release 0.5.0 (2023-02-18)
 
 - Migrated to geo-nd version 0.5; firming up the API as it is now in use
 

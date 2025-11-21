@@ -27,7 +27,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-bezier-nd = "0.5"
+bezier-nd = "0.5.1"
 ```
 
 ## Releases
