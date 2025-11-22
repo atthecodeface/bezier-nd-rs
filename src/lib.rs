@@ -107,12 +107,10 @@ rounding radius.
 An example using 2-dimensional vectors of f32
 
 ```
-use geo_nd::Vector;
-type Point  = geo_nd::FArray<f32,2>;
-type Bezier = bezier_nd::Bezier<f32, Point, 2>;
+type Bezier = bezier_nd::Bezier<f32, 2>;
 
-let dx: Point = [1.,0.].into();
-let dy: Point = [0.,1.].into();
+let dx = [1.,0.];
+let dy = [0.,1.];
 let line = Bezier::line( &dx, &dy );
 assert_eq!( line.degree(), 1);
 assert!( line.is_straight(0.));
@@ -134,7 +132,7 @@ assert_eq!( arc.as_points(0.01).count(), 33);
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
 for (a,b) in arc.as_lines(0.05) {
-    println!("Line from {} to {}\n", a, b);
+    println!("Line from {a:?} to {b:?}\n");
 }
 
 let q = Bezier::quadratic( &[2.,6.].into(),
@@ -149,14 +147,12 @@ assert_eq!( q.borrow_pt(1)[1], 7., "End point Y of Bezier" );
 An example using 3D vectors of f64
 
 ```
-use geo_nd::Vector;
-type Point  = geo_nd::FArray<f64,3>;
-type Bezier = bezier_nd::Bezier<f64, Point, 3>;
+type Bezier = bezier_nd::Bezier<f64, 3>;
 
-let c = Bezier::cubic( &[1.,0.,0.].into(),
-                           &[2.5,0.,-1.].into(),
-                           &[0.,2.5,1.].into(),
-                           &[0.,1.,0.].into());
+let c = Bezier::cubic( &[1.,0.,0.],
+                           &[2.5,0.,-1.],
+                           &[0.,2.5,1.],
+                           &[0.,1.,0.]);
 // This is just over 3.283
 println!( "3D cubic length when straightened to '0.1' is {}", c.length(0.1) );
 // But this is just over 3.29
@@ -204,11 +200,16 @@ to this problem!
 /*a Imports
 */
 mod curve;
-// mod line;
-// mod point;
+mod line;
+mod point;
 
 /*a Exports
 */
-// pub use self::line::BezierLineIter;
-// pub use self::point::BezierPointIter;
+pub use self::line::BezierLineIter;
+pub use self::point::BezierPointIter;
 pub use curve::Bezier;
+
+// For *now* expose these so that users do not need to have the same
+// version of geo_nd (or any version thereof) if they want generic
+// Beziers
+pub use geo_nd::{FArray, Vector};
