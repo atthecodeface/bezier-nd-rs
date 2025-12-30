@@ -5,17 +5,10 @@
 # Bezier curve library
 
 This library provides linear, quadratic and cubic Bezier curves, using
-generic types for the scalar and vectors that they are made up of.
+generic types for the scalar that they are made up of; this can be
+either f32 or f64 (anything that supports the geo_nd::Float trait).
 
-The underlying point type must conform to geo_nd::Vector trait as an
-N-dimensional vector of scalars, which must meet the geo_nd::Float
-trait.
-
-The simplest such scalar is f32 or f64; the point can be a
-geo_nd::FArray<f32 (or f64),N> - for N dimensions (usually 2 or
-3). Such a point class is a wrapper around an array around an array
-F[f32; N], for example, providing standard arithmetic and assignment
-etc.
+Points in the Bezier are [Float; D] for a D-dimension Bezier curve.
 
 ## Bezier types
 
@@ -88,6 +81,14 @@ particular straightness; further methods are supplied to calculate the
 length of a Bezier, or to find the value of `t` for s distance along
 the Bezier.
 
+The actual straightness measure used for a Bezier curve in this
+library is the sum of the square of the distances of the intermediate
+control points from the straight line between the endpoints.
+
+For example, if the units of the Bezier coordinates are pixels then a
+straightness of 1.0 will produce straight line segments that never
+exceed 1 pixel away from the original Bezier.
+
 ## Circular arcs and rounding
 
 Bezier curves cannot express circular arcs precisely; they are
@@ -126,8 +127,8 @@ assert_eq!( arc.as_points(0.1).count(), 3);
 // This is 1.5662874
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
-// Breaking the arc with a small value of straightness yields 33 points!
-assert_eq!( arc.as_points(0.01).count(), 33);
+// Breaking the arc with a small value of straightness yields 17 points!
+assert_eq!( arc.as_points(0.001).count(), 17);
 // This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
@@ -208,8 +209,3 @@ mod point;
 pub use self::line::BezierLineIter;
 pub use self::point::BezierPointIter;
 pub use curve::Bezier;
-
-// For *now* expose these so that users do not need to have the same
-// version of geo_nd (or any version thereof) if they want generic
-// Beziers
-pub use geo_nd::{FArray, Vector};

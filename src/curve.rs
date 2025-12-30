@@ -1,6 +1,6 @@
 //a Imports
 use geo_nd::vector;
-use geo_nd::{FArray, Float, Vector};
+use geo_nd::Float;
 
 use crate::{BezierLineIter, BezierPointIter};
 
@@ -280,43 +280,41 @@ where
 
     //mp bezier_between
     /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
-    pub fn bezier_between(&self, t0: F, t1: F) -> Self
-    where
-        for<'a> &'a [F; D]: Into<FArray<F, D>>,
-        FArray<F, D>: Vector<F, D>,
-    {
+    pub fn bezier_between(&self, t0: F, t1: F) -> Self {
         match self.num {
             2 => {
                 let u0 = F::one() - t0;
                 let u1 = F::one() - t1;
-                let p0: FArray<F, D> = self.pts[0].into();
-                let p1: FArray<F, D> = self.pts[1].into();
-                let r0 = p0 * u0 + p1 * t0;
-                let r1 = p0 * u1 + p1 * t1;
+                let r0 = self.vector_of(&[u0, t0], F::one());
+                let r1 = self.vector_of(&[u1, t1], F::one());
                 Self::line(&r0, &r1)
             }
             3 => {
                 let two: F = (2.0_f32).into();
-                let p0: FArray<F, D> = self.pts[0].into();
-                let p1: FArray<F, D> = self.pts[1].into();
-                let c: FArray<F, D> = self.pts[2].into();
                 let u0 = F::one() - t0;
                 let u1 = F::one() - t1;
-                let rp0 = p0 * (u0 * u0) + c * (two * u0 * t0) + p1 * (t0 * t0);
-                let rp1 = p0 * (u1 * u1) + c * (two * u1 * t1) + p1 * (t1 * t1);
-                let rc0 = p0 * (u0 * u1) + c * (u0 * t1 + u1 * t0) + p1 * (t1 * t0);
+                let rp0 = self.vector_of(&[u0 * u0, t0 * t0, two * u0 * t0], F::one());
+                let rp1 = self.vector_of(&[u1 * u1, t1 * t1, two * u1 * t1], F::one());
+                let rc0 = self.vector_of(&[u0 * u1, t1 * t0, u0 * t1 + u1 * t0], F::one());
                 Self::quadratic(&rp0, &rc0, &rp1)
             }
             _ => {
                 // simply: c0 = p0 + tangent(0)
                 // and if we scale the curve to t1-t0 in size, tangents scale the same
-                let rp0: FArray<F, D> = self.point_at(t0).into();
-                let rt0: FArray<F, D> = self.tangent_at(t0).into();
-                let rt1: FArray<F, D> = self.tangent_at(t1).into();
-                let rp1: FArray<F, D> = self.point_at(t1).into();
+                let rp0 = self.point_at(t0);
+                let rp1 = self.point_at(t1);
+                let rt0 = self.tangent_at(t0);
+                let rt1 = self.tangent_at(t1);
+
                 let t1_m_t0 = t1 - t0;
-                let rc0 = rp0 + rt0 * t1_m_t0;
-                let rc1 = rp1 - rt1 * t1_m_t0;
+
+                let mut rc0 = [F::zero(); D];
+                let mut rc1 = [F::zero(); D];
+                for i in 0..D {
+                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i];
+                    rc1[i] = rp1[i] - t1_m_t0 * rt1[i];
+                }
+
                 Self::cubic(&rp0, &rc0, &rc1, &rp1)
             }
         }
@@ -367,7 +365,18 @@ where
     ///
     /// `straightness` is thus independent of the length of the Bezier
     pub fn is_straight(&self, straightness: F) -> bool {
-        fn straightness_of_control<F, const D: usize>(p: &[F; D], lp2: F, c: &[F; D]) -> (F, F)
+        // p is the vector between two endpoints
+        // lp2 is the length squared of p
+        // c is a relative control point (i.e. mid-control relative to an endpoint)
+        //
+        // Return (effectively) (|c||p|sin(angle between p and c))^2 and |p|^2
+        //
+        // These two form a ration that should be used to reflect ( |c|sin(angle) )^2
+        //
+        // If |c| is tiny then return |c|sin(angle) of 0
+        //
+        // If |p| is tiny then return (|c|sin(90))^2
+        fn straightness2_of_control<F, const D: usize>(p: &[F; D], lp2: F, c: &[F; D]) -> (F, F)
         where
             F: Float,
         {
@@ -377,9 +386,12 @@ where
             } else if lp2 < F::epsilon() {
                 (lc2, F::one())
             } else {
+                // cdp is |c| |p| cos(angle between)
                 let cdp = vector::dot(c, p);
-                let c_s = F::sqrt(lp2 * lc2 - cdp * cdp);
-                (c_s, lp2)
+                // c_s  is |c|^2 |p|^2 * (1 - cos^2(angle between))
+                // = |c|^2 |p|^2 * sin^2(angle between)
+                let c_p_s = lp2 * lc2 - cdp * cdp;
+                (c_p_s, lp2)
             }
         }
         match self.num {
@@ -388,8 +400,10 @@ where
                 let p = vector::sub(self.pts[1], &self.pts[0], F::one());
                 let c = vector::sub(self.pts[2], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
-                let (c_s, sc) = straightness_of_control(&p, lp2, &c);
-                c_s <= straightness * sc
+                // get |c||p|sin(angle) ^2 and |p|^2
+                let (c_p_s_sq, p_sq) = straightness2_of_control(&p, lp2, &c);
+                // return true if (|c|sin(angle))^2 *|p|^2 <= straightness *|p|^2
+                c_p_s_sq <= straightness * straightness * p_sq
             }
             _ => {
                 let p = vector::sub(self.pts[1], &self.pts[0], F::one());
@@ -397,9 +411,11 @@ where
                 let c1 = vector::sub(self.pts[3], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
 
-                let (c0_s, sc0) = straightness_of_control(&p, lp2, &c0);
-                let (c1_s, sc1) = straightness_of_control(&p, lp2, &c1);
-                (c0_s + c1_s) <= straightness * F::max(sc0, sc1)
+                // get |c||p|sin(angle) ^2 and |p|^2 for each control point
+                let (c0_p_s_sq, p_sq_0) = straightness2_of_control(&p, lp2, &c0);
+                let (c1_p_s_sq, p_sq_1) = straightness2_of_control(&p, lp2, &c1);
+                // return true if Sum( (|c|sin(angle))^2*|p|^2  ) <= straightness *|p|^2
+                (c0_p_s_sq + c1_p_s_sq) <= straightness * straightness * F::max(p_sq_0, p_sq_1)
             }
         }
     }
@@ -596,11 +612,7 @@ where
         unit: &[F; D],
         normal: &[F; D],
         rotate: F,
-    ) -> Self
-    where
-        for<'a> &'a [F; D]: Into<FArray<F, D>>,
-        FArray<F, D>: Vector<F, D>,
-    {
+    ) -> Self {
         let two = (2.0_f32).into();
         let half_angle = angle / two;
         let s = half_angle.sin();
@@ -611,17 +623,19 @@ where
         let d1a = rotate + angle;
         let (d1s, d1c) = d1a.sin_cos();
 
-        let center: FArray<F, D> = center.into();
-        let unit: FArray<F, D> = unit.into();
-        let normal: FArray<F, D> = normal.into();
+        let mut p0 = [F::zero(); D];
+        let mut p1 = [F::zero(); D];
+        let mut c0 = [F::zero(); D];
+        let mut c1 = [F::zero(); D];
+        for i in 0..D {
+            p0[i] = center[i] + unit[i] * (d0c * radius) + normal[i] * (d0s * radius);
+            p1[i] = center[i] + unit[i] * (d1c * radius) + normal[i] * (d1s * radius);
 
-        let p0 = center + unit * (d0c * radius) + normal * (d0s * radius);
-        let p1 = center + unit * (d1c * radius) + normal * (d1s * radius);
+            c0[i] = p0[i] - unit[i] * (d0s * lambda) + normal[i] * (d0c * lambda);
+            c1[i] = p1[i] + unit[i] * (d1s * lambda) - normal[i] * (d1c * lambda);
+        }
 
-        let c0 = p0 - unit * (d0s * lambda) + normal * (d0c * lambda);
-        let c1 = p1 + unit * (d1s * lambda) - normal * (d1c * lambda);
-
-        Self::cubic(p0.as_ref(), c0.as_ref(), c1.as_ref(), p1.as_ref())
+        Self::cubic(&p0, &c0, &c1, &p1)
     }
 
     //fp of_round_corner
@@ -661,95 +675,42 @@ where
     /// Hence also k^2, and hence d and k.
     ///
     /// Then we require an arc given the angle of the arc is 2*theta
-    pub fn of_round_corner(corner: &[F; D], v0: &[F; D], v1: &[F; D], radius: F) -> Self
-    where
-        for<'a> &'a [F; D]: Into<FArray<F, D>>,
-        FArray<F, D>: Vector<F, D>,
-    {
+    pub fn of_round_corner(corner: &[F; D], v0: &[F; D], v1: &[F; D], radius: F) -> Self {
         let nearly_one = (0.999_999_f32).into();
         let one = F::one();
         let two: F = (2.0_f32).into();
-        let corner: FArray<F, D> = corner.into();
-        let v0: FArray<F, D> = v0.into();
-        let v0 = v0.normalize();
-        let v1: FArray<F, D> = v1.into();
-        let v1 = v1.normalize();
-        let cos_alpha = v0.dot(&v1);
+        let v0 = vector::normalize(*v0);
+        let v1 = vector::normalize(*v1);
+        let cos_alpha = vector::dot(&v0, &v1);
         if cos_alpha.abs() >= nearly_one {
             // v0 and v1 point in the same direction
-            let p0 = corner - (v0 * radius);
-            let p1 = corner - (v1 * radius);
-            Self::quadratic(&p0, corner.as_ref(), &p1)
+            let mut p0 = [F::zero(); D];
+            let mut p1 = [F::zero(); D];
+            for i in 0..D {
+                p0[i] = corner[i] - radius * v0[i];
+                p1[i] = corner[i] - radius * v1[i];
+            }
+            Self::quadratic(&p0, &corner, &p1)
         } else {
             let r2 = radius * radius;
             let d2 = two * r2 / (one - cos_alpha);
             let k2 = d2 - r2;
             let d = d2.sqrt();
             let k = k2.sqrt();
-            /*
-            let lambda = radius * Self::lambda_of_k_d(k, d);
-            let p0 = corner - (v0 * k);
-            let p1 = corner - (v1 * k);
-            let c0 = p0 + (v0 * lambda);
-            let c1 = p1 + (v1 * lambda);
-            Self::cubic(&p0, &c0, &c1, &p1);
-            */
 
             let lambda = radius * Self::lambda_of_k_d(k, d);
-            /* Best 'lambda' calculation
-            let mut lambda = radius * Self::lambda_of_k_d(k, d);
 
-            let mut n = 0;
-            let mut adjust = F::frac(110,100);
-            println!("lambda in {}",lambda/radius);
-            let p0 = *corner - (v0 * k);
-            let p1 = *corner - (v1 * k);
-            let zero = F::zero();
-            let mut e = zero;
-            for _ in 0..300 {
-                let c0 = p0 + (v0 * lambda);
-                let c1 = p1 + (v1 * lambda);
-                let b = Self::cubic(&p0, &c0, &c1, &p1);
-                let (c, r) = b.center_radius_of_bezier_arc();
-                let e2 = arc_ave_square_error(&b, &c, radius, zero, one, 10);
-                e = e2;
-
-                let c0 = p0 + (v0 * lambda * adjust);
-                let c1 = p1 + (v1 * lambda * adjust);
-                let b = Self::cubic(&p0, &c0, &c1, &p1);
-                let (c, r) = b.center_radius_of_bezier_arc();
-                let e2_p = arc_ave_square_error(&b, &c, radius, zero, one, 10);
-
-                if e2_p < e2 {
-                    lambda = lambda * adjust;
-                    println!("e2_p {} e2 {}", e2_p, e2);
-                    continue;
-                }
-
-                let c0 = p0 + (v0 * lambda / adjust);
-                let c1 = p1 + (v1 * lambda / adjust);
-                let b = Self::cubic(&p0, &c0, &c1, &p1);
-                let (c, r) = b.center_radius_of_bezier_arc();
-                let e2_n = arc_ave_square_error(&b, &c, radius, zero, one, 10);
-
-                if e2_n < e2 {
-                    lambda = lambda / adjust;
-                    println!("e2_n {} e2 {}", e2_n, e2);
-                    continue;
-                }
-                adjust = adjust.sqrt();
+            let mut p0 = [F::zero(); D];
+            let mut p1 = [F::zero(); D];
+            let mut c0 = [F::zero(); D];
+            let mut c1 = [F::zero(); D];
+            for i in 0..D {
+                p0[i] = corner[i] - k * v0[i];
+                p1[i] = corner[i] - k * v1[i];
+                c0[i] = p0[i] + lambda * v0[i];
+                c1[i] = p1[i] + lambda * v1[i];
             }
-            println!("lambda out {} e {}",lambda/radius, e);
-            println!("** {} {}", r2/d2, lambda / radius);
-            // println!("** {} {}", k/d, lambda / radius);
-            // println!("** {} {}", k*k/d/d, lambda / radius);
-             */
-
-            let p0 = corner - (v0 * k);
-            let p1 = corner - (v1 * k);
-            let c0 = p0 + (v0 * lambda);
-            let c1 = p1 + (v1 * lambda);
-            Self::cubic(p0.as_ref(), c0.as_ref(), c1.as_ref(), p1.as_ref())
+            Self::cubic(&p0, &c0, &c1, &p1)
         }
     }
 
@@ -787,28 +748,40 @@ where
     ///  k0 = (p0.t0 - p1.t1 * t1.t0) / ( 1 - (t1.t0)^2)
     ///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
     /// ```
-    pub fn center_radius_of_bezier_arc(&self) -> ([F; D], F)
-    where
-        for<'a> &'a [F; D]: Into<FArray<F, D>>,
-        FArray<F, D>: Vector<F, D>,
-    {
+    pub fn center_radius_of_bezier_arc(&self) -> ([F; D], F) {
         let zero = F::zero();
         let one = F::one();
-        let p0: FArray<F, D> = self.point_at(zero).into();
-        let p1: FArray<F, D> = self.point_at(one).into();
-        let t0: FArray<F, D> = self.tangent_at(zero).into();
-        let t1: FArray<F, D> = self.tangent_at(one).into();
-        let t0 = t0.normalize();
-        let t1 = t1.normalize();
-        let t1_d_t0 = t1.dot(&t0);
-        let p0_d_t0 = p0.dot(&t0);
-        let p1_d_t1 = p1.dot(&t1);
+        let p0 = self.point_at(zero);
+        let p1 = self.point_at(one);
+        let t0 = self.tangent_at(zero);
+        let t1 = self.tangent_at(one);
+        let t0 = vector::normalize(t0);
+        let t1 = vector::normalize(t1);
+        let t1_d_t0 = vector::dot(&t1, &t0);
+        let p0_d_t0 = vector::dot(&p0, &t0);
+        let p1_d_t1 = vector::dot(&p1, &t1);
         let k0 = (p0_d_t0 - p1_d_t1 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
         let k1 = (p1_d_t1 - p0_d_t0 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
-        let c = t0 * k0 + t1 * k1;
-        let r = (c.distance(&p0) + c.distance(&p1)) / (2.0_f32).into();
-        (*c, r)
+
+        let mut c = [F::zero(); D];
+        for i in 0..D {
+            c[i] = t0[i] * k0 + t1[i] * k1;
+        }
+
+        let r = (vector::distance(&c, &p0) + vector::distance(&c, &p1)) / (2.0_f32).into();
+        (c, r)
     }
 
     //zz All done
+}
+
+//ip Bezier<F, 2>
+impl<F> Bezier<F, 2>
+where
+    F: Float,
+{
+    fn normal_at(&self, t: F) -> [F; 2] {
+        let x = self.tangent_at(t);
+        [x[1], x[0]]
+    }
 }

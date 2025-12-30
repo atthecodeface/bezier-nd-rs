@@ -1,6 +1,12 @@
+# Release 0.6.1 (2025-11-25)
+
+- Removed requirement for FArray / Vector for types that are needed
+  for the remaining methods
+
 # Release 0.6.0 (2025-11-22)
 
-- Changed the API to use [Float; D] rather than types that support geo_nd traits explicitly
+- Changed the API to use [Float; D] rather than types that support
+  geo_nd traits explicitly
 
 - This means that users should no longer use type like
   `geo_nd::FArray<f32,2>` to create a Bezier, but should use [f32; 2]
