@@ -1,3 +1,5 @@
+use std::vec;
+
 //a Imports
 use geo_nd::vector;
 use geo_nd::Float;
@@ -388,8 +390,8 @@ where
             } else {
                 // cdp is |c| |p| cos(angle between)
                 let cdp = vector::dot(c, p);
-                // c_s  is |c|^2 |p|^2 * (1 - cos^2(angle between))
-                // = |c|^2 |p|^2 * sin^2(angle between)
+                // c_p_s = |c|^2 |p|^2 * (1 - cos^2(angle between))
+                //       = |c|^2 |p|^2 * sin^2(angle between)
                 let c_p_s = lp2 * lc2 - cdp * cdp;
                 (c_p_s, lp2)
             }
@@ -397,12 +399,23 @@ where
         match self.num {
             2 => true,
             3 => {
-                let p = vector::sub(self.pts[1], &self.pts[0], F::one());
+                // Now make everything relative to p0 and test perpendicular distance of c from the line
                 let c = vector::sub(self.pts[2], &self.pts[0], F::one());
+                let p = vector::sub(self.pts[1], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
+
+                // Need to test if (c-p0).(p1-p0) < -straightness.|p1-p0| or (c-p1).(p1-p0)>straightness.|p1-p0|
+                let c_p1 = vector::sub(self.pts[2], &self.pts[1], F::one());
+                if vector::dot(&c, &p) < -straightness * lp2.sqrt() {
+                    return false;
+                }
+                if vector::dot(&c_p1, &p) > straightness * lp2.sqrt() {
+                    return false;
+                }
                 // get |c||p|sin(angle) ^2 and |p|^2
                 let (c_p_s_sq, p_sq) = straightness2_of_control(&p, lp2, &c);
-                // return true if (|c|sin(angle))^2 *|p|^2 <= straightness *|p|^2
+                // return true if (|c|sin(angle))^2 *|p|^2 <= straightness^2 *|p|^2
+                // i.e. |c|.|sin(angle)| < straightness
                 c_p_s_sq <= straightness * straightness * p_sq
             }
             _ => {
@@ -410,6 +423,22 @@ where
                 let c0 = vector::sub(self.pts[2], &self.pts[0], F::one());
                 let c1 = vector::sub(self.pts[3], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
+
+                // Need to test if (c-p0).(p1-p0) < -straightness.|p1-p0| or (c-p1).(p1-p0)>straightness.|p1-p0|
+                let c0_p1 = vector::sub(self.pts[2], &self.pts[1], F::one());
+                if vector::dot(&c0, &p) < -straightness * lp2.sqrt() {
+                    return false;
+                }
+                if vector::dot(&c0_p1, &p) > straightness * lp2.sqrt() {
+                    return false;
+                }
+                let c1_p1 = vector::sub(self.pts[3], &self.pts[1], F::one());
+                if vector::dot(&c1, &p) < -straightness * lp2.sqrt() {
+                    return false;
+                }
+                if vector::dot(&c1_p1, &p) > straightness * lp2.sqrt() {
+                    return false;
+                }
 
                 // get |c||p|sin(angle) ^2 and |p|^2 for each control point
                 let (c0_p_s_sq, p_sq_0) = straightness2_of_control(&p, lp2, &c0);

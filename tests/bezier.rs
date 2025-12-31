@@ -53,6 +53,7 @@ pub fn bezier_eq<F: Float, const D: usize>(bez: &Bezier<F, D>, v: Vec<[F; D]>) {
 
 //a Bezier test subfns
 //fi bezier_straight_as
+// Check that the bezier 'is_straight' is true for >=straightness, false for < straightness
 fn bezier_straight_as<F: Float>(bezier: &Bezier<F, 2>, straightness: F)
 where
     FArray<F, 2>: Vector<F, 2>,
@@ -63,10 +64,7 @@ where
         assert_eq!(
             straightness < s,
             bezier.is_straight(s),
-            "Bezier {} .is_straight({}) failed for {}",
-            bezier,
-            s,
-            straightness
+            "Bezier {bezier} .is_straight({s}) failed for {straightness}",
         );
     }
 }
@@ -123,35 +121,65 @@ where
 }
 
 //fi bezier_lines_within_straightness
+/// Create NPTS points on the bezier, and store them in a Vec
+///
+/// Split the bezier into lines given the straightness
+///
+/// For each line segment find NSEG points along the line and store all of these in a Vec
+///
+/// Find the largest closest distance between points on the bezier to segmented points
+///
+/// Find the largest closest distance between segmented points to points on the bezier
+///
+/// Both of these should be less than 'straightness'
 fn bezier_lines_within_straightness<F: Float>(bezier: &Bezier<F, 2>, straightness: F)
 where
     FArray<F, 2>: Vector<F, 2>,
 {
-    dbg!(bezier);
-    let pts: Vec<_> = (0..10000)
+    const NPTS: isize = 1000;
+    const NSEG_PTS: isize = 100;
+    let bezier_pts: Vec<FArray<F, 2>> = (0..NPTS)
         .map(|i: isize| {
-            let f: F = ((i as f32) / 10000.0).into();
-            bezier.point_at(f)
+            let t: F = ((i as f32) / (NPTS as f32)).into();
+            bezier.point_at(t).into()
         })
         .collect();
-    let mut max_excursion = F::zero();
+    let mut segment_pts = Vec::<FArray<F, 2>>::new();
     for (p0, p1) in bezier.as_lines(straightness) {
         let p0: FArray<F, 2> = p0.into();
         let p1: FArray<F, 2> = p1.into();
         let dp = p1 - p0;
-        for i in 0..100 {
+        for i in 0..NSEG_PTS {
             let t: F = ((i as f32) / 100.0).into();
-            let p = p0 + dp * t;
-            let min_d = pts
-                .iter()
-                .fold(1.0E10_f32.into(), |md: F, q| md.min(p.distance(q)));
-            max_excursion = max_excursion.max(min_d);
+            segment_pts.push(p0 + dp * t);
         }
+    }
+    let mut max_excursion = F::zero();
+    for p in &bezier_pts {
+        let min_d = segment_pts
+            .iter()
+            .fold(1.0E10_f32.into(), |md: F, q| md.min(p.distance(q)));
+        max_excursion = max_excursion.max(min_d);
     }
     dbg!(straightness, max_excursion);
     assert!(
-        max_excursion < straightness, // .sqrt(),
-        "Worst case Min dist from lines to bezier should be less than straightness {} {}",
+        max_excursion < straightness,
+        "Worst case Min dist from bezier to line segments should be less than straightness {} {}",
+        max_excursion,
+        straightness.sqrt()
+    );
+
+    let mut max_excursion = F::zero();
+    for p in &segment_pts {
+        let min_d = bezier_pts
+            .iter()
+            .fold(1.0E10_f32.into(), |md: F, q| md.min(p.distance(q)));
+        max_excursion = max_excursion.max(min_d);
+    }
+    dbg!(straightness, max_excursion);
+    assert!(
+        max_excursion < straightness,
+        "Worst case Min dist from line segments to bezier should be less than straightness {} {}",
         max_excursion,
         straightness.sqrt()
     );
@@ -231,6 +259,7 @@ fn test_quadratic() {
     let p0 = [0., 0.];
     let p1 = [10., 0.];
     let p2 = [10., 1.];
+    let p3 = [20., 0.];
     let b = Bezier::quadratic(&p0, &p1, &p2);
 
     // These are generically true...
@@ -269,11 +298,9 @@ fn test_quadratic() {
     //
     // Specific to this curve which is 0,0 -> 10,1.0 with control 10.0,0.0 so is always within 1.0
     let mut v = Vec::new();
-    v.clear();
     for (a, b) in b.as_lines(1.0) {
         v.push((a, b));
     }
-    dbg!(&v);
     assert_eq!(
         v.len(),
         1,
@@ -281,7 +308,6 @@ fn test_quadratic() {
     );
 
     let mut v = Vec::new();
-    v.clear();
     for (a, _b) in b.as_lines(0.001) {
         v.push(a);
     }
@@ -289,6 +315,35 @@ fn test_quadratic() {
         v.len(),
         53,
         "We know that at straightness 0.001  there must be 53 line segments"
+    );
+
+    // Use a Bezier with a control point outside the endpoints
+    //
+    // Convert to lines
+    //
+    // Specific to this curve which is 0,0 -> 10,0.0 with control 20.0,0.0
+    //
+    // This is effectively a line from (0,0) to (13.332,0) then back to (10,0)
+    let b = Bezier::quadratic(&p0, &p3, &p1);
+    let mut v = Vec::new();
+    for (a, b) in b.as_lines(1.0) {
+        v.push((a, b));
+    }
+    assert_eq!(
+        v.len(),
+        3,
+        "We know that at straightness 0.1 there must be 3 line segments"
+    );
+
+    let mut v = Vec::new();
+    for (a, b) in b.as_lines(0.001) {
+        v.push((a, b));
+    }
+    dbg!(&v);
+    assert_eq!(
+        v.len(),
+        8,
+        "We know that at straightness 0.001  there must be 8 line segments"
     );
 }
 
@@ -371,8 +426,8 @@ fn test_cubic() {
     );
 }
 
-//fi test_straight
-fn test_straight() {
+//fi test_straight_as
+fn test_straight_as() {
     let p0: FArray<f32, 2> = [0., 0.].into();
     let p1: FArray<f32, 2> = [10., 0.].into();
     let p2: FArray<f32, 2> = [10., 1.].into();
@@ -404,16 +459,19 @@ fn test_straight() {
     bezier_straight_as(&Bezier::quadratic(&p0, &p1, &p3), 1E-10);
     bezier_straight_as(&Bezier::quadratic(&sp0, &sp1, &sp3), 1E-10);
 
-    // P0 -> P2 with P3 as a control; max excursion
+    // P0 -> P3 with P2 as a control; P2 is a small amount above the centre of P3
+    // This basically tests scaling of straightness is linear, and it matches
+    // these know good values of straightness
+    //
+    // (The values for straightness here are determined by hand...)
     bezier_straight_as(&Bezier::quadratic(&p0, &p2, &p3), 0.8);
-    /*
-    bezier_straight_as(&Bezier::quadratic(&sp0, &sp2, &sp3), 0.05);
+    bezier_straight_as(&Bezier::quadratic(&sp0, &sp2, &sp3), 8.0);
 
-    bezier_straight_as(&Bezier::quadratic(&p0, &p1, &p4), 0.03);
-    bezier_straight_as(&Bezier::quadratic(&sp0, &sp1, &sp4), 0.03);
+    bezier_straight_as(&Bezier::quadratic(&p0, &p1, &p4), 0.5);
+    bezier_straight_as(&Bezier::quadratic(&sp0, &sp1, &sp4), 5.0);
 
-    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p3), 0.05);
-    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp3), 0.05);
+    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p3), 0.8);
+    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp3), 8.0);
 
     let mut b = Bezier::cubic(&p0, &p1, &p2, &p4);
     let sb = Bezier::cubic(&sp0, &sp1, &sp2, &sp4);
@@ -423,9 +481,8 @@ fn test_straight() {
     vec_eq(b.borrow_pt(2), sb.borrow_pt(2));
     vec_eq(b.borrow_pt(3), sb.borrow_pt(3));
 
-    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p4), 0.065);
-    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 0.065);
-    */
+    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p4), 0.6);
+    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 6.0);
 }
 
 //fi arc_ave_square_error
@@ -628,7 +685,22 @@ fn test_within_straightness() {
     let p3: FArray<f32, 2> = [20., 0.].into();
     let p4: FArray<f32, 2> = [20., 1.].into();
 
+    let b = Bezier::quadratic(&p0, &p3, &p1);
+    bezier_lines_within_straightness(&b, 0.1);
+
     let b = Bezier::cubic(&p0, &p1, &p2, &p3);
+    bezier_lines_within_straightness(&b, 0.1);
+
+    let b = Bezier::cubic(&p0, &p2, &p1, &p3);
+    bezier_lines_within_straightness(&b, 0.1);
+
+    let b = Bezier::cubic(&p3, &p2, &p1, &p0);
+    bezier_lines_within_straightness(&b, 0.1);
+
+    let b = Bezier::cubic(&p2, &p3, &p0, &p1);
+    bezier_lines_within_straightness(&b, 0.1);
+
+    let b = Bezier::cubic(&p0, &p3, &p3, &p1);
     bezier_lines_within_straightness(&b, 0.1);
 }
 
@@ -654,8 +726,8 @@ fn test_f32_cubic() {
 }
 
 #[test]
-fn test_f32_straight() {
-    test_straight();
+fn test_f32_straight_as() {
+    test_straight_as();
 }
 
 #[test]
