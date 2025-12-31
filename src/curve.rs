@@ -1,5 +1,3 @@
-use std::vec;
-
 //a Imports
 use geo_nd::vector;
 use geo_nd::Float;
@@ -719,7 +717,7 @@ where
                 p0[i] = corner[i] - radius * v0[i];
                 p1[i] = corner[i] - radius * v1[i];
             }
-            Self::quadratic(&p0, &corner, &p1)
+            Self::quadratic(&p0, corner, &p1)
         } else {
             let r2 = radius * radius;
             let d2 = two * r2 / (one - cos_alpha);
@@ -809,7 +807,8 @@ impl<F> Bezier<F, 2>
 where
     F: Float,
 {
-    fn normal_at(&self, t: F) -> [F; 2] {
+    /// Return the normal at a paramenter 't' (for 2D beziers only)
+    pub fn normal_at(&self, t: F) -> [F; 2] {
         let x = self.tangent_at(t);
         [x[1], x[0]]
     }

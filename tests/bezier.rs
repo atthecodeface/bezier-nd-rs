@@ -683,7 +683,7 @@ fn test_within_straightness() {
     let p1: FArray<f32, 2> = [10., 0.].into();
     let p2: FArray<f32, 2> = [10., 1.].into();
     let p3: FArray<f32, 2> = [20., 0.].into();
-    let p4: FArray<f32, 2> = [20., 1.].into();
+    // let p4: FArray<f32, 2> = [20., 1.].into();
 
     let b = Bezier::quadratic(&p0, &p3, &p1);
     bezier_lines_within_straightness(&b, 0.1);
