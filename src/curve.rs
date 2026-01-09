@@ -850,4 +850,50 @@ where
         let x = self.tangent_at(t);
         [x[1], x[0]]
     }
+    //mp min_distance_sq_from
+    /// Calculate an estimate for the minimum distance of a point from this Bezier
+    ///
+    /// If the point is 'within' the Bezier control points then this is zero
+    pub fn min_distance_sq_from(&self, pt: &[F; 2]) -> F {
+        // return (Pt-P0) x (P1-P0), which is -ve if Pt-P0 is anticlockwise of P1-P0
+        fn side_of_line<F: Float>(pt: &[F; 2], p0: &[F; 2], p1: &[F; 2]) -> F {
+            (pt[0] - p0[0]) * (p1[1] - p0[1]) - (pt[1] - p0[1]) * (p1[0] - p0[0])
+        }
+        let distance_sq_from_p0_p1 = Bezier::pt_distance_sq_from(pt, &(self.pts[0], self.pts[1]));
+        match self.num {
+            2 => distance_sq_from_p0_p1,
+            3 => {
+                let ctl_side_of_line = side_of_line(&self.pts[2], &self.pts[0], &self.pts[1]);
+                let p_side_of_p0_p2 = side_of_line(pt, &self.pts[0], &self.pts[2]);
+                let p_side_of_p2_p1 = side_of_line(pt, &self.pts[2], &self.pts[1]);
+                let p_side_of_p1_p0 = side_of_line(pt, &self.pts[1], &self.pts[0]);
+
+                if ctl_side_of_line == F::zero() {
+                    distance_sq_from_p0_p1
+                } else if ctl_side_of_line < F::zero()
+                    && p_side_of_p0_p2 >= F::zero()
+                    && p_side_of_p2_p1 >= F::zero()
+                    && p_side_of_p1_p0 >= F::zero()
+                {
+                    F::zero()
+                } else if ctl_side_of_line > F::zero()
+                    && p_side_of_p0_p2 <= F::zero()
+                    && p_side_of_p2_p1 <= F::zero()
+                    && p_side_of_p1_p0 <= F::zero()
+                {
+                    F::zero()
+                } else {
+                    // Outside the triangle of the bezier and its control points
+                    //
+                    // Distance is at least the distance to the triangle
+                    let distance_sq_from_p0_c =
+                        Bezier::pt_distance_sq_from(pt, &(self.pts[0], self.pts[2]));
+                    let distance_sq_from_p1_c =
+                        Bezier::pt_distance_sq_from(pt, &(self.pts[1], self.pts[2]));
+                    distance_sq_from_p0_c.min(distance_sq_from_p1_c.min(distance_sq_from_p0_p1))
+                }
+            }
+            _ => F::zero(),
+        }
+    }
 }
