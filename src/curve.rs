@@ -799,6 +799,44 @@ where
         (c, r)
     }
 
+    //mp pt_distance_sq_from
+    /// Calculate the distance of a point from a line segment of this kind of Bezier
+    pub fn pt_distance_sq_from(pt: &[F; D], line: &([F; D], [F; D])) -> F {
+        // Make everything relative to line.0
+        //
+        // so point is P and line is L (i.e. on the line = k*L for some 0 <= k <= 1)
+        //
+        // Note P = kL + N for some k and normal to the line N (N.L = 0)
+        //
+        // P.L = k(L.L) + N.L = k|L|^2
+        let pt_m_l0 = vector::sub(*pt, &line.0, F::one());
+        // len_pt_m_l0_sq = |P|^2
+        let len_pt_m_l0_sq = vector::length_sq(&pt_m_l0);
+        if len_pt_m_l0_sq < F::epsilon() {
+            return len_pt_m_l0_sq;
+        }
+        let l1_m_l0 = vector::sub(line.1, &line.0, F::one());
+        // len_l1_m_l0_sq = |L|^2
+        let len_l1_m_l0_sq = vector::length_sq(&l1_m_l0);
+        if len_l1_m_l0_sq < F::epsilon() {
+            return len_pt_m_l0_sq;
+        }
+        // pt_along_line = P . L = k|L|^2
+        let pt_along_line = vector::dot(&pt_m_l0, &l1_m_l0);
+
+        // / len_pt_m_l0_sq.sqrt();
+        // If k < 0 then distance is from line 0
+        if pt_along_line < F::zero() {
+            return len_pt_m_l0_sq;
+        }
+        // If k > 1 then distance is from line 1
+        if pt_along_line > len_l1_m_l0_sq {
+            return vector::distance_sq(pt, &line.1);
+        }
+        let pt_along_line_rel = pt_along_line / len_l1_m_l0_sq;
+        let pt_projected = vector::scale(l1_m_l0, pt_along_line_rel);
+        vector::distance_sq(&pt_m_l0, &pt_projected)
+    }
     //zz All done
 }
 
