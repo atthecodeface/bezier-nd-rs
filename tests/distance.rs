@@ -9,46 +9,46 @@ use geo_nd::FArray;
 fn test_line_distance_on_line() {
     let line = ([0., 0.], [1.0, 0.0]);
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&line.0, &line).0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&line.0, &line.0, &line.1).0,
         0.0,
         "End of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&line.1, &line).0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&line.1, &line.0, &line.1).0,
         0.0,
         "End of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[0.5, 0.], &line).0,
-        0.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[0.5, 0.], &line.0, &line.1),
+        (0.0, false),
         "Middle of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[0.1, 0.], &line).0,
-        0.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[0.1, 0.], &line.0, &line.1),
+        (0.0, false),
         "Point along a line has zero distance"
     );
 
     // Second line - diagonal with y=-x
     let line = ([2., -2.], [4.0, -4.0]);
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&line.0, &line).0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&line.0, &line.0, &line.1).0,
         0.0,
         "End of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&line.1, &line).0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&line.1, &line.0, &line.1).0,
         0.0,
         "End of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[3., -3.], &line).0,
-        0.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[3., -3.], &line.0, &line.1),
+        (0.0, false),
         "Middle of a line has zero distance"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[2.25, -2.25], &line).0,
-        0.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[2.25, -2.25], &line.0, &line.1),
+        (0.0, false),
         "Point along a line has zero distance"
     );
 }
@@ -60,45 +60,45 @@ fn test_line_distance_on_line() {
 fn test_line_distance_beyond_ends_of_line() {
     let line = ([0., 0.], [1.0, 0.0]);
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[-1., 0.], &line).0,
-        1.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[-1., 0.], &line.0, &line.1),
+        (1.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[2., 0.], &line).0,
-        1.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[2., 0.], &line.0, &line.1),
+        (1.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[-2., 0.], &line).0,
-        4.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[-2., 0.], &line.0, &line.1),
+        (4.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[3., 0.], &line).0,
-        4.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[3., 0.], &line.0, &line.1),
+        (4.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
 
     let line = ([2., -2.], [4.0, -4.0]);
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[0., 0.], &line).0,
-        8.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[0., 0.], &line.0, &line.1),
+        (8.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[1., -1.], &line).0,
-        2.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[1., -1.], &line.0, &line.1),
+        (2.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[5., -5.], &line).0,
-        2.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[5., -5.], &line.0, &line.1),
+        (2.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
     assert_eq!(
-        Bezier::<f32, 2>::pt_distance_sq_from(&[6., -6.], &line).0,
-        8.0,
+        Bezier::<f32, 2>::pt_distance_sq_from(&[6., -6.], &line.0, &line.1),
+        (8.0, true),
         "Beyond the end of the line, distance from endpoint"
     );
 }
@@ -127,7 +127,7 @@ fn test_line_distance_not_on_line() {
     .enumerate()
     {
         assert_eq!(
-            Bezier::<f32, 2>::pt_distance_sq_from(pt, &line).0,
+            Bezier::<f32, 2>::pt_distance_sq_from(pt, &line.0, &line.1).0,
             *d,
             "Point {i} {pt:?} mismatched distance from line"
         );

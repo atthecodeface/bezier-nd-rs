@@ -834,7 +834,7 @@ where
     ///
     /// Also return whether the point is beyond the ends of the line (i.e. the distance
     /// is measured from the point to one of the endpoints)
-    pub fn pt_distance_sq_from(pt: &[F; D], line: &([F; D], [F; D])) -> (F, bool) {
+    pub fn pt_distance_sq_from(pt: &[F; D], l0: &[F; D], l1: &[F; D]) -> (F, bool) {
         // Make everything relative to line.0
         //
         // so point is P and line is L (i.e. on the line = k*L for some 0 <= k <= 1)
@@ -842,13 +842,13 @@ where
         // Note P = kL + N for some k and normal to the line N (N.L = 0)
         //
         // P.L = k(L.L) + N.L = k|L|^2
-        let pt_m_l0 = vector::sub(*pt, &line.0, F::one());
+        let pt_m_l0 = vector::sub(*pt, l0, F::one());
         // len_pt_m_l0_sq = |P|^2
         let len_pt_m_l0_sq = vector::length_sq(&pt_m_l0);
         if len_pt_m_l0_sq < F::epsilon() {
             return (len_pt_m_l0_sq, false);
         }
-        let l1_m_l0 = vector::sub(line.1, &line.0, F::one());
+        let l1_m_l0 = vector::sub(*l1, l0, F::one());
         // len_l1_m_l0_sq = |L|^2
         let len_l1_m_l0_sq = vector::length_sq(&l1_m_l0);
         if len_l1_m_l0_sq < F::epsilon() {
@@ -864,7 +864,7 @@ where
         }
         // If k > 1 then distance is from line 1
         if pt_along_line > len_l1_m_l0_sq {
-            return (vector::distance_sq(pt, &line.1), true);
+            return (vector::distance_sq(pt, l1), true);
         }
         let pt_along_line_rel = pt_along_line / len_l1_m_l0_sq;
         let pt_projected = vector::scale(l1_m_l0, pt_along_line_rel);
@@ -893,7 +893,7 @@ where
         fn side_of_line<F: Float>(pt: &[F; 2], p0: &[F; 2], p1: &[F; 2]) -> F {
             (pt[0] - p0[0]) * (p1[1] - p0[1]) - (pt[1] - p0[1]) * (p1[0] - p0[0])
         }
-        let distance_sq_from_p0_p1 = Bezier::pt_distance_sq_from(pt, &(self.pts[0], self.pts[1])).0;
+        let distance_sq_from_p0_p1 = Bezier::pt_distance_sq_from(pt, &self.pts[0], &self.pts[1]).0;
         match self.num {
             2 => distance_sq_from_p0_p1,
             3 => {
@@ -921,9 +921,9 @@ where
                     //
                     // Distance is at least the distance to the triangle
                     let distance_sq_from_p0_c =
-                        Bezier::pt_distance_sq_from(pt, &(self.pts[0], self.pts[2])).0;
+                        Bezier::pt_distance_sq_from(pt, &self.pts[0], &self.pts[2]).0;
                     let distance_sq_from_p1_c =
-                        Bezier::pt_distance_sq_from(pt, &(self.pts[1], self.pts[2])).0;
+                        Bezier::pt_distance_sq_from(pt, &self.pts[1], &self.pts[2]).0;
                     distance_sq_from_p0_c.min(distance_sq_from_p1_c.min(distance_sq_from_p0_p1))
                 }
             }
