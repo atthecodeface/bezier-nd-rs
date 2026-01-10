@@ -1,0 +1,489 @@
+//a Documentation
+/*!
+
+Polynomial of best fit
+
+given data xi, yi, we want E = Sum((yi-Sum(aj.xi^j))^2) to be a minimum
+
+E = Sum((yi-Sum(aj.xi^j))^2)
+
+Now d/dx f(g(x)) = g'(x) . f'(g(x))
+
+  g(x) = yi-Sum(aj.xi^j)
+  f(z) = z^2
+  f'(z) = 2z
+
+dE/daj = Sum( d/daj((yi-Sum(aj.xi^j))) . 2(yi-Sum(ak.xi^k)) )
+       = Sum( 2(yi-Sum(ak.xi^k)) . (-xi^j) )
+
+e.g.
+Sum((yi - a - b.xi)^2) = Sum(yi*2 +a^2 +b^2.xi^2 - 2a.yi - 2.b.xi.yi + 2a.b.xi)
+d/da(E) = Sum(2a - 2yi +2b.xi)
+        = Sum(-2(yi -a - b.xi))
+d/db(E) = Sum(2b.xi^2 - 2xi.yi +2a.xi)
+        = Sum(-2xi.(yi - a - b.xi ))
+
+dE/daj = Sum( 2(yi-Sum(aj.xi^j)) . (-xi^j) )
+       = 0 for all aj at the minimum square error
+Hence
+Sum( 2(yi-Sum(ak.xi^k)) . (-xi^j) ) = 0 for all j
+Sum( xi^j.yi ) = Sum(xi^j.Sum(ak.xi^k)) for all j
+
+i.e. Xt.y = Xt.(X.a) (where Xt is X transpose)
+or  (Xt.X).a = Xt.y
+or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
+
+!*/
+
+//a Imports
+use geo_nd::Float;
+
+fn poly_calc<F: Float>(poly: &[F], x: F) -> F {
+    let mut r = F::zero();
+    let mut xn = F::one();
+    for p in poly.iter() {
+        r += (*p) * xn;
+        xn *= x;
+    }
+    r
+}
+
+fn poly_gradient<F: Float>(poly: &[F], x: F) -> F {
+    let mut r = F::zero();
+    let mut xn = F::one();
+    for (i, p) in poly.iter().enumerate().skip(1) {
+        r += (*p) * xn * (i as f32).into();
+        xn *= x;
+    }
+    r
+}
+
+fn poly_differentiate<F: Float>(poly: &mut [F]) {
+    let n = poly.len();
+    if n < 1 {
+        return;
+    }
+    for i in 0..n - 1 {
+        poly[i] = poly[i + 1] * ((i + 1) as f32).into();
+    }
+    poly[n - 1] = F::zero();
+}
+
+fn poly_degree<F: Float>(poly: &[F]) -> usize {
+    for (i, v) in poly.iter().enumerate().rev() {
+        if v.abs() != F::zero() {
+            return i + 1;
+        }
+    }
+    1
+}
+
+fn poly_normalize<F: Float>(poly: &mut [F], eps: F) {
+    for v in poly.iter_mut() {
+        if v.abs() < eps {
+            *v = F::zero();
+        }
+    }
+}
+
+/// Multiply poly by multiplicand and store the result
+///
+/// If the multiplier has degree 1 then it is a constant; two polys of degree 1
+/// produce a polynomial which has a degree of 1, and hence an array length of 1
+#[track_caller]
+fn poly_multiply<F: Float>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
+    let mul_deg = poly_degree(multiplicand);
+    let poly_deg = poly_degree(poly);
+    for p in result.iter_mut() {
+        *p = F::zero();
+    }
+    assert!(
+        result.len() >= mul_deg + poly_deg - 1,
+        "Result of multiplication must be large enough to store result"
+    );
+    for (m_i, m) in multiplicand.iter().enumerate() {
+        if m_i >= mul_deg {
+            break;
+        }
+        for (p_i, p) in poly.iter().enumerate() {
+            if p_i >= poly_deg {
+                break;
+            }
+            result[m_i + p_i] += (*m) * (*p);
+        }
+    }
+}
+
+// Return true if the remeainder is all less than or equal to eps
+#[track_caller]
+fn poly_divide<F: Float>(poly: &mut [F], divisor: &[F], result: &mut [F], eps: F) -> bool {
+    let div_deg = poly_degree(divisor);
+    assert_ne!(div_deg, 0, "Divisor must not be zero");
+    let poly_deg = poly_degree(poly);
+    for p in result.iter_mut() {
+        *p = F::zero();
+    }
+    if poly_deg >= div_deg {
+        let n_iter = poly_deg + 1 - div_deg;
+        assert!(
+            result.len() >= n_iter,
+            "Result of division must be large enough to store dividend"
+        );
+        let div_max = divisor[div_deg - 1];
+        for i in 0..n_iter {
+            let p_max = poly[poly_deg - 1 - i];
+            // Subtract p_max/div_max * divisor from poly
+            let amount = p_max / div_max;
+            result[n_iter - i - 1] = amount;
+            for j in 0..div_deg {
+                poly[poly_deg - 1 - i - j] -= amount * divisor[div_deg - 1 - j];
+            }
+        }
+    }
+    poly.iter().all(|v| v.abs() <= eps)
+}
+
+//tt Polynomial
+/// A collections of methods for polynomials
+pub trait Polynomial<F: Float> {
+    /// Differentiate the polynomial
+    fn differentiate(&mut self);
+    /// Get the degree of the polynomial (largest non-zero coefficient)
+    fn degree(&self) -> usize;
+    /// Normalize - zero any coefficient whose absolute value is less than epsilon
+    fn normalize(&mut self, epsilon: F);
+    /// Calculate the value at x
+    fn calc(&self, x: F) -> F;
+    /// Calculate the gradient at x
+    fn gradient(&self, x: F) -> F;
+    /// Multiply by a polynomial
+    fn set_multiply(&mut self, poly: &[F], multiplicand: &[F]);
+    /// Set to result of polynomial divided by divisor, leaving the remainder in poly
+    fn set_divide(&mut self, poly: &mut [F], divisor: &[F], eps: F) -> bool;
+}
+
+//ip Polynomial for [F; N]
+impl<F: Float, const N: usize> Polynomial<F> for [F; N] {
+    fn degree(&self) -> usize {
+        poly_degree(self)
+    }
+    fn normalize(&mut self, epsilon: F) {
+        poly_normalize(self, epsilon)
+    }
+    fn calc(&self, x: F) -> F {
+        poly_calc(self, x)
+    }
+    fn gradient(&self, x: F) -> F {
+        poly_gradient(self, x)
+    }
+    fn differentiate(&mut self) {
+        poly_differentiate(self);
+    }
+    /// Multiply by a polynomial
+    #[track_caller]
+    fn set_multiply(&mut self, poly: &[F], multiplicand: &[F]) {
+        poly_multiply(poly, multiplicand, self);
+    }
+    /// Set to result of polynomial divided by divisor, leaving the remainder in poly
+    #[track_caller]
+    fn set_divide(&mut self, poly: &mut [F], divisor: &[F], eps: F) -> bool {
+        poly_divide(poly, divisor, self, eps)
+    }
+}
+
+//ip Polynomial for [F; N]
+impl<F: Float> Polynomial<F> for [F] {
+    fn degree(&self) -> usize {
+        poly_degree(self)
+    }
+    fn normalize(&mut self, epsilon: F) {
+        poly_normalize(self, epsilon)
+    }
+    fn calc(&self, x: F) -> F {
+        poly_calc(self, x)
+    }
+    fn gradient(&self, x: F) -> F {
+        poly_gradient(self, x)
+    }
+    fn differentiate(&mut self) {
+        poly_differentiate(self);
+    }
+    /// Multiply by a polynomial
+    fn set_multiply(&mut self, poly: &[F], multiplicand: &[F]) {
+        poly_multiply(poly, multiplicand, self);
+    }
+    /// Set to result of polynomial divided by divisor, leaving the remainder in poly
+    fn set_divide(&mut self, poly: &mut [F], divisor: &[F], eps: F) -> bool {
+        poly_divide(poly, divisor, self, eps)
+    }
+}
+
+/// Improve an estimate for a root; as we get closer the dx should get smaller
+///
+/// If the dx is *larger* than the last dx then stop
+fn improve_root<F: Float>(poly: &[F], x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
+    let f = poly.calc(x);
+    let df = poly.gradient(x);
+    if df.abs() < min_grad {
+        None
+    } else {
+        let new_x = x - f / df;
+        if (new_x - x).abs() < max_dx {
+            Some((new_x, (new_x - x).abs()))
+        } else {
+            None
+        }
+    }
+}
+
+fn find_real_roots_linear<F: Float>(poly: &[F]) -> Option<F> {
+    assert!(
+        poly.len() >= 2,
+        "Root of a linear polynomial requires at least two coefficients (and [2..] should be zero)"
+    );
+    if poly[1].abs() < F::epsilon() {
+        None
+    } else {
+        Some(-poly[0] / poly[1])
+    }
+}
+
+fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
+    assert!(
+        poly.len() >= 3,
+        "Root of a quadratic polynomial requires at least three coefficients (and [3..] should be zero)"
+    );
+    if poly[2].abs() < F::epsilon() {
+        (find_real_roots_linear(poly), None)
+    } else {
+        let a = poly[2];
+        let b = poly[1];
+        let c = poly[0];
+        let two: F = (2.0_f32).into();
+        let disc = b * b - a * c * ((4.0_f32).into());
+        if disc < F::zero() {
+            (None, None)
+        } else {
+            let disc_sq = disc.sqrt();
+            (Some((-b + disc_sq) / two), Some((-b + disc_sq) / two))
+        }
+    }
+}
+
+fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Option<F>) {
+    assert!(
+        poly.len() >= 4,
+        "Root of a cubic polynomial requires at least four coefficients (and [4..] should be zero)"
+    );
+    if poly[3].abs() < F::epsilon() {
+        let (root_a, root_b) = find_real_roots_quad(poly);
+        (root_a, root_b, None)
+    } else {
+        let a = poly[3];
+        let b = poly[2];
+        let c = poly[1];
+        let d = poly[0];
+
+        let two: F = 2.0_f32.into();
+        let three: F = 3.0_f32.into();
+        let sqrt3 = three.sqrt();
+
+        let delta_0 = b * b - a * c * (3.0_f32.into());
+        let delta_1 =
+            b * b * b * two - a * b * c * (9.0_f32.into()) + a * a * d * (27.0_f32.into());
+        let disc = delta_1 * delta_1 - delta_0 * delta_0 * delta_0 * (4.0_f32.into());
+        dbg!(delta_0, delta_1, disc);
+        if delta_0.abs() < F::epsilon() {
+            // three identical roots if delta_1 is zero
+            //
+            // If delta_1 is nonzero then one real root (?)
+            let big_c = (delta_1 / two).cbrt();
+            let x = (b + big_c) / (-a * (3.0_f32.into()));
+            if delta_1.abs() < F::epsilon() {
+                (Some(x), Some(x), Some(x))
+            } else {
+                (Some(x), None, None)
+            }
+        } else if disc > F::zero() {
+            // discriminant is +ve, so square root of discriminant is real
+            let big_c = (({
+                if delta_1 < F::zero() {
+                    delta_1 - disc.sqrt()
+                } else {
+                    delta_1 + disc.sqrt()
+                }
+            }) / two)
+                .cbrt();
+            let x = (b + big_c + delta_0 / big_c) / (-a * (3.0_f32.into()));
+            (Some(x), None, None)
+        } else {
+            let mut r0 = None;
+            let mut r1 = None;
+            let mut r2 = None;
+
+            // Note there is *always* one real root
+
+            // Three real roots if 1 - delta_0/cbrt_mag^2 == 0 i.e. delta_0 == cbrt_mag^2
+            //
+            // i.e. delta_0 == |big_c_cubed|.cbrt()
+            //
+            // discriminant is -ve, so square root of discriminant is imaginary
+            let big_c_cubed_i = (-disc).sqrt() / two;
+            let big_c_cubed_r = delta_1 / two;
+            dbg!(big_c_cubed_r, big_c_cubed_i);
+            let cbrt_theta = big_c_cubed_i.atan2(big_c_cubed_r) / (3.0_f32.into());
+            let cbrt_mag = (big_c_cubed_i * big_c_cubed_i + big_c_cubed_r * big_c_cubed_r)
+                .powf((1.0_f32 / 6.0).into());
+            let big_c_r = cbrt_theta.cos() * cbrt_mag;
+            let big_c_i = cbrt_theta.sin() * cbrt_mag;
+            // Note that / big_C is the same as * big_C comp / |C|^2
+            let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
+            dbg!(thing);
+            if thing.abs() < 0.001_f32.into() {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
+                    / (-a * (3.0_f32.into()));
+                eprintln!("Value at {x} {}", poly.calc(x));
+                r0 = Some(x);
+            }
+            let new_big_c_r = (-big_c_r - big_c_i * sqrt3) / two;
+            let new_big_c_i = (-big_c_i + big_c_r * sqrt3) / two;
+            let big_c_r = new_big_c_r;
+            let big_c_i = new_big_c_i;
+            let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
+            dbg!(thing);
+            if thing.abs() < 0.001_f32.into() {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
+                    / (-a * (3.0_f32.into()));
+                eprintln!("Value at {x} {}", poly.calc(x));
+                r1 = Some(x);
+            }
+            let new_big_c_r = (-big_c_r - big_c_i * sqrt3) / two;
+            let new_big_c_i = (-big_c_i + big_c_r * sqrt3) / two;
+            let big_c_r = new_big_c_r;
+            let big_c_i = new_big_c_i;
+            let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
+            dbg!(thing);
+            if thing.abs() < 0.001_f32.into() {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
+                    / (-a * (3.0_f32.into()));
+                eprintln!("Value at {x} {}", poly.calc(x));
+                r2 = Some(x);
+            }
+            (r0, r1, r2)
+        }
+    }
+}
+
+//a PolyFindRoots
+//tt PolyFindRoots
+/// A simple trait for a polynomial calculation
+pub trait PolyFindRoots<F: Float> {
+    /// Assume the polynomial is linear, and solve
+    fn find_roots_linear(&self) -> Option<F>;
+    /// Assume the polynomial is quadratic, and solve
+    fn find_roots_quad(&self) -> (Option<F>, Option<F>);
+    /// Assume the polynomial is cubic, and solve
+    fn find_roots_cubic(&self) -> (Option<F>, Option<F>, Option<F>);
+    /// Improve a root using Newton-Raphson
+    fn improve_root(&self, x: F, eps: F, max_dx: F) -> Option<(F, F)>;
+    /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
+    fn find_root_nr(&self, mut x: F, min: F) -> Option<F>
+    where
+        Self: Polynomial<F>,
+    {
+        let mut max_dx = f32::MAX.into();
+        while let Some((improved_x, improved_dx)) = self.improve_root(x, min, max_dx) {
+            x = improved_x;
+            max_dx = improved_dx;
+        }
+        if self.calc(x).abs() < min {
+            Some(x)
+        } else {
+            None
+        }
+    }
+}
+
+//ip PolyFindRoots for [F; N]
+impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
+    fn find_roots_linear(&self) -> Option<F> {
+        find_real_roots_linear(self.as_slice())
+    }
+    fn find_roots_quad(&self) -> (Option<F>, Option<F>) {
+        find_real_roots_quad(self.as_slice())
+    }
+    fn find_roots_cubic(&self) -> (Option<F>, Option<F>, Option<F>) {
+        find_real_roots_cubic(self.as_slice())
+    }
+    fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
+        improve_root(self, x, min_grad, max_dx)
+    }
+}
+
+#[test]
+fn test_roots() {
+    assert_eq!([1.0_f32, 1.].find_roots_linear(), Some(-1.0));
+    assert_eq!([5.0_f32, -2.].find_roots_linear(), Some(2.5));
+
+    assert_eq!([5.0_f32, -2., 0.].find_roots_quad(), (Some(2.5), None));
+    assert_eq!(
+        [1.0_f32, 2., 1.].find_roots_quad(),
+        (Some(-1.0), Some(-1.0))
+    );
+    assert_eq!([-4.0_f32, 0., 1.].find_roots_quad(), (Some(2.0), Some(2.0)));
+    assert_eq!([4.0_f32, 0., 1.].find_roots_quad(), (None, None));
+
+    // (x-1)(x-1)(x-1) => (x^2 - 2x + 1)(x-1) = (x^3 - 3x^2 +3x -1)
+    assert_eq!(
+        [-1_f32, 3., -3., 1.].find_roots_cubic(),
+        (Some(1.0), Some(1.0), Some(1.0))
+    );
+    // (x-1)(x-2)(x-3) => (x^2 - 3x + 2)(x-3) = (x^3 - 6x^2 +11x -6)
+    assert_eq!(
+        [-6_f32, 11., -6., 1.].find_roots_cubic(),
+        (Some(1.0), Some(3.0), Some(2.0))
+    );
+    // (x-1)(x-2)(x-4) => (x^2 - 3x + 2)(x-4) = (x^3 - 7x^2 +14x -8)
+    //assert_eq!(
+    //[-8_f32, 14., -7., 1.].find_roots_cubic(),
+    //(Some(1.0), Some(4.0), Some(2.0))
+    //);
+}
+
+#[test]
+fn newton_raphson() {
+    let mut poly = [0.0_f32; 4];
+    poly.set_multiply(&[-2.0, 1.0], &[-1.0, 1.]);
+    poly.set_multiply(&poly.clone(), &[-4.0, 1.]);
+    let mut result = [0.0_f32; 4];
+    result[0] = 1.0;
+
+    // (x-1)(x-2)(x-4) => (x^2 - 3x + 2)(x-4) = (x^3 - 7x^2 +14x -8)
+    let mut poly_to_decimate = poly.clone();
+    let Some(x0) = poly_to_decimate.find_root_nr(100.0, 1E-7) else {
+        panic!("Failed to find root for polynomial {poly_to_decimate:?}");
+    };
+
+    result.set_multiply(&result.clone(), &[-x0, 1.0]);
+    assert!(
+        poly_to_decimate.set_divide(&mut poly.clone(), &result, (0.0001_f32.into())),
+        "Should divide without remainder"
+    );
+
+    let Some(x1) = poly_to_decimate.find_root_nr(100.0, 1E-7) else {
+        panic!("Failed to find root for polynomial {poly_to_decimate:?}");
+    };
+
+    result.set_multiply(&result.clone(), &[-x1, 1.0]);
+    assert!(
+        poly_to_decimate.set_divide(&mut poly.clone(), &result, (0.0001_f32.into())),
+        "Should divide without remainder"
+    );
+    dbg!(&result, &poly, &poly_to_decimate);
+
+    let Some(x2) = poly_to_decimate.find_root_nr(100.0, 1E-7) else {
+        panic!("Failed to find root for polynomial {poly_to_decimate:?}");
+    };
+    dbg!(x0, x1, x2);
+    assert!(false);
+}

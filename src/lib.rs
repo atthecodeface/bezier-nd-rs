@@ -204,6 +204,7 @@ mod curve;
 mod distance;
 mod line;
 mod point;
+pub(crate) mod polynomial;
 
 /*a Exports
 */
