@@ -201,6 +201,7 @@ to this problem!
 /*a Imports
 */
 mod curve;
+mod distance;
 mod line;
 mod point;
 
@@ -209,3 +210,4 @@ mod point;
 pub use self::line::BezierLineIter;
 pub use self::point::BezierPointIter;
 pub use curve::Bezier;
+pub use distance::BezierDistance2D;
