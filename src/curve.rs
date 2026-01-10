@@ -148,6 +148,36 @@ where
         }
     }
 
+    //fp elevate
+    /// Elevate a Bezier by one degree (cannot elevate a Cubic)
+    pub fn elevate(mut self) -> Self {
+        match self.num {
+            2 => {
+                self.num = 3;
+                self.pts[2] = vector::reduce(
+                    vector::add(self.pts[0], &self.pts[1], F::one()),
+                    (2.0_f32).into(),
+                );
+            }
+            3 => {
+                // Set pts[3] using pts[0..2] before pts[2] is changed...
+                self.num = 4;
+                self.pts[3] = vector::reduce(
+                    vector::add(self.pts[1], &self.pts[2], (2.0_f32).into()),
+                    (3.0_f32).into(),
+                );
+                self.pts[2] = vector::reduce(
+                    vector::add(self.pts[0], &self.pts[2], (2.0_f32).into()),
+                    (3.0_f32).into(),
+                );
+            }
+            _ => {
+                panic!("Cannot elevate a cubic Bezier at this point");
+            }
+        }
+        self
+    }
+
     //mp degree
     /// Returns number of points used for the Bezier (2 to 4)
     ///
