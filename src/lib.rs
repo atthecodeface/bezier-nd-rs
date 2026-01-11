@@ -205,6 +205,7 @@ mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
+pub use polynomial::{PolyFindRoots, Polynomial};
 
 /*a Exports
 */
