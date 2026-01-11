@@ -148,7 +148,7 @@ where
         }
     }
 
-    //fp elevate
+    //mp elevate
     /// Elevate a Bezier by one degree (cannot elevate a Cubic)
     pub fn elevate(mut self) -> Self {
         match self.num {

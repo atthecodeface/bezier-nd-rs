@@ -80,8 +80,9 @@ impl<F: Float> BezierDistance2D<F> {
             self.bezier_indices.push((first, self.flattened.len()));
         }
     }
-    /// Calculate the distance (squared) from the point to the closest Bezier, and determine
-    /// if the point is inside or outside the Beziers if they are a closed path
+
+    /// Calculate the distance (squared) from the point to the closest point on the Bezier,
+    /// and determine if the point is inside or outside the Beziers if they are a closed path
     pub fn distance_sq_to(&mut self, pt: &[F; 2]) -> (F, bool) {
         self.create_segments();
         let mut min_d2_s = (F::max_value(), 0);
