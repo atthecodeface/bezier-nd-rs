@@ -200,6 +200,7 @@ to this problem!
 
 /*a Imports
 */
+pub mod bezier;
 mod curve;
 mod distance;
 mod line;
