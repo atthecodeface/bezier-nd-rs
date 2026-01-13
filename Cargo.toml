@@ -15,6 +15,7 @@ repository = "https://github.com/atthecodeface/bezier-nd-rs"
 
 [dependencies.geo-nd]
 version="0.6"
+path = "../geo-nd-rs"
 
 [dependencies.num-traits]
 version = "0.2.1"
