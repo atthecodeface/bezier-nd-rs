@@ -1,124 +1,13 @@
-use std::num;
-
 //a Imports
 use geo_nd::vector;
 use geo_nd::Float;
 
 use crate::{BezierLineIter, BezierPointIter};
 
-const BINOMIALS: &[&[f32]] = &[
-    &[1., 1.],
-    &[2., 1., 1.],
-    &[4., 1., 2., 1.],
-    &[8., 1., 3., 3., 1.],
-    &[16., 1., 4., 6., 4., 1.],
-    &[32., 1., 5., 10., 10., 5., 1.],
-    &[64., 1., 6., 15., 20., 15., 6., 1.],
-    &[128., 1., 7., 21., 35., 35., 21., 7., 1.],
-    &[256., 1., 8., 28., 56., 70., 56., 28., 8., 1.],
-    &[512., 1., 9., 36., 84., 126., 126., 84., 36., 9., 1.],
-];
-
-const BINOMIAL_DIFFS: &[&[f32]] = &[
-    &[1., 0.],
-    &[1., -1., 1.],
-    &[1., 1., -1., 1.],
-    &[8., 1., 3., 3., 1.],
-    &[16., 1., 4., 6., 4., 1.],
-    &[32., 1., 5., 10., 10., 5., 1.],
-    &[64., 1., 6., 15., 20., 15., 6., 1.],
-    &[128., 1., 7., 21., 35., 35., 21., 7., 1.],
-    &[256., 1., 8., 28., 56., 70., 56., 28., 8., 1.],
-    &[512., 1., 9., 36., 84., 126., 126., 84., 36., 9., 1.],
-];
-
-pub const ELEVATE_BY_ONE_MATRICES_F32: &[&[f32]] = &[
-    &[1., 1.],
-    &[1., 0., 0.5, 0.5, 0., 1.],
-    &[
-        1.0, 0.0, 0.0, 0.33333334, 0.6666667, 0.0, 0.0, 0.6666667, 0.33333334, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1., 0., 0., 0., 0.25, 0.75, 0., 0., 0., 0.5, 0.5, 0., 0., 0., 0.75, 0.25, 0., 0., 0., 1.,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.8, 0.0, 0.0, 0.0, 0.0, 0.4, 0.6, 0.0, 0.0, 0.0, 0.0, 0.6,
-        0.4, 0.0, 0.0, 0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.16666667, 0.8333333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.33333334,
-        0.6666667, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6666667,
-        0.33333334, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8333333, 0.16666667, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.14285715, 0.85714287, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.2857143, 0.71428573, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.42857143, 0.5714286, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.5714286, 0.42857143, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.71428573, 0.2857143,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.85714287, 0.14285715, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.875, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.25, 0.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.375, 0.625, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.625, 0.375, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.75, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.875, 0.125, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.11111111, 0.8888889, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.22222222, 0.7777778, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.33333334, 0.6666667, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.44444445, 0.5555556, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5555556, 0.44444445, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.6666667, 0.33333334, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7777778,
-        0.22222222, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8888889, 0.11111111, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-];
-
-pub const ELEVATE_BY_ONE_MATRICES_F64: &[&[f64]] = &[
-    &[1., 1.],
-    &[1., 0., 0.5, 0.5, 0., 1.],
-    &[
-        1.0, 0.0, 0.0, 0.33333334, 0.6666667, 0.0, 0.0, 0.6666667, 0.33333334, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1., 0., 0., 0., 0.25, 0.75, 0., 0., 0., 0.5, 0.5, 0., 0., 0., 0.75, 0.25, 0., 0., 0., 1.,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.8, 0.0, 0.0, 0.0, 0.0, 0.4, 0.6, 0.0, 0.0, 0.0, 0.0, 0.6,
-        0.4, 0.0, 0.0, 0.0, 0.0, 0.8, 0.2, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.16666667, 0.8333333, 0.0, 0.0, 0.0, 0.0, 0.0, 0.33333334,
-        0.6666667, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.6666667,
-        0.33333334, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8333333, 0.16666667, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.14285715, 0.85714287, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.2857143, 0.71428573, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.42857143, 0.5714286, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.5714286, 0.42857143, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.71428573, 0.2857143,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.85714287, 0.14285715, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.125, 0.875, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.25, 0.75, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.375, 0.625, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.625, 0.375, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.75, 0.25, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.875, 0.125, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 1.0,
-    ],
-    &[
-        1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.11111111, 0.8888889, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.22222222, 0.7777778, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.33333334, 0.6666667, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.44444445, 0.5555556, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5555556, 0.44444445, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.6666667, 0.33333334, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7777778,
-        0.22222222, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.8888889, 0.11111111, 0.0, 0.0, 0.0,
-        0.0, 0.0, 0.0, 0.0, 0.0, 1.0,
-    ],
-];
-
 //a Bezier
 //tp Bezier
-/// A [Bezier] is an implementation of an arbitrary bezier
+/// A [Bezier] is an implementation of an arbitrary bezier up to a maximum degree
+/// given in the type.
 ///
 /// The control points are stored to be used with Bernstein basis polynomials
 ///
@@ -273,7 +162,7 @@ where
                 write!(f, ", ")?;
             }
             needs_comma = true;
-            vector::fmt(f, p);
+            vector::fmt(f, p)?;
         }
         Ok(())
     }
@@ -303,7 +192,8 @@ where
     //mp derivative
     /// Create a new Bezier that is the derivative of this
     ///
-    /// This is the Bezier of degre N-1 that has points `P'[i]` where
+    /// As this type uses Bernstein polynomials, this is the Bezier of degre N-1
+    /// that has points control points:
     ///
     ///   `P'[i] = N * (P[i+1] - P[i])`
     pub fn derivative(&self) -> Self {
@@ -321,31 +211,28 @@ where
     }
 
     //mp bernstein_basis_coeff
+    /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
+    ///
+    /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
     #[inline]
     pub fn bernstein_basis_coeff(degree: usize, i: usize, t: F) -> F {
         let u = F::one() - t;
-        let coeffs = BINOMIALS[degree];
+        let coeffs = crate::constants::BINOMIALS[degree];
         t.powi(i as i32) * u.powi((degree - i) as i32) * (coeffs[1 + i]).into()
     }
 
-    //mp elevate
-    /// Elevate a Bezier by one degree
+    //mp elevation_by_one_matrix_ele
+    /// Calculate the Mij element of the elevation matrix to elevate by one degree
+    /// given the current degree. The elevation matrix is (degree+2)x(degree+1)
     ///
-    /// This is the Bezier of degree N+1 that has points `P'[i]` where
+    /// This is given by P'[j] = Sum((n i).(1 j-i) / (n+1 j).P[i])
+    /// hence Mij = (n i).(1 j-i) / (n+1 j)
     ///
-    /// ``` ignore
-    ///   P'[0] = P[0]
-    ///   P'[j] = Sum((n i).(1 j-i) / (n+1 j).P[i])
-    ///   P'[j] = Sum( n! / (n-i)!i! * 1!(1-j+i)!/(1-j+i)! * j!(n+1-j)!/(n+1)! . P[i]) (0<=i<=j)
-    ///   P'[j] = Sum( n! / (n-i)!i! * j!(n+1-j)!/(n+1)! . P[i]) (i==j-1 or i==j)
-    ///   P'[j] = Sum( n!/(n+1)! * j!/i! * (n+1-j)! / (n-i)! . P[i]) (i==j-1 or i==j)
-    ///   P'[j] = (j * P[i-1] + (n+1-j) * P[i]) / (n+1)
-    ///   P'[N+1] = P[N]
-    /// ```
+    /// * Mij = 1 for i=j=0 and for i=degree, j=degree+1
+    /// * Mij = j/n+1 for i=j-1
+    /// * Mij = (n+1-j)/n+1 for i=j
+    /// * Mij = 0 otherwise
     ///
-    /// Elevation matrix element (col i, row j) for degree n to n+1
-    /// 0 <= i <= n
-    /// 0 <= j <= n+1
     #[inline]
     pub fn elevation_by_one_matrix_ele(n: usize, i: usize, j: usize) -> F {
         if j == 0 && i == 0 {
@@ -365,6 +252,10 @@ where
         }
     }
 
+    //mp elevate
+    /// Elevate a Bezier by one degree
+    ///
+    /// This generates and applies the elevate-by-one matrix
     pub fn elevate_by_one(&self) -> Self {
         assert!(
             self.degree < N + 2,
@@ -392,9 +283,32 @@ where
     }
 
     //mp apply_matrix
-    pub fn apply_matrix(&mut self, data: &[F], new_degree: usize) {
-        // geo_nd::matrix::inverse4(m)
-        todo!();
+    /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
+    /// of a new degree
+    pub fn apply_matrix(&self, matrix: &[F], new_degree: usize) -> Self {
+        assert!(
+            new_degree < N + 1,
+            "Cannot create a Bezier<{N}> of {new_degree}",
+        );
+        assert_eq!(
+            matrix.len(),
+            (new_degree + 1) * (self.degree + 1),
+            "Matrix to apply to Bezier of degree {} to degree {new_degree} must have {} elements",
+            self.degree,
+            (new_degree + 1) * (self.degree + 1)
+        );
+        let nr = new_degree + 1;
+        let nc = self.degree + 1;
+        let mut s = Self::default();
+        s.degree = new_degree;
+        for (m, sp) in matrix.chunks_exact(nr).zip(s.pts.iter_mut()) {
+            let mut sum = [F::zero(); D];
+            for (coeff, p) in m.iter().zip(self.pts.iter()) {
+                sum = vector::add(sum, p, *coeff);
+            }
+            *sp = sum;
+        }
+        s
     }
 
     //mp degree
@@ -426,7 +340,7 @@ where
     }
 
     //mp metric_df
-    /// Rhe square-root of the sum of the distance-squred between the control points of two Beziers
+    /// The square-root of the sum of the distance-squred between the control points of two Beziers
     pub fn metric_df(&self, other: &Self) -> F {
         assert!(
             self.degree == other.degree,
@@ -439,6 +353,7 @@ where
         d2.sqrt()
     }
 
+    //mp metric_dc
     /// Maximum of the difference betwen the control points of two Beziers
     pub fn metric_dc(&self, other: &Self) -> F {
         assert!(
@@ -479,7 +394,7 @@ where
         let mut r = [F::zero(); D];
         let u = F::one() - t;
         let n = self.degree;
-        let coeffs = BINOMIALS[n];
+        let coeffs = crate::constants::BINOMIALS[n];
         for (i, (c, pt)) in coeffs[1..].iter().zip(self.pts.iter()).enumerate() {
             let scale = t.powi(i as i32) * u.powi((n - i) as i32) * (*c).into();
             r = vector::add(r, pt, scale);

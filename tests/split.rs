@@ -171,7 +171,7 @@ fn elevate_matrix() {
             eprint!("{}, ", m[j]);
         }
         eprintln!("]");
-        assert_near_equal(bezier_nd::bezier::ELEVATE_BY_ONE_MATRICES_F64[i], &m[0..n]);
+        assert_near_equal(bezier_nd::ELEVATE_BY_ONE_MATRICES_F64[i], &m[0..n]);
     }
 }
 
@@ -309,25 +309,53 @@ fn bernstein_reduce_matrix_q_to_c() {
 fn bernstein_reduce_matrix() {
     let mut reduce = [0.0; 100];
     let mut elevated_reduce = [0.0; 100];
+
+    generate_bs_reduce_matrix(1, &[0., 1.0], &mut reduce, &mut elevated_reduce);
+    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[0]);
+    assert_near_equal(
+        &elevated_reduce,
+        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0],
+    );
+
     generate_bs_reduce_matrix(2, &[0., 0.5, 1.0], &mut reduce, &mut elevated_reduce);
+    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[1]);
+    assert_near_equal(
+        &elevated_reduce,
+        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1],
+    );
+
     generate_bs_reduce_matrix(
         3,
         &[0., 1.0 / 3.0, 2.0 / 3.0, 1.0],
         &mut reduce,
         &mut elevated_reduce,
     );
+    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[2]);
+    assert_near_equal(
+        &elevated_reduce,
+        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[2],
+    );
+
     generate_bs_reduce_matrix(
         4,
         &[0., 1.0 / 4.0, 2.0 / 4.0, 3.0 / 4.0, 1.0],
         &mut reduce,
         &mut elevated_reduce,
     );
+    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[3]);
+    assert_near_equal(
+        &elevated_reduce,
+        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[3],
+    );
+
     generate_bs_reduce_matrix(
         5,
         &[0., 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 4.0 / 5.0, 1.0],
         &mut reduce,
         &mut elevated_reduce,
     );
+    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[4]);
+
     generate_bs_reduce_matrix(
         6,
         &[
@@ -342,5 +370,4 @@ fn bernstein_reduce_matrix() {
         &mut reduce,
         &mut elevated_reduce,
     );
-    assert!(false);
 }

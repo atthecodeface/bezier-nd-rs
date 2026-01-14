@@ -201,11 +201,13 @@ to this problem!
 /*a Imports
 */
 pub mod bezier;
+pub(crate) mod constants;
 mod curve;
 mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
+pub use constants::*;
 pub use polynomial::{PolyFindRoots, Polynomial};
 
 /*a Exports
