@@ -2,6 +2,11 @@
 #![warn(missing_docs)]
 /*!
 
+TO DO:
+
+* New building of Bezier
+* Reduce to quadratics, reduce to straight lines, ele_red matrix minus identity creation and use for dc metrics
+
 # Bezier curve library
 
 This library provides linear, quadratic and cubic Bezier curves, using
@@ -201,12 +206,14 @@ to this problem!
 /*a Imports
 */
 pub mod bezier;
+pub mod builder;
 pub(crate) mod constants;
 mod curve;
 mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
+pub use builder::BezierBuilder;
 pub use constants::*;
 pub use polynomial::{PolyFindRoots, Polynomial};
 

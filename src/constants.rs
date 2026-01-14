@@ -108,6 +108,15 @@ pub const ELEVATE_BY_ONE_MATRICES_F64: &[&[f64]] = &[
     ],
 ];
 
+/// Elevation of a Uuniform reduction by degree one of Bernstein polymial Bezier (with degree+1)
+/// using points with t = i/(degree+1) for i in 0..degree+1
+///
+/// i.e. the elevated-reduced Bezier (of 'degree') will match at precisely *degree+1* equispaced (in t) points.
+///
+/// ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0] is a 3x3 matrix to elevate+reduce a quadratic Bezier.
+/// ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1] is a 4x4 matrix to elevate+reduce a cubic Bezier.
+///
+/// i.e. REDUCE_BY_ONE_BS_UNIFORM_F64[n] reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
 pub const ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     &[1.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 1.0],
     &[
@@ -163,6 +172,15 @@ pub const ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     ],
 ];
 
+/// Uniform reduction by degree one of Bernstein polymial Bezier (with degree+1)
+/// using points with t = i/(degree+1) for i in 0..degree+1
+///
+/// i.e. the reduced Bezier (of 'degree') will match at precisely *degree+1* equispaced (in t) points.
+///
+/// REDUCE_BY_ONE_BS_UNIFORM_F64[0] is a 2x3 matrix to reduce a quadratic to a linear (degree 1) Bezier.
+/// REDUCE_BY_ONE_BS_UNIFORM_F64[1] is a 3x4 matrix to reduce a cubic to a quadratic (degree 2) Bezier.
+///
+/// i.e. REDUCE_BY_ONE_BS_UNIFORM_F64[n] reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
 pub const REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     &[1., 0., 0., 0., 0., 1.],
     &[1., 0., 0., 0., -0.25, 0.75, 0.75, -0.25, 0., 0., 0., 1.0],

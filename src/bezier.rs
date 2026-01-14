@@ -164,7 +164,7 @@ where
             needs_comma = true;
             vector::fmt(f, p)?;
         }
-        Ok(())
+        write!(f, "]")
     }
 
     //zz All done
@@ -181,7 +181,7 @@ where
         let n = pts.len();
         assert!(n >= 1, "Beziers have at least 1 point");
         assert!(
-            n < N,
+            n <= N,
             "Attempt to create a Bezier of max {N} pts with actually {n} pts"
         );
         let mut s = Self::default();
@@ -297,11 +297,11 @@ where
             self.degree,
             (new_degree + 1) * (self.degree + 1)
         );
-        let nr = new_degree + 1;
+        let _nr = new_degree + 1;
         let nc = self.degree + 1;
         let mut s = Self::default();
         s.degree = new_degree;
-        for (m, sp) in matrix.chunks_exact(nr).zip(s.pts.iter_mut()) {
+        for (m, sp) in matrix.chunks_exact(nc).zip(s.pts.iter_mut()) {
             let mut sum = [F::zero(); D];
             for (coeff, p) in m.iter().zip(self.pts.iter()) {
                 sum = vector::add(sum, p, *coeff);
@@ -309,6 +309,29 @@ where
             *sp = sum;
         }
         s
+    }
+
+    //mp dc_of_ele_red
+    /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
+    /// and calculate the new dc squared
+    pub fn dc2_of_ele_red(&self, matrix: &[F]) -> F {
+        assert_eq!(
+            matrix.len(),
+            (self.degree + 1) * (self.degree + 1),
+            "Matrix to apply to Bezier of degree {} must have {} elements",
+            self.degree,
+            (self.degree + 1) * (self.degree + 1)
+        );
+        let mut d2 = F::zero();
+        let nc = self.degree + 1;
+        for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
+            let mut sum = [F::zero(); D];
+            for (coeff, p) in m.iter().zip(self.pts.iter()) {
+                sum = vector::add(sum, p, *coeff);
+            }
+            d2 = d2.max(vector::distance_sq(s, &sum));
+        }
+        d2
     }
 
     //mp degree
@@ -332,8 +355,10 @@ where
     /// performance is required!
     pub fn metric_dm_est(&self, other: &Self, num_steps: usize) -> F {
         let mut d2 = F::zero();
+        let ns: F = (num_steps as f32).into();
         for i in 0..num_steps {
             let t: F = (i as f32).into();
+            let t = t / ns;
             d2 = d2.max(vector::distance_sq(&self.point_at(t), &other.point_at(t)));
         }
         d2.sqrt()
@@ -388,6 +413,44 @@ where
         vector::reduce(r, reduce)
     }
 
+    //mp point_at_de_cast
+    /// Returns the point at parameter 't' along the Bezier using de Casteljau's algorithm
+    pub fn point_at_de_cast(&self, t: F) -> [F; D] {
+        // Beta[0][i] = pt[i]
+        let mut pts = self.pts.clone();
+        // for j = 1..=n
+        //  for i = 0..=n-j
+        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
+        let u = F::one() - t;
+        for j in 1..(self.degree + 1) {
+            for i in 0..(self.degree + 1 - j) {
+                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
+            }
+        }
+        pts[0]
+    }
+
+    //mp split_at_de_cast
+    /// Use de Casteljau's algorithm to split
+    pub fn split_at_de_cast(&self, t: F) -> (Self, Self) {
+        let mut s0 = self.clone();
+        let mut s1 = self.clone();
+        // Beta[0][i] = pt[i]
+        let mut pts = self.pts.clone();
+        // for j = 1..=n
+        //  for i = 0..=n-j
+        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
+        let u = F::one() - t;
+        for j in 1..(self.degree + 1) {
+            for i in 0..(self.degree + 1 - j) {
+                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
+            }
+            s0.pts[j] = pts[0];
+            s1.pts[self.degree - j] = pts[self.degree - j];
+        }
+        (s0, s1)
+    }
+
     //mp point_at
     /// Returns the point at parameter 't' along the Bezier
     pub fn point_at(&self, t: F) -> [F; D] {
@@ -415,13 +478,43 @@ where
     ///
     /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
     pub fn bisect(&self) -> (Self, Self) {
-        todo!();
+        self.split_at_de_cast(0.5_f32.into())
+    }
+
+    //mp Reduce-and-split iterator
+    /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
+    /// of a new degree
+    pub fn reduce_and_split_iter<'a>(
+        &'a self,
+        reduce_matrix: &'a [F],
+        elev_reduce_matrix: &'a [F],
+        reduce_degree: usize,
+        max_dc_sq: F,
+    ) -> BezierReduceIter<'a, F, N, D> {
+        BezierReduceIter {
+            reduce_matrix,
+            elev_reduce_matrix,
+            reduce_degree,
+            max_dc_sq,
+            stack: vec![],
+        }
     }
 
     //mp bezier_between
     /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
     pub fn bezier_between(&self, t0: F, t1: F) -> Self {
-        todo!();
+        let dt = t1 - t0;
+        assert!(t0 < F::one(), "Must select a t0 that is less than 1.0");
+        assert!(dt > F::zero(), "Must select a t range that is > 0");
+        if t0 == F::zero() {
+            self.split_at_de_cast(dt).0
+        } else if t1 == F::one() {
+            self.split_at_de_cast(dt).1
+        } else {
+            // b is the subset from t0 to 1.0
+            let (_, b) = self.split_at_de_cast(t0);
+            b.split_at_de_cast(dt / (F::one() - t0)).0
+        }
     }
 
     //mp as_lines
@@ -469,7 +562,12 @@ where
     ///
     /// `straightness` is thus independent of the length of the Bezier
     pub fn is_straight(&self, straightness: F) -> bool {
-        todo!();
+        let s2 = straightness * straightness;
+        self.pts
+            .iter()
+            .skip(1)
+            .take(self.degree)
+            .all(|m| vector::length_sq(m) <= s2)
     }
 
     //mp length
@@ -481,27 +579,37 @@ where
         todo!();
     }
 
-    //fp arc
-    /// Create a Cubic Bezier that approximates closely a circular arc
-    ///
-    /// The arc has a center C, a radius R, and is of an angle (should be <= PI/2).
-    ///
-    /// The arc sweeps through points a distance R from C, in a circle
-    /// using a pair of the planar unit vectors in the vector space for the
-    /// points.
-    ///
-    /// The arc will be between an angle A1 and A2, where A2-A1 == angle, and A1==rotate
-    ///
-    pub fn arc(
-        angle: F,
-        radius: F,
-        center: &[F; D],
-        unit: &[F; D],
-        normal: &[F; D],
-        rotate: F,
-    ) -> Self {
-        todo!();
-    }
-
     //zz All done
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub struct BezierReduceIter<'a, F, const N: usize, const D: usize>
+where
+    F: Float,
+{
+    reduce_matrix: &'a [F],
+    elev_reduce_matrix: &'a [F],
+    reduce_degree: usize,
+    max_dc_sq: F,
+    stack: Vec<(usize, Bezier<F, N, D>)>,
+}
+
+impl<'a, F, const N: usize, const D: usize> std::iter::Iterator for BezierReduceIter<'a, F, N, D>
+where
+    F: Float,
+{
+    type Item = (usize, Bezier<F, N, D>);
+    fn next(&mut self) -> Option<(usize, Bezier<F, N, D>)> {
+        while let Some((n, b)) = self.stack.pop() {
+            let dc2 = b.dc2_of_ele_red(self.elev_reduce_matrix);
+            if dc2 > self.max_dc_sq {
+                let (b0, b1) = b.bisect();
+                self.stack.push((n + 1, b1));
+                self.stack.push((n + 1, b0));
+            } else {
+                return Some((n, b.apply_matrix(self.reduce_matrix, self.reduce_degree)));
+            }
+        }
+        None
+    }
 }

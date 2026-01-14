@@ -259,7 +259,7 @@ fn generate_bs_reduce_matrix(
 }
 
 #[test]
-fn bernstein_reduce_matrix_q_to_c() {
+fn bernstein_reduce_matrix_c_to_q() {
     let mut bern_n = [0.0f64; 100];
     let mut bern_np1 = [0.0f64; 100];
 
@@ -370,4 +370,100 @@ fn bernstein_reduce_matrix() {
         &mut reduce,
         &mut elevated_reduce,
     );
+}
+
+#[test]
+fn reduce_and_elevate_cubic_in_parts() {
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
+
+    let b = bezier_nd::bezier::Bezier::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
+    let nb = b.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
+    let ts = [0., 0.5, 1.0];
+    for t in ts {
+        assert!(
+            vector::distance_sq(&b.point_at(t), &nb.point_at(t)) < 1E-4,
+            "Uniform reduction to quadratic has same point for t {t} in {ts:?}"
+        );
+    }
+    let dm = b.metric_dm_est(&nb, 1000);
+    let df = b.metric_df(&nb);
+    let dc = b.metric_dc(&nb);
+    eprintln!("Metrics for b/nb: dm {dm} < dc {dc} < df {df}");
+    assert!(dm < dc);
+    assert!(dc < df);
+
+    let (b0, b1) = b.bisect();
+    for t in float_iter(-1.0, 1.0, 100) {
+        let p = b.point_at(t);
+        let p0 = b0.point_at(t * 2.0);
+        let p1 = b1.point_at(t * 2.0 - 1.0);
+        assert!(
+            vector::distance_sq(&p, &p0) < 1E-4,
+            "Bisection first half should match Bezier with t*=2 at {t} {p:?} {p0:?}"
+        );
+        assert!(
+            vector::distance_sq(&p, &p1) < 1E-4,
+            "Bisection second half should match Bezier with t=2t-1 at {t} {p:?} {p0:?}"
+        );
+    }
+
+    let nb0 = b0.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
+    let dm0 = b0.metric_dm_est(&nb0, 1000);
+    let df0 = b0.metric_df(&nb0);
+    let dc0 = b0.metric_dc(&nb0);
+    eprintln!("Metrics for b0/nb0: dm {dm0} < dc {dc0} < df {df0}");
+    assert!(dm0 < dc0);
+    assert!(dc0 < df0);
+
+    assert!(dm0 < dm);
+    assert!(dc0 < dc);
+    assert!(df0 < df);
+}
+
+#[test]
+fn reduce_and_elevate_cubic() {
+    let p0 = [0., 0.];
+    let p1 = [10., -1.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
+    let max_dc = 0.03;
+
+    let b = bezier_nd::bezier::Bezier::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
+    assert_eq!(b.degree(), 3);
+    let mut b_split = b.reduce_and_split_iter(
+        &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[1],
+        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1],
+        2,
+        max_dc,
+    );
+    let mut t = 0.0;
+    for (ns, bs) in b_split.next() {
+        let t0 = t;
+        let dt = 1.0 / (2.0_f64).powi(ns as i32);
+        let t1 = t + dt;
+        let p0 = b.point_at(t0);
+        let p1 = b.point_at(t1);
+        let ps0 = bs.point_at(0.0);
+        let ps1 = bs.point_at(1.0);
+        assert!(
+            vector::distance_sq(&p0, &ps0) < 1E-4,
+            "Split should match at pt0 {t0} {p0:?} {ps0:?}"
+        );
+        assert!(
+            vector::distance_sq(&p1, &ps1) < 1E-4,
+            "Split should match at pt1 {t1} {p1:?} {ps1:?}"
+        );
+        for tp in float_iter(0., 1., 100) {
+            let p = b.point_at(t0 + tp * dt);
+            let ps = bs.point_at(tp);
+            assert!(
+                vector::distance_sq(&p, &ps) < max_dc,
+                "Split should be no more than {max_dc} apartat pt {tp} of {t0}->{t1} {p:?} {ps:?}"
+            );
+        }
+        t = t1;
+    }
 }
