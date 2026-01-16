@@ -1,5 +1,5 @@
 use crate::constants::BINOMIALS;
-use geo_nd::Float;
+use geo_nd::{vector, Float};
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
@@ -37,4 +37,42 @@ pub fn elevation_by_one_matrix_ele<F: Float>(n: usize, i: usize, j: usize) -> F 
     } else {
         F::zero()
     }
+}
+
+/// Calculate the derivative Bernstein points of the nth derivative of a Bernstein Bezier
+///
+/// Updates the provided d_pts slice, and returns the scaling which should be applied (multiply by F)
+#[track_caller]
+pub fn nth_bernstein_derivative<F: Float, const D: usize>(
+    pts: &[[F; D]],
+    n: usize,
+    d_pts: &mut [[F; D]],
+) -> F {
+    assert!(
+        pts.len() >= n + 1,
+        "Bezier of degree {}-1 must actually be of degree {n} or higher to have an {n}th derivative",
+        pts.len()
+    );
+    assert!(
+        d_pts.len() >= pts.len()-n, // note pts.len() > n already
+        "Provided storage for derivative points must be at least {} to provide {n}th derivative of degree {} Bezier",
+        pts.len()-n, pts.len()-1
+    );
+    let degree = pts.len() - 1;
+    let mut scale = F::one();
+    for i in 0..n {
+        scale *= ((degree - i) as f32).into();
+    }
+    for (i, sp) in d_pts.iter_mut().take(degree + 1 - n).enumerate() {
+        let mut m1_n_positive = (n & 1) == 0;
+        for (c, p) in BINOMIALS[n][1..].iter().zip(pts[i..].iter()) {
+            if m1_n_positive {
+                *sp = vector::add(*sp, p, (*c).into());
+            } else {
+                *sp = vector::sub(*sp, p, (*c).into());
+            }
+            m1_n_positive = !m1_n_positive;
+        }
+    }
+    scale
 }

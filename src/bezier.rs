@@ -2,6 +2,7 @@
 use geo_nd::vector;
 use geo_nd::Float;
 
+use crate::bezier_fns;
 use crate::constants::BINOMIALS;
 
 //a Bezier
@@ -220,30 +221,16 @@ where
     ///
     /// (n j) is kept in BINOMIALS[n][j+1]
     pub fn nth_derivative(&self, n: usize) -> (Self, F) {
-        assert!(
-            self.degree >= n,
-            "Bezier of degree {N} must actually be of degree {n} or higher to have an nth derivative"
-        );
         let mut s = Self {
             degree: self.degree - n,
             ..Default::default()
         };
         s.degree = self.degree - n;
-        let mut scale = F::one();
-        for i in 0..n {
-            scale *= ((self.degree - i) as f32).into();
-        }
-        for (i, sp) in s.pts.iter_mut().take(self.degree + 1 - n).enumerate() {
-            let mut m1_n_positive = (n & 1) == 0;
-            for (c, p) in BINOMIALS[n][1..].iter().zip(self.pts[i..].iter()) {
-                if m1_n_positive {
-                    *sp = vector::add(*sp, p, (*c).into());
-                } else {
-                    *sp = vector::sub(*sp, p, (*c).into());
-                }
-                m1_n_positive = !m1_n_positive;
-            }
-        }
+        let scale = crate::bezier_fns::nth_bernstein_derivative(
+            &self.pts[0..self.degree + 1],
+            n,
+            &mut s.pts,
+        );
         (s, scale)
     }
 
