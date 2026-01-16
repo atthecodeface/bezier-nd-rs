@@ -1,3 +1,8 @@
+/// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value[0]
+///
+/// i.e. (n i) is in BINOMIALS[n][i+1]
+///
+/// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS[6][2+1]
 pub const BINOMIALS: &[&[f32]] = &[
     &[1., 1.],
     &[2., 1., 1.],

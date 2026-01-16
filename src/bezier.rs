@@ -2,6 +2,7 @@
 use geo_nd::vector;
 use geo_nd::Float;
 
+use crate::constants::BINOMIALS;
 use crate::{BezierLineIter, BezierPointIter};
 
 //a Bezier
@@ -170,7 +171,24 @@ where
     //zz All done
 }
 
-//ip Bezier
+//ip Bezier accessors
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
+    //ap degree
+    /// Return degree of the Bezier (e.g. 3 for a cubic)
+    pub fn degree(&self) -> usize {
+        self.degree
+    }
+
+    /// Return a slice of the control points
+    pub fn pts(&self) -> &[[F; D]] {
+        &self.pts[0..self.degree + 1]
+    }
+}
+
+//ip Bezier constructors / splitters etc
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
     F: Float,
@@ -189,27 +207,151 @@ where
         s.pts.split_at_mut(n).0.copy_from_slice(pts);
         s
     }
-    //mp derivative
-    /// Create a new Bezier that is the derivative of this
+
+    //mp nth_derivative
+    /// Create a new Bezier that is the nth derivative of this
+    /// subject to a scaling factor (i.e. the actual Bezier should be scaled up by F)
     ///
-    /// As this type uses Bernstein polynomials, this is the Bezier of degre N-1
+    /// As this type uses Bernstein polynomials, this is the Bezier of degree N-n
     /// that has points control points:
     ///
-    ///   `P'[i] = N * (P[i+1] - P[i])`
-    pub fn derivative(&self) -> Self {
+    /// Pn[i] = (N n) . Sum((-1)^j * P[i+n-j] * (n j))
+    ///
+    /// (n j) is kept in BINOMIALS[n][j+1]
+    pub fn nth_derivative(&self, n: usize) -> (Self, F) {
         assert!(
-            self.degree >= 1,
-            "Bezier must be degree one or higher to have a derivative"
+            self.degree >= n,
+            "Bezier of degree {N} must actually be of degree {n} or higher to have an nth derivative"
         );
         let mut s = Self::default();
-        s.degree = self.degree - 1;
-        let n: F = (self.degree as f32).into();
-        for i in 0..self.degree {
-            s.pts[i] = vector::sub(self.pts[i + 1], &self.pts[i], n);
+        s.degree = self.degree - n;
+        let mut scale = F::one();
+        for i in 0..n {
+            scale *= ((self.degree - i) as f32).into();
+        }
+        for (i, sp) in s.pts.iter_mut().take(self.degree + 1 - n).enumerate() {
+            let mut m1_n_positive = (n & 1) == 0;
+            for (c, p) in BINOMIALS[n][1..].iter().zip(self.pts[i..].iter()) {
+                if m1_n_positive {
+                    *sp = vector::add(*sp, p, (*c).into());
+                } else {
+                    *sp = vector::sub(*sp, p, (*c).into());
+                }
+                m1_n_positive = !m1_n_positive;
+            }
+        }
+        (s, scale)
+    }
+
+    //mp split_at_de_cast
+    /// Use de Casteljau's algorithm to split
+    pub fn split_at_de_cast(&self, t: F) -> (Self, Self) {
+        let mut s0 = self.clone();
+        let mut s1 = self.clone();
+        // Beta[0][i] = pt[i]
+        let mut pts = self.pts.clone();
+        // for j = 1..=n
+        //  for i = 0..=n-j
+        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
+        let u = F::one() - t;
+        for j in 1..(self.degree + 1) {
+            for i in 0..(self.degree + 1 - j) {
+                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
+            }
+            s0.pts[j] = pts[0];
+            s1.pts[self.degree - j] = pts[self.degree - j];
+        }
+        (s0, s1)
+    }
+
+    //mp apply_matrix
+    /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
+    /// of a new degree
+    pub fn apply_matrix(&self, matrix: &[F], new_degree: usize) -> Self {
+        assert!(
+            new_degree < N + 1,
+            "Cannot create a Bezier<{N}> of {new_degree}",
+        );
+        assert_eq!(
+            matrix.len(),
+            (new_degree + 1) * (self.degree + 1),
+            "Matrix to apply to Bezier of degree {} to degree {new_degree} must have {} elements",
+            self.degree,
+            (new_degree + 1) * (self.degree + 1)
+        );
+        let _nr = new_degree + 1;
+        let nc = self.degree + 1;
+        let mut s = Self::default();
+        s.degree = new_degree;
+        for (m, sp) in matrix.chunks_exact(nc).zip(s.pts.iter_mut()) {
+            let mut sum = [F::zero(); D];
+            for (coeff, p) in m.iter().zip(self.pts.iter()) {
+                sum = vector::add(sum, p, *coeff);
+            }
+            *sp = sum;
+        }
+        s
+    }
+    //mp bisect
+    /// Returns two Bezier's that split the curve at parameter t=0.5
+    ///
+    /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
+    pub fn bisect(&self) -> (Self, Self) {
+        self.split_at_de_cast(0.5_f32.into())
+    }
+    //mp elevate
+    /// Elevate a Bezier by one degree
+    ///
+    /// This generates and applies the elevate-by-one matrix
+    pub fn elevate_by_one(&self) -> Self {
+        assert!(
+            self.degree < N + 2,
+            "Cannot elevate Bezier<{N}> which already has {} pts",
+            self.degree + 1
+        );
+        // n = number of points, i.e. self.pts[n-1] is the last valid point
+        let n = self.degree + 1;
+        let mut s = Self::default();
+        s.degree = n;
+        s.pts[0] = self.pts[0];
+        s.pts[self.degree] = self.pts[self.degree];
+        let scale: F = (1.0 / ((n + 1) as f32)).into();
+        for j in 1..self.degree {
+            s.pts[j] = vector::scale(
+                vector::add(
+                    vector::scale(self.pts[j], (j as f32).into()),
+                    &self.pts[j + 1],
+                    ((n + 1 - j) as f32).into(),
+                ),
+                scale,
+            );
         }
         s
     }
 
+    //mp bezier_between
+    /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
+    pub fn bezier_between(&self, t0: F, t1: F) -> Self {
+        let dt = t1 - t0;
+        assert!(t0 < F::one(), "Must select a t0 that is less than 1.0");
+        assert!(dt > F::zero(), "Must select a t range that is > 0");
+        if t0 == F::zero() {
+            self.split_at_de_cast(dt).0
+        } else if t1 == F::one() {
+            self.split_at_de_cast(dt).1
+        } else {
+            // b is the subset from t0 to 1.0
+            let (_, b) = self.split_at_de_cast(t0);
+            b.split_at_de_cast(dt / (F::one() - t0)).0
+        }
+    }
+}
+
+//ip Bezier
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
     //mp bernstein_basis_coeff
     /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
     ///
@@ -252,65 +394,6 @@ where
         }
     }
 
-    //mp elevate
-    /// Elevate a Bezier by one degree
-    ///
-    /// This generates and applies the elevate-by-one matrix
-    pub fn elevate_by_one(&self) -> Self {
-        assert!(
-            self.degree < N + 2,
-            "Cannot elevate Bezier<{N}> which already has {} pts",
-            self.degree + 1
-        );
-        // n = number of points, i.e. self.pts[n-1] is the last valid point
-        let n = self.degree + 1;
-        let mut s = Self::default();
-        s.degree = n;
-        s.pts[0] = self.pts[0];
-        s.pts[self.degree] = self.pts[self.degree];
-        let scale: F = (1.0 / ((n + 1) as f32)).into();
-        for j in 1..self.degree {
-            s.pts[j] = vector::scale(
-                vector::add(
-                    vector::scale(self.pts[j], (j as f32).into()),
-                    &self.pts[j + 1],
-                    ((n + 1 - j) as f32).into(),
-                ),
-                scale,
-            );
-        }
-        s
-    }
-
-    //mp apply_matrix
-    /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
-    /// of a new degree
-    pub fn apply_matrix(&self, matrix: &[F], new_degree: usize) -> Self {
-        assert!(
-            new_degree < N + 1,
-            "Cannot create a Bezier<{N}> of {new_degree}",
-        );
-        assert_eq!(
-            matrix.len(),
-            (new_degree + 1) * (self.degree + 1),
-            "Matrix to apply to Bezier of degree {} to degree {new_degree} must have {} elements",
-            self.degree,
-            (new_degree + 1) * (self.degree + 1)
-        );
-        let _nr = new_degree + 1;
-        let nc = self.degree + 1;
-        let mut s = Self::default();
-        s.degree = new_degree;
-        for (m, sp) in matrix.chunks_exact(nc).zip(s.pts.iter_mut()) {
-            let mut sum = [F::zero(); D];
-            for (coeff, p) in m.iter().zip(self.pts.iter()) {
-                sum = vector::add(sum, p, *coeff);
-            }
-            *sp = sum;
-        }
-        s
-    }
-
     //mp dc_of_ele_red
     /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
     /// and calculate the new dc squared
@@ -334,12 +417,6 @@ where
         d2
     }
 
-    //mp degree
-    /// Return degree of the Bezier (e.g. 3 for a cubic)
-    pub fn degree(&self) -> usize {
-        self.degree
-    }
-
     //mp map_pts
     /// Apply a function to all of the points in the Bezier
     pub fn map_pts<Map: Fn([F; D]) -> [F; D]>(&mut self, map: Map) {
@@ -347,7 +424,13 @@ where
             *p = map(*p);
         }
     }
+}
 
+//ip Bezier metrics
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
     //mp metric_dm_est
     /// The maximum difference between two beziers given a step dt
     ///
@@ -399,7 +482,13 @@ where
     pub fn scale(&mut self, s: F) {
         self.map_pts(|p| vector::scale(p, s));
     }
+}
 
+//ip Bezier evaluation
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
     //mi vector_of
     /// Returns a vector of a combination of the vectors of the bezier
     #[inline]
@@ -430,57 +519,39 @@ where
         pts[0]
     }
 
-    //mp split_at_de_cast
-    /// Use de Casteljau's algorithm to split
-    pub fn split_at_de_cast(&self, t: F) -> (Self, Self) {
-        let mut s0 = self.clone();
-        let mut s1 = self.clone();
-        // Beta[0][i] = pt[i]
-        let mut pts = self.pts.clone();
-        // for j = 1..=n
-        //  for i = 0..=n-j
-        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
-        let u = F::one() - t;
-        for j in 1..(self.degree + 1) {
-            for i in 0..(self.degree + 1 - j) {
-                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
-            }
-            s0.pts[j] = pts[0];
-            s1.pts[self.degree - j] = pts[self.degree - j];
-        }
-        (s0, s1)
-    }
-
     //mp point_at
     /// Returns the point at parameter 't' along the Bezier
     pub fn point_at(&self, t: F) -> [F; D] {
         let mut r = [F::zero(); D];
         let u = F::one() - t;
         let n = self.degree;
-        let coeffs = crate::constants::BINOMIALS[n];
-        for (i, (c, pt)) in coeffs[1..].iter().zip(self.pts.iter()).enumerate() {
+        for (i, (c, pt)) in BINOMIALS[n][1..].iter().zip(self.pts.iter()).enumerate() {
             let scale = t.powi(i as i32) * u.powi((n - i) as i32) * (*c).into();
             r = vector::add(r, pt, scale);
         }
         r
     }
 
-    //mp tangent_at
-    /// Returns the tangent vector at parameter 't' along the Bezier
+    //mp nth_derivative_value_at
+    /// Returns the value of the nth deriviative at parameter 't' along the Bezier
     ///
-    /// Note that this is not necessarily a unit vector
-    pub fn tangent_at(&self, t: F) -> [F; D] {
-        todo!();
+    /// This could be optimized to not store the points, but that seems ultimately to be
+    /// unnecessary
+    pub fn nth_derivative_value_at(&self, n: usize, t: F) -> [F; D] {
+        if n > self.degree {
+            [F::zero(); D]
+        } else {
+            let (dn, f) = self.nth_derivative(n);
+            vector::scale(dn.point_at_de_cast(t), f)
+        }
     }
+}
 
-    //mp bisect
-    /// Returns two Bezier's that split the curve at parameter t=0.5
-    ///
-    /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
-    pub fn bisect(&self) -> (Self, Self) {
-        self.split_at_de_cast(0.5_f32.into())
-    }
-
+//ip Bezier iterators
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
     //mp Reduce-and-split iterator
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
     /// of a new degree
@@ -497,23 +568,6 @@ where
             reduce_degree,
             max_dc_sq,
             stack: vec![],
-        }
-    }
-
-    //mp bezier_between
-    /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
-    pub fn bezier_between(&self, t0: F, t1: F) -> Self {
-        let dt = t1 - t0;
-        assert!(t0 < F::one(), "Must select a t0 that is less than 1.0");
-        assert!(dt > F::zero(), "Must select a t range that is > 0");
-        if t0 == F::zero() {
-            self.split_at_de_cast(dt).0
-        } else if t1 == F::one() {
-            self.split_at_de_cast(dt).1
-        } else {
-            // b is the subset from t0 to 1.0
-            let (_, b) = self.split_at_de_cast(t0);
-            b.split_at_de_cast(dt / (F::one() - t0)).0
         }
     }
 

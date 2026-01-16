@@ -1,20 +1,12 @@
 //a Imports
+mod utils;
 use bezier_nd::Bezier;
 use geo_nd::{
     matrix,
     vector::{self, reduce},
     FArray,
 };
-
-fn float_iter(t0: f64, t1: f64, n: usize) -> impl Iterator<Item = f64> {
-    assert!(
-        n >= 2,
-        "Float iterator must have at least two steps for begin and end"
-    );
-    let r = t1 - t0;
-    assert!(r >= 0.0, "Float range must be positive");
-    (0..n).map(move |i: usize| (i as f64) / (r * ((n - 1) as f64)))
-}
+use utils::{assert_near_equal, assert_near_identity, float_iter};
 
 fn test_subsection(b: &Bezier<f64, 2>, sub: &Bezier<f64, 2>, t0: f64, t1: f64) {
     eprintln!("Testing subsections of beziers {b} {sub} {t0} {t1}");
@@ -95,7 +87,8 @@ fn generate_elevate_by_one_matrix(matrix: &mut [f64], degree: usize) {
     }
 }
 
-fn generate_bernstein_matrix(matrix: &mut [f64], degree: usize, ts: &[f64]) {
+use geo_nd::Float;
+fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]) {
     assert_eq!(
         matrix.len(),
         (degree + 1) * ts.len(),
@@ -120,27 +113,6 @@ fn bernstein_matrix() {
     assert_eq!(&bern_n[0..3], &[0.25, 0.5, 0.25]);
     generate_bernstein_matrix(&mut bern_n[0..3], 2, &[1.0]);
     assert_eq!(&bern_n[0..3], &[0., 0., 1.]);
-}
-
-#[track_caller]
-fn assert_near_identity(n: usize, m: &[f64]) {
-    for i in 0..n * n {
-        if i % (n + 1) == 0 {
-            assert!((m[i] - 1.0).abs() < 1E-4);
-        } else {
-            assert!(m[i].abs() < 1E-4);
-        }
-    }
-}
-
-#[track_caller]
-fn assert_near_equal(m0: &[f64], m1: &[f64]) {
-    for (i, (v0, v1)) in m0.iter().zip(m1.iter()).enumerate() {
-        assert!(
-            (v0 - v1).abs() < 1E-4,
-            "Data {i} is mismatch in {m0:?} <> {m1:?}"
-        );
-    }
 }
 
 #[test]
@@ -466,4 +438,65 @@ fn reduce_and_elevate_cubic() {
         }
         t = t1;
     }
+}
+
+use bezier_nd::BezierBuilder;
+fn build_bezier<F: Float, const N: usize, const D: usize>(
+    mut builder: BezierBuilder<F, D>,
+) -> bezier_nd::bezier::Bezier<F, N, D> {
+    let degree = builder.bezier_min_degree();
+    let n2 = (degree + 1) * (degree + 1);
+    let mut bern_n = [F::zero(); 100];
+
+    let mut basis = vec![];
+    let mut pts = vec![];
+    for c in builder.iter() {
+        let t = c.at();
+        let pt = c.posn();
+        pts.push(*pt);
+        generate_bernstein_matrix(&mut bern_n[0..(degree + 1)], degree, &[t]);
+        basis.extend(bern_n.iter().take(degree + 1));
+    }
+
+    assert_eq!(
+        pts.len(),
+        degree + 1,
+        "Degree must match the number of constraints given"
+    );
+    let bezier = bezier_nd::bezier::Bezier::<F, N, D>::new(&pts);
+
+    let mut basis_inverse = basis.clone();
+    let mut lu = basis.clone();
+    let mut pivot = vec![0; (degree + 1)];
+    assert_ne!(
+        matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot),
+        F::zero(),
+        "Matrix is invertible"
+    );
+
+    let mut tr0 = vec![F::zero(); degree + 1];
+    let mut tr1 = vec![F::zero(); degree + 1];
+    assert!(
+        matrix::lup_invert(
+            degree + 1,
+            &lu,
+            &pivot,
+            &mut basis_inverse,
+            &mut tr0,
+            &mut tr1
+        ),
+        "Matrix is invertible"
+    );
+    bezier.apply_matrix(&basis_inverse, degree)
+}
+
+#[test]
+fn build() {
+    let mut builder = BezierBuilder::default();
+    builder.add_point_at(0.0_f32, [1., 2.]);
+    builder.add_point_at(0.5_f32, [3., 0.]);
+
+    let b = build_bezier::<_, 10, 2>(builder);
+    dbg!(b);
+    //    assert!(false);
 }
