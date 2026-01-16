@@ -3,7 +3,6 @@ use geo_nd::vector;
 use geo_nd::Float;
 
 use crate::constants::BINOMIALS;
-use crate::{BezierLineIter, BezierPointIter};
 
 //a Bezier
 //tp Bezier
@@ -202,8 +201,10 @@ where
             n <= N,
             "Attempt to create a Bezier of max {N} pts with actually {n} pts"
         );
-        let mut s = Self::default();
-        s.degree = n - 1;
+        let mut s = Self {
+            degree: n - 1,
+            ..Default::default()
+        };
         s.pts.split_at_mut(n).0.copy_from_slice(pts);
         s
     }
@@ -223,7 +224,10 @@ where
             self.degree >= n,
             "Bezier of degree {N} must actually be of degree {n} or higher to have an nth derivative"
         );
-        let mut s = Self::default();
+        let mut s = Self {
+            degree: self.degree - n,
+            ..Default::default()
+        };
         s.degree = self.degree - n;
         let mut scale = F::one();
         for i in 0..n {
@@ -246,10 +250,10 @@ where
     //mp split_at_de_cast
     /// Use de Casteljau's algorithm to split
     pub fn split_at_de_cast(&self, t: F) -> (Self, Self) {
-        let mut s0 = self.clone();
-        let mut s1 = self.clone();
+        let mut s0 = *self;
+        let mut s1 = *self;
         // Beta[0][i] = pt[i]
-        let mut pts = self.pts.clone();
+        let mut pts = self.pts;
         // for j = 1..=n
         //  for i = 0..=n-j
         // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
@@ -281,8 +285,10 @@ where
         );
         let _nr = new_degree + 1;
         let nc = self.degree + 1;
-        let mut s = Self::default();
-        s.degree = new_degree;
+        let mut s = Self {
+            degree: new_degree,
+            ..Default::default()
+        };
         for (m, sp) in matrix.chunks_exact(nc).zip(s.pts.iter_mut()) {
             let mut sum = [F::zero(); D];
             for (coeff, p) in m.iter().zip(self.pts.iter()) {
@@ -292,6 +298,7 @@ where
         }
         s
     }
+
     //mp bisect
     /// Returns two Bezier's that split the curve at parameter t=0.5
     ///
@@ -299,6 +306,7 @@ where
     pub fn bisect(&self) -> (Self, Self) {
         self.split_at_de_cast(0.5_f32.into())
     }
+
     //mp elevate
     /// Elevate a Bezier by one degree
     ///
@@ -311,8 +319,10 @@ where
         );
         // n = number of points, i.e. self.pts[n-1] is the last valid point
         let n = self.degree + 1;
-        let mut s = Self::default();
-        s.degree = n;
+        let mut s = Self {
+            degree: n,
+            ..Default::default()
+        };
         s.pts[0] = self.pts[0];
         s.pts[self.degree] = self.pts[self.degree];
         let scale: F = (1.0 / ((n + 1) as f32)).into();
@@ -359,7 +369,7 @@ where
     #[inline]
     pub fn bernstein_basis_coeff(degree: usize, i: usize, t: F) -> F {
         let u = F::one() - t;
-        let coeffs = crate::constants::BINOMIALS[degree];
+        let coeffs = BINOMIALS[degree];
         t.powi(i as i32) * u.powi((degree - i) as i32) * (coeffs[1 + i]).into()
     }
 
@@ -377,9 +387,7 @@ where
     ///
     #[inline]
     pub fn elevation_by_one_matrix_ele(n: usize, i: usize, j: usize) -> F {
-        if j == 0 && i == 0 {
-            F::one()
-        } else if j == n + 1 && i == n {
+        if (j == 0 && i == 0) || (j == n + 1 && i == n) {
             F::one()
         } else if i + 1 == j {
             // note j!=n+1 as if j == n+1 then i = n, and previous case is used
@@ -506,7 +514,7 @@ where
     /// Returns the point at parameter 't' along the Bezier using de Casteljau's algorithm
     pub fn point_at_de_cast(&self, t: F) -> [F; D] {
         // Beta[0][i] = pt[i]
-        let mut pts = self.pts.clone();
+        let mut pts = self.pts;
         // for j = 1..=n
         //  for i = 0..=n-j
         // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
@@ -571,22 +579,6 @@ where
         }
     }
 
-    //mp as_lines
-    /// Return a [BezierLineIter] iterator that provides line segments
-    /// when the Bezier is broken down into 'straight' enough through
-    /// bisection.
-    pub fn as_lines(&self, straightness: F) -> BezierLineIter<F, D> {
-        todo!();
-    }
-
-    //mp as_points
-    /// Return a [BezierPointIter] iterator that provides points along
-    /// the curve when the Bezier is broken down into 'straight'
-    /// enough through bisection.
-    pub fn as_points(&self, straightness: F) -> BezierPointIter<F, D> {
-        todo!();
-    }
-
     //mp is_straight
     /// Returns true if the Bezier is straighter than a 'straightness' measure
     ///
@@ -624,18 +616,12 @@ where
             .all(|m| vector::length_sq(m) <= s2)
     }
 
-    //mp length
-    /// Calculates the length of the Bezier when it is rendered down
-    /// to the given a straightness
-    ///
-    /// `straightness` is independent of the length of the Bezier
-    pub fn length(&self, straightness: F) -> F {
-        todo!();
-    }
-
     //zz All done
 }
 
+//tp BezierReduceIter
+/// A type that provided an iterator implementaion for splitting a Bezier
+/// into reduced Beziers given a maximum 'dc' metric
 #[derive(Clone, PartialEq, Debug)]
 pub struct BezierReduceIter<'a, F, const N: usize, const D: usize>
 where
@@ -648,6 +634,7 @@ where
     stack: Vec<(usize, Bezier<F, N, D>)>,
 }
 
+//ip Iterator for BezierReduceIter
 impl<'a, F, const N: usize, const D: usize> std::iter::Iterator for BezierReduceIter<'a, F, N, D>
 where
     F: Float,

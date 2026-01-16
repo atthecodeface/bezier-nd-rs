@@ -101,7 +101,7 @@ fn poly_multiply<F: Float>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
         *p = F::zero();
     }
     assert!(
-        result.len() >= mul_deg + poly_deg + 1,
+        result.len() > mul_deg + poly_deg,
         "Result of multiplication must be large enough to store result"
     );
     for (m_i, m) in multiplicand.iter().enumerate() {

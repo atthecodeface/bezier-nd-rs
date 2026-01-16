@@ -1,10 +1,9 @@
-use std::cmp::min;
 
 //a Imports
 use geo_nd::vector;
 use geo_nd::Float;
 
-use crate::{Bezier, BezierLineIter, BezierPointIter};
+use crate::Bezier;
 
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///
@@ -46,7 +45,7 @@ impl<F: Float> BezierDistance2D<F> {
             self.flattened.is_empty(),
             "Addind Beziers is only permitted to a new or reset BezierDistance2D"
         );
-        self.beziers.push(bezier.clone());
+        self.beziers.push(bezier);
     }
 
     /// Add a bezier to the path, splitting it into smaller beziers to get within a straightness
@@ -71,11 +70,10 @@ impl<F: Float> BezierDistance2D<F> {
         for b in &self.beziers {
             let first = self.flattened.len();
             for pt in b.as_points(self.straightness) {
-                if !self.flattened.is_empty() {
-                    if vector::distance_sq(&pt, self.flattened.last().unwrap()) > F::epsilon() {
+                if !self.flattened.is_empty()
+                    && vector::distance_sq(&pt, self.flattened.last().unwrap()) > F::epsilon() {
                         self.flattened.push(pt);
                     }
-                }
             }
             self.bezier_indices.push((first, self.flattened.len()));
         }
