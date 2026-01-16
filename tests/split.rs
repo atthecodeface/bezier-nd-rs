@@ -82,7 +82,7 @@ fn generate_elevate_by_one_matrix(matrix: &mut [f64], degree: usize) {
     for i in 0..(degree + 1) {
         for j in 0..(degree + 2) {
             matrix[j * (degree + 1) + i] =
-                bezier_nd::bezier::Bezier::<_, 2, 10>::elevation_by_one_matrix_ele(degree, i, j);
+                bezier_nd::bezier_fns::elevation_by_one_matrix_ele(degree, i, j);
         }
     }
 }
@@ -99,7 +99,7 @@ fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]
     for (r, t) in ts.iter().enumerate() {
         for c in 0..(degree + 1) {
             matrix[r * (degree + 1) + c] =
-                bezier_nd::bezier::Bezier::<_, 2, 10>::bernstein_basis_coeff(degree, c, *t);
+                bezier_nd::bezier_fns::bernstein_basis_coeff(degree, c, *t);
         }
     }
 }

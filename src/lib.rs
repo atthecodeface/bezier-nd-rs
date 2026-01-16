@@ -216,6 +216,7 @@ pub(crate) mod polynomial;
 pub use builder::BezierBuilder;
 pub use constants::*;
 pub use polynomial::{PolyFindRoots, Polynomial};
+pub mod bezier_fns;
 
 /*a Exports
 */
