@@ -236,22 +236,10 @@ where
 
     //mp split_at_de_cast
     /// Use de Casteljau's algorithm to split
-    pub fn split_at_de_cast(&self, t: F) -> (Self, Self) {
-        let mut s0 = *self;
-        let mut s1 = *self;
-        // Beta[0][i] = pt[i]
-        let mut pts = self.pts;
-        // for j = 1..=n
-        //  for i = 0..=n-j
-        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
-        let u = F::one() - t;
-        for j in 1..(self.degree + 1) {
-            for i in 0..(self.degree + 1 - j) {
-                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
-            }
-            s0.pts[j] = pts[0];
-            s1.pts[self.degree - j] = pts[self.degree - j];
-        }
+    pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
+        let mut s0 = self.clone();
+        let mut s1 = self.clone();
+        bezier_fns::bernstein_split_at_de_cast(&mut self.pts, t, &mut s0.pts, &mut s1.pts);
         (s0, s1)
     }
 
@@ -286,15 +274,11 @@ where
         s
     }
 
-    //mp bisect
     /// Returns two Bezier's that split the curve at parameter t=0.5
-    ///
-    /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
     pub fn bisect(&self) -> (Self, Self) {
         self.split_at_de_cast(0.5_f32.into())
     }
 
-    //mp elevate
     /// Elevate a Bezier by one degree
     ///
     /// This generates and applies the elevate-by-one matrix

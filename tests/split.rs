@@ -6,27 +6,8 @@ use geo_nd::{
     vector::{self, reduce},
     FArray,
 };
+use utils::test_beziers_approx_eq;
 use utils::{assert_near_equal, assert_near_identity, float_iter};
-
-fn test_subsection(b: &Bezier<f64, 2>, sub: &Bezier<f64, 2>, t0: f64, t1: f64) {
-    eprintln!("Testing subsections of beziers {b} {sub} {t0} {t1}");
-    for sub_t in float_iter(0.0, 1.0, 100) {
-        let t = t0 + (t1 - t0) * sub_t;
-        let p = b.point_at(t);
-        let sub_p = sub.point_at(sub_t);
-        let d2 = vector::distance_sq(&p, &sub_p);
-        assert!(d2<1E-4,
-        "Points at bezier {t} : {p:?} and subbezier {sub_t} : {sub_p:?} should be roughly the same but have distance {d2}");
-    }
-}
-
-fn test_beziers_approx_eq(b0: &Bezier<f64, 2>, b1: &Bezier<f64, 2>) {
-    test_subsection(b0, b1, 0.0, 1.0);
-    test_subsection(b0, &b1.bezier_between(0.0, 1.0), 0.0, 1.0);
-    test_subsection(b0, &b1.bezier_between(0.1, 0.4), 0.1, 0.4);
-    test_subsection(b0, &b1.bisect().0, 0.0, 0.5);
-    test_subsection(b0, &b1.bisect().1, 0.5, 1.0);
-}
 
 #[test]
 fn bisect() {
@@ -52,39 +33,6 @@ fn bisect() {
         &Bezier::quadratic(&p0, &p1, &p2),
     );
     test_beziers_approx_eq(&Bezier::line(&p0, &p2), &Bezier::line(&p0, &p2));
-}
-
-#[test]
-fn elevate() {
-    let p0: FArray<f64, 2> = [0., 0.].into();
-    let p1: FArray<f64, 2> = [10., 0.].into();
-    let p2: FArray<f64, 2> = [6., 1.].into();
-    let p3: FArray<f64, 2> = [20., 5.].into();
-
-    let b = Bezier::quadratic(&p0, &p1, &p2);
-    let b2 = b.clone().elevate();
-    test_beziers_approx_eq(&b, &b2);
-
-    let b = Bezier::quadratic(&p3, &p1, &p2);
-    let b2 = b.clone().elevate();
-    test_beziers_approx_eq(&b, &b2);
-
-    let b = Bezier::line(&p3, &p1);
-    let b2 = b.clone().elevate();
-    test_beziers_approx_eq(&b, &b2);
-}
-
-fn generate_elevate_by_one_matrix(matrix: &mut [f64], degree: usize) {
-    assert!(
-        matrix.len() >= (degree + 1) * (degree + 2),
-        "Must have enough room in matrix for coeffs for degree -> degreee+1"
-    );
-    for i in 0..(degree + 1) {
-        for j in 0..(degree + 2) {
-            matrix[j * (degree + 1) + i] =
-                bezier_nd::bezier_fns::elevation_by_one_matrix_ele(degree, i, j);
-        }
-    }
 }
 
 use geo_nd::Float;
@@ -115,38 +63,7 @@ fn bernstein_matrix() {
     assert_eq!(&bern_n[0..3], &[0., 0., 1.]);
 }
 
-#[test]
-fn elevate_matrix() {
-    let mut m = [0.0f64; 100];
-
-    // Check point to linear matrix
-    generate_elevate_by_one_matrix(&mut m, 0);
-    assert_eq!(&m[0..2], &[1., 1.]);
-
-    // Check linear - quadratic matrix
-    generate_elevate_by_one_matrix(&mut m, 1);
-    assert_eq!(&m[0..6], &[1., 0., 0.5, 0.5, 0., 1.]);
-
-    // Check cubic to order 4 matrix
-    generate_elevate_by_one_matrix(&mut m, 3);
-    assert_eq!(&m[0..4], &[1., 0., 0., 0.]);
-    assert_eq!(&m[4..8], &[0.25, 0.75, 0., 0.]);
-    assert_eq!(&m[8..12], &[0., 0.5, 0.5, 0.]);
-    assert_eq!(&m[12..16], &[0., 0., 0.75, 0.25]);
-    assert_eq!(&m[16..20], &[0., 0., 0., 1.]);
-
-    for i in 1..9 {
-        generate_elevate_by_one_matrix(&mut m, i);
-        eprint!("{i} : [ ");
-        let n = (i + 1) * (i + 2);
-        for j in 0..n {
-            eprint!("{}, ", m[j]);
-        }
-        eprintln!("]");
-        assert_near_equal(bezier_nd::ELEVATE_BY_ONE_MATRICES_F64[i], &m[0..n]);
-    }
-}
-
+use bezier_nd::bezier_fns::generate_elevate_by_one_matrix;
 fn generate_bs_reduce_matrix(
     degree: usize,
     ts: &[f64],
@@ -204,7 +121,10 @@ fn generate_bs_reduce_matrix(
     // Find reduction of elevation
     let mut test = [0.0f64; 100];
     let mut elevate = [0.0f64; 100];
-    generate_elevate_by_one_matrix(&mut elevate, degree);
+    let scale = generate_elevate_by_one_matrix(&mut elevate, degree);
+    for e in elevate.iter_mut() {
+        *e /= scale;
+    }
     matrix::multiply_dyn(
         degree + 1,
         degree + 2,
@@ -266,7 +186,10 @@ fn bernstein_reduce_matrix_c_to_q() {
 
     // Find elevation from quadratic to cubic
     let mut elevate = [0.0f64; 100];
-    generate_elevate_by_one_matrix(&mut elevate, 2);
+    let scale = generate_elevate_by_one_matrix(&mut elevate, 2);
+    for e in elevate.iter_mut() {
+        *e /= scale;
+    }
 
     // Find reduction of elevation
     let reduced_elevate = matrix::multiply::<_, 12, 12, 9, 3, 4, 3>(

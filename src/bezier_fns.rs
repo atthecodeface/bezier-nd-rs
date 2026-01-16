@@ -1,5 +1,5 @@
 use crate::constants::BINOMIALS;
-use geo_nd::{vector, Float};
+use geo_nd::{cast, vector, Float, Num};
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
@@ -23,20 +23,38 @@ pub fn bernstein_basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
 /// * Mij = 0 otherwise
 ///
 #[inline]
-pub fn elevation_by_one_matrix_ele<F: Float>(n: usize, i: usize, j: usize) -> F {
-    if (j == 0 && i == 0) || (j == n + 1 && i == n) {
-        F::one()
+pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) -> (N, N) {
+    let scale = cast::<_, N>(degree + 1).unwrap();
+    if (j == 0 && i == 0) || (j == degree + 1 && i == degree) {
+        (scale, scale)
     } else if i + 1 == j {
         // note j!=n+1 as if j == n+1 then i = n, and previous case is used
         // note j != 0
-        ((j as f32) / (n + 1) as f32).into()
+        (cast::<_, N>(j).unwrap(), scale)
     } else if i == j {
         // note j!=0 as if j == 0 then i=0 and previous case is used
         // note j != n+1 as i<=n
-        (((n + 1 - j) as f32) / ((n + 1) as f32)).into()
+        (cast::<_, N>(degree + 1 - j).unwrap(), scale)
     } else {
-        F::zero()
+        (N::zero(), scale)
     }
+}
+
+#[track_caller]
+#[must_use]
+pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -> N {
+    assert!(
+        matrix.len() >= (degree + 1) * (degree + 2),
+        "Must have enough room in matrix for coeffs for degree -> degreee+1"
+    );
+    for ((i, j), m) in (0..(degree + 2))
+        .flat_map(|j| (0..degree + 1).map(move |i| (i, j)))
+        .zip(matrix.iter_mut())
+    {
+        let (n, _) = elevation_by_one_matrix_ele::<N>(degree, i, j);
+        *m = n;
+    }
+    cast::<_, N>(degree + 1).unwrap()
 }
 
 /// Calculate the derivative Bernstein points of the nth derivative of a Bernstein Bezier
@@ -75,4 +93,61 @@ pub fn nth_bernstein_derivative<F: Float, const D: usize>(
         }
     }
     scale
+}
+
+//mp bernstein_split_at_de_cast
+/// Use de Casteljau's algorithm to split a Bernstein Bezier control
+/// points set into two other Bernstein Bezier control point sets
+/// at a given parameter t
+///
+/// The first Bezier returned has parameter t0 where 0<=t0<=1 maps to 0<=t*t0<=t
+///
+/// The second Bezier returned has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
+///
+/// This destroys the provided points
+pub fn bernstein_split_at_de_cast<F: Float, const D: usize>(
+    pts: &mut [[F; D]],
+    t: F,
+    b0: &mut [[F; D]],
+    b1: &mut [[F; D]],
+) {
+    // Beta[0][i] = pts[i]
+    // for j = 1..=n
+    //  for i = 0..=n-j
+    // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
+    let n = pts.len();
+    assert!(b0.len()>= n, "Splitting Bezier with {n} control points requires target Bezier 0 to have the same number of control points");
+    assert!(b1.len()>= n, "Splitting Bezier with {n} control points requires target Bezier 1 to have the same number of control points");
+    let u = F::one() - t;
+    for j in 1..n {
+        for i in 0..(n - j) {
+            pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
+        }
+        b0[j] = pts[0];
+        b1[n - 1 - j] = pts[n - 1 - j];
+    }
+}
+
+/// Elevate a Bezier by one degree, that should be reduced by 'F'
+///
+/// This generates and applies the elevate-by-one matrix
+pub fn elevate_by_one<F: Float, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F; D]]) -> F {
+    assert!(
+        ele.len() >= pts.len() + 1,
+        "At least {} points required to elevate, but a slice with only {} was provided",
+        pts.len() + 1,
+        ele.len()
+    );
+    // n = number of points, i.e. self.pts[n-1] is the last valid point
+    let n = pts.len();
+    ele[0] = pts[0];
+    ele[n + 1] = pts[n];
+    for (j, e) in ele.iter_mut().skip(1).take(n - 1).enumerate() {
+        *e = vector::add(
+            vector::scale(pts[j], (j as f32).into()),
+            &pts[j + 1],
+            ((n + 1 - j) as f32).into(),
+        );
+    }
+    (1.0 / ((n + 1) as f32)).into()
 }
