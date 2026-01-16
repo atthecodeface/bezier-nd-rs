@@ -401,37 +401,6 @@ where
             F::zero()
         }
     }
-
-    //mp dc_of_ele_red
-    /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
-    /// and calculate the new dc squared
-    pub fn dc2_of_ele_red(&self, matrix: &[F]) -> F {
-        assert_eq!(
-            matrix.len(),
-            (self.degree + 1) * (self.degree + 1),
-            "Matrix to apply to Bezier of degree {} must have {} elements",
-            self.degree,
-            (self.degree + 1) * (self.degree + 1)
-        );
-        let mut d2 = F::zero();
-        let nc = self.degree + 1;
-        for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
-            let mut sum = [F::zero(); D];
-            for (coeff, p) in m.iter().zip(self.pts.iter()) {
-                sum = vector::add(sum, p, *coeff);
-            }
-            d2 = d2.max(vector::distance_sq(s, &sum));
-        }
-        d2
-    }
-
-    //mp map_pts
-    /// Apply a function to all of the points in the Bezier
-    pub fn map_pts<Map: Fn([F; D]) -> [F; D]>(&mut self, map: Map) {
-        for p in self.pts.iter_mut().take(self.degree + 1) {
-            *p = map(*p);
-        }
-    }
 }
 
 //ip Bezier metrics
@@ -481,6 +450,42 @@ where
             d2 = d2.max(vector::distance_sq(s, o));
         }
         d2.sqrt()
+    }
+
+    //mp dc_of_ele_red
+    /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
+    /// and calculate the new dc squared
+    pub fn dc2_of_ele_red(&self, matrix: &[F]) -> F {
+        assert_eq!(
+            matrix.len(),
+            (self.degree + 1) * (self.degree + 1),
+            "Matrix to apply to Bezier of degree {} must have {} elements",
+            self.degree,
+            (self.degree + 1) * (self.degree + 1)
+        );
+        let mut d2 = F::zero();
+        let nc = self.degree + 1;
+        for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
+            let mut sum = [F::zero(); D];
+            for (coeff, p) in m.iter().zip(self.pts.iter()) {
+                sum = vector::add(sum, p, *coeff);
+            }
+            d2 = d2.max(vector::distance_sq(s, &sum));
+        }
+        d2
+    }
+}
+//ip Bezier manipulation
+impl<F, const N: usize, const D: usize> Bezier<F, N, D>
+where
+    F: Float,
+{
+    //mp map_pts
+    /// Apply a function to all of the points in the Bezier
+    pub fn map_pts<Map: Fn([F; D]) -> [F; D]>(&mut self, map: Map) {
+        for p in self.pts.iter_mut().take(self.degree + 1) {
+            *p = map(*p);
+        }
     }
 
     //mp scale
