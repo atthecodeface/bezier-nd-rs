@@ -1,5 +1,5 @@
 use crate::constants::BINOMIALS;
-use geo_nd::{cast, vector, Float, Num};
+use geo_nd::{vector, Float, Num};
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
@@ -70,7 +70,7 @@ pub fn nth_derivative<F: Float, const D: usize>(
     d_pts: &mut [[F; D]],
 ) -> F {
     assert!(
-        pts.len() >= n + 1,
+        pts.len() > n,
         "Bezier of degree {}-1 must actually be of degree {n} or higher to have an {n}th derivative",
         pts.len()
     );
@@ -136,7 +136,7 @@ pub fn split_at_de_cast<F: Float, const D: usize>(
 /// This generates and applies the elevate-by-one matrix
 pub fn elevate_by_one<F: Float, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F; D]]) -> F {
     assert!(
-        ele.len() >= pts.len() + 1,
+        ele.len() > pts.len(),
         "At least {} points required to elevate, but a slice with only {} was provided",
         pts.len() + 1,
         ele.len()
