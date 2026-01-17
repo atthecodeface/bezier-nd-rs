@@ -5,7 +5,7 @@ use geo_nd::{cast, vector, Float, Num};
 ///
 /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
 #[inline]
-pub fn bernstein_basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
+pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
     let u = F::one() - t;
     let coeffs = BINOMIALS[degree];
     t.powi(i as i32) * u.powi((degree - i) as i32) * (coeffs[1 + i]).into()
@@ -64,7 +64,7 @@ pub fn generate_elevate_by_one_matrix<N: Num + num_traits::FromPrimitive>(
 ///
 /// Updates the provided d_pts slice, and returns the scaling which should be applied (multiply by F)
 #[track_caller]
-pub fn nth_bernstein_derivative<F: Float, const D: usize>(
+pub fn nth_derivative<F: Float, const D: usize>(
     pts: &[[F; D]],
     n: usize,
     d_pts: &mut [[F; D]],
@@ -98,7 +98,7 @@ pub fn nth_bernstein_derivative<F: Float, const D: usize>(
     scale
 }
 
-//mp bernstein_split_at_de_cast
+//mp split_at_de_cast
 /// Use de Casteljau's algorithm to split a Bernstein Bezier control
 /// points set into two other Bernstein Bezier control point sets
 /// at a given parameter t
@@ -108,7 +108,7 @@ pub fn nth_bernstein_derivative<F: Float, const D: usize>(
 /// The second Bezier returned has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
 ///
 /// This destroys the provided points
-pub fn bernstein_split_at_de_cast<F: Float, const D: usize>(
+pub fn split_at_de_cast<F: Float, const D: usize>(
     pts: &mut [[F; D]],
     t: F,
     b0: &mut [[F; D]],

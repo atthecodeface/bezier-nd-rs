@@ -226,11 +226,7 @@ where
             ..Default::default()
         };
         s.degree = self.degree - n;
-        let scale = crate::bezier_fns::nth_bernstein_derivative(
-            &self.pts[0..self.degree + 1],
-            n,
-            &mut s.pts,
-        );
+        let scale = crate::bezier_fns::nth_derivative(&self.pts[0..self.degree + 1], n, &mut s.pts);
         (s, scale)
     }
 
@@ -239,7 +235,7 @@ where
     pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
         let mut s0 = self.clone();
         let mut s1 = self.clone();
-        bezier_fns::bernstein_split_at_de_cast(&mut self.pts, t, &mut s0.pts, &mut s1.pts);
+        bezier_fns::split_at_de_cast(&mut self.pts, t, &mut s0.pts, &mut s1.pts);
         (s0, s1)
     }
 
