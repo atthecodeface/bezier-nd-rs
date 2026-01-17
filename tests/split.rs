@@ -4,10 +4,10 @@ use bezier_nd::Bezier;
 use geo_nd::{
     matrix,
     vector::{self, reduce},
-    FArray,
+    FArray, Float,
 };
 use utils::test_beziers_approx_eq;
-use utils::{assert_near_equal, assert_near_identity, float_iter};
+use utils::{assert_near_equal, assert_near_identity, float_iter, generate_bernstein_matrix};
 
 #[test]
 fn bisect() {
@@ -33,23 +33,6 @@ fn bisect() {
         &Bezier::quadratic(&p0, &p1, &p2),
     );
     test_beziers_approx_eq(&Bezier::line(&p0, &p2), &Bezier::line(&p0, &p2));
-}
-
-use geo_nd::Float;
-fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]) {
-    assert_eq!(
-        matrix.len(),
-        (degree + 1) * ts.len(),
-        "Trying to generate an {} by {} matrix, so must be given a matrix of that size",
-        ts.len(),
-        degree + 1
-    );
-    for (r, t) in ts.iter().enumerate() {
-        for c in 0..(degree + 1) {
-            matrix[r * (degree + 1) + c] =
-                bezier_nd::bezier_fns::bernstein_basis_coeff(degree, c, *t);
-        }
-    }
 }
 
 #[test]

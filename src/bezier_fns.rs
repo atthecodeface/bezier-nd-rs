@@ -23,18 +23,22 @@ pub fn bernstein_basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
 /// * Mij = 0 otherwise
 ///
 #[inline]
-pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) -> (N, N) {
-    let scale = cast::<_, N>(degree + 1).unwrap();
+pub fn elevation_by_one_matrix_ele<N: Num + num_traits::FromPrimitive>(
+    degree: usize,
+    i: usize,
+    j: usize,
+) -> (N, N) {
+    let scale = N::from_usize(degree + 1).unwrap();
     if (j == 0 && i == 0) || (j == degree + 1 && i == degree) {
         (scale, scale)
     } else if i + 1 == j {
         // note j!=n+1 as if j == n+1 then i = n, and previous case is used
         // note j != 0
-        (cast::<_, N>(j).unwrap(), scale)
+        (N::from_usize(j).unwrap(), scale)
     } else if i == j {
         // note j!=0 as if j == 0 then i=0 and previous case is used
         // note j != n+1 as i<=n
-        (cast::<_, N>(degree + 1 - j).unwrap(), scale)
+        (N::from_usize(degree + 1 - j).unwrap(), scale)
     } else {
         (N::zero(), scale)
     }
@@ -42,7 +46,10 @@ pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) ->
 
 #[track_caller]
 #[must_use]
-pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -> N {
+pub fn generate_elevate_by_one_matrix<N: Num + num_traits::FromPrimitive>(
+    matrix: &mut [N],
+    degree: usize,
+) -> N {
     assert!(
         matrix.len() >= (degree + 1) * (degree + 2),
         "Must have enough room in matrix for coeffs for degree -> degreee+1"
@@ -54,7 +61,7 @@ pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -
         let (n, _) = elevation_by_one_matrix_ele::<N>(degree, i, j);
         *m = n;
     }
-    cast::<_, N>(degree + 1).unwrap()
+    N::from_usize(degree + 1).unwrap()
 }
 
 /// Calculate the derivative Bernstein points of the nth derivative of a Bernstein Bezier

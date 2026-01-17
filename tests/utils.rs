@@ -3,50 +3,56 @@ use geo_nd::Float;
 use geo_nd::{
     matrix,
     vector::{self, reduce},
-    FArray,
+    FArray, Num,
 };
+use num::rational::Rational64;
 
-pub fn float_iter<F: Float>(t0: F, t1: F, n: usize) -> impl Iterator<Item = F> {
+pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     assert!(
         n >= 2,
         "Float iterator must have at least two steps for begin and end"
     );
     let r = t1 - t0;
-    assert!(r >= F::zero(), "Float range must be positive");
-    (0..n).map(move |i: usize| (<f32 as Into<F>>::into((i as f32))) / (r * ((n - 1) as f32).into()))
+    assert!(r >= N::zero(), "Float range must be positive");
+    (0..n).map(move |i: usize| (r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap()))
 }
 
 #[track_caller]
-pub fn assert_near_identity<F: Float>(n: usize, m: &[F]) {
-    let eps = (1E-4_f32).into();
+pub fn assert_near_identity<N: Num>(n: usize, m: &[N]) {
+    let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
     for i in 0..n * n {
-        if i % (n + 1) == 0 {
-            assert!((m[i] - F::one()).abs() < eps);
-        } else {
-            assert!(m[i].abs() < eps);
-        }
+        let exp = {
+            if i % (n + 1) == 0 {
+                N::one()
+            } else {
+                N::zero()
+            }
+        };
+        assert!(m[i] - exp > -eps && m[i] - exp < eps);
     }
 }
 
 #[track_caller]
-pub fn assert_near_equal<F: Float>(m0: &[F], m1: &[F]) {
-    let eps = (1E-4_f32).into();
+pub fn assert_near_equal<N: Num>(m0: &[N], m1: &[N]) {
+    let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
 
     for (i, (v0, v1)) in m0.iter().zip(m1.iter()).enumerate() {
+        let dv = *v0 - *v1;
         assert!(
-            (*v0 - *v1).abs() < eps,
+            dv >= -eps && dv <= eps,
             "Data {i} is mismatch in {m0:?} <> {m1:?}"
         );
     }
 }
 
 #[track_caller]
-pub fn assert_near_equal_scale<F: Float>(m0: &[F], m1: &[F], scale: F) {
-    let eps = (1E-4_f32).into();
+pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
+    let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
 
     for (i, (v0, v1)) in m0.iter().zip(m1.iter()).enumerate() {
+        let dv = (*v0) * scale - *v1;
         assert!(
-            ((*v0) * scale - *v1).abs() < eps,
+            dv >= -eps && dv <= eps,
             "Data {i} is mismatch in {m0:?} <> {m1:?}"
         );
     }
@@ -70,4 +76,64 @@ pub fn test_beziers_approx_eq(b0: &Bezier<f64, 2>, b1: &Bezier<f64, 2>) {
     test_subsection(b0, &b1.bezier_between(0.1, 0.4), 0.1, 0.4);
     test_subsection(b0, &b1.bisect().0, 0.0, 0.5);
     test_subsection(b0, &b1.bisect().1, 0.5, 1.0);
+}
+
+#[track_caller]
+pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]) {
+    assert_eq!(
+        matrix.len(),
+        (degree + 1) * ts.len(),
+        "Trying to generate an {} by {} matrix, so must be given a matrix of that size",
+        ts.len(),
+        degree + 1
+    );
+    for (r, t) in ts.iter().enumerate() {
+        for c in 0..(degree + 1) {
+            matrix[r * (degree + 1) + c] =
+                bezier_nd::bezier_fns::bernstein_basis_coeff(degree, c, *t);
+        }
+    }
+}
+
+pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Rational64 {
+    let u = Rational64::ONE - t;
+    let mut result = Rational64::ONE;
+    for c in 0..degree {
+        if c < i {
+            result *= t;
+        } else {
+            result *= u;
+        }
+    }
+    // Multiply by n! / (n-c)!
+    for j in 0..i {
+        eprintln!("Mult by {} {degree} {j} {i}", degree - j);
+        let f: Rational64 = ((degree - j) as i64).into();
+        result *= f;
+    }
+    // Divide by c!
+    for j in 1..=i {
+        eprintln!("Divide by {}", j);
+        let f: Rational64 = (j as i64).into();
+        result /= f;
+    }
+
+    dbg!(&degree, &i, &t, &u, &result);
+    result
+}
+
+#[track_caller]
+pub fn generate_bernstein_matrix_br(matrix: &mut [Rational64], degree: usize, ts: &[Rational64]) {
+    assert_eq!(
+        matrix.len(),
+        (degree + 1) * ts.len(),
+        "Trying to generate an {} by {} matrix, so must be given a matrix of that size",
+        ts.len(),
+        degree + 1
+    );
+    for (r, t) in ts.iter().enumerate() {
+        for c in 0..(degree + 1) {
+            matrix[r * (degree + 1) + c] = bernstein_basis_coeff_br(degree, c, *t);
+        }
+    }
 }
