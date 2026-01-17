@@ -205,7 +205,7 @@ to this problem!
 
 /*a Imports
 */
-pub mod bezier;
+pub mod bernstein;
 pub mod builder;
 pub(crate) mod constants;
 mod curve;
@@ -213,10 +213,11 @@ mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
+pub use bernstein::bezier;
+pub use bernstein::bezier_fns;
 pub use builder::BezierBuilder;
 pub use constants::*;
 pub use polynomial::{PolyFindRoots, Polynomial};
-pub mod bezier_fns;
 
 /*a Exports
 */

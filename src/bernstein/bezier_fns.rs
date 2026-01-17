@@ -23,11 +23,7 @@ pub fn bernstein_basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
 /// * Mij = 0 otherwise
 ///
 #[inline]
-pub fn elevation_by_one_matrix_ele<N: Num + num_traits::FromPrimitive>(
-    degree: usize,
-    i: usize,
-    j: usize,
-) -> (N, N) {
+pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) -> (N, N) {
     let scale = N::from_usize(degree + 1).unwrap();
     if (j == 0 && i == 0) || (j == degree + 1 && i == degree) {
         (scale, scale)
