@@ -92,7 +92,6 @@ fn generate_bs_reduce_matrix(
     );
     assert_near_identity(degree + 1, &test);
 
-    /*
     matrix::multiply_dyn(
         degree + 2,
         degree + 1,
@@ -106,14 +105,14 @@ fn generate_bs_reduce_matrix(
     eprintln!("  &{:?}", &reduce[0..(degree + 1) * (degree + 2)]);
     eprintln!("Bernstein elevated reduce for ts {ts:?} degree {degree}");
     eprintln!("  &{:?}", &elevated_reduce[0..(degree + 2) * (degree + 2)]);
-    */
 }
+
 #[test]
 fn bernstein_reduce_matrix() {
     let mut reduce = [Rational64::default(); 200];
     let mut elevated_reduce = [Rational64::default(); 200];
 
-    let degree: i64 = 6;
+    let degree: i64 = 7;
     let ts: Vec<Rational64> = (0..(degree + 1)).map(|i: i64| (i, degree).into()).collect();
     generate_bs_reduce_matrix(degree as usize, &ts, &mut reduce, &mut elevated_reduce);
     //   assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[0]);

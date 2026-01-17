@@ -1,8 +1,8 @@
 mod utils;
 use bezier_nd::Bezier;
 use geo_nd::FArray;
-use utils::test_beziers_approx_eq;
 use utils::assert_near_equal_scale;
+use utils::test_beziers_approx_eq;
 
 #[test]
 fn elevate() {
@@ -61,6 +61,7 @@ fn elevate_matrix_isize() {
             eprint!("{}., ", m[j]);
         }
         eprintln!("],");
+        assert_eq!(scale, m[0]);
         let m_f64: Vec<f64> = m.iter().map(|m| (*m) as f64).collect();
         assert_near_equal_scale(bezier_nd::ELEVATE_BY_ONE_MATRICES_F64[i], &m_f64[0..n], 1.0);
     }

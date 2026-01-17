@@ -116,6 +116,10 @@
 
 mod accessors;
 mod bezier;
+mod constructors;
+mod evaluation;
+mod manipulation;
+mod metrics;
 
 pub mod bezier_fns;
 

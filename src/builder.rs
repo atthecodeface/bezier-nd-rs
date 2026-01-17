@@ -1,4 +1,3 @@
-//a Imports
 use geo_nd::Float;
 
 /// BezierBuildConstraint is a constraint that can be specified when

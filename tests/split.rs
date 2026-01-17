@@ -311,14 +311,14 @@ fn reduce_and_elevate_cubic() {
 
     let b = BezierND::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
     assert_eq!(b.degree(), 3);
-    let mut b_split = b.reduce_and_split_iter(
+    let b_split = b.reduce_and_split_iter(
         &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[1],
         &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1],
         2,
         max_dc,
     );
     let mut t = 0.0;
-    for (ns, bs) in b_split.next() {
+    for (ns, bs) in b_split {
         let t0 = t;
         let dt = 1.0 / (2.0_f64).powi(ns as i32);
         let t1 = t + dt;

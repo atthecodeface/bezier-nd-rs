@@ -206,13 +206,17 @@ to this problem!
 /*a Imports
 */
 pub mod bernstein;
-pub mod builder;
+mod builder;
 pub(crate) mod constants;
 mod curve;
 mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
+
+mod int_n;
+
+pub use int_n::IntN;
 
 /*a Exports
 */

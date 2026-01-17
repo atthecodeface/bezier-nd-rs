@@ -1,14 +1,32 @@
-use crate::constants::BINOMIALS;
+//! A collection of functions for use with Bernstein polynomial Beziers
+
+use crate::constants::BINOMIALS_U;
 use geo_nd::{vector, Float, Num};
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
 /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
+///
+/// This requires F:Float as it uses 'powi', which is not available if only F:Num
+#[inline]
+pub fn basis_coeff_iter<F: Float>(degree: usize, t: F) -> impl Iterator<Item = F> {
+    let u = F::one() - t;
+    let coeffs = BINOMIALS_U[degree];
+    (0..=degree).map(move |i| {
+        t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()
+    })
+}
+
+/// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
+///
+/// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
+///
+/// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
 pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
     let u = F::one() - t;
-    let coeffs = BINOMIALS[degree];
-    t.powi(i as i32) * u.powi((degree - i) as i32) * (coeffs[1 + i]).into()
+    let coeffs = BINOMIALS_U[degree];
+    t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()
 }
 
 /// Calculate the Mij element of the elevation matrix to elevate by one degree
@@ -40,12 +58,14 @@ pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) ->
     }
 }
 
+/// Generate an 'elevate by one degree' matrix given a specific degree, subject to
+/// a scaling down by the result
+///
+/// This is a (degree+2)*(degree+1) matrix that should be applied to the control points
+/// to generate a new array of control points of the elevated Bezier
 #[track_caller]
 #[must_use]
-pub fn generate_elevate_by_one_matrix<N: Num + num_traits::FromPrimitive>(
-    matrix: &mut [N],
-    degree: usize,
-) -> N {
+pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -> N {
     assert!(
         matrix.len() >= (degree + 1) * (degree + 2),
         "Must have enough room in matrix for coeffs for degree -> degreee+1"
@@ -60,15 +80,11 @@ pub fn generate_elevate_by_one_matrix<N: Num + num_traits::FromPrimitive>(
     N::from_usize(degree + 1).unwrap()
 }
 
-/// Calculate the derivative Bernstein points of the nth derivative of a Bernstein Bezier
+/// Calculate the control points of the nth derivative of a Bernstein Bezier
 ///
-/// Updates the provided d_pts slice, and returns the scaling which should be applied (multiply by F)
+/// Updates the provided d_pts slice, and returns the scaling which should be applied (multiply by the result)
 #[track_caller]
-pub fn nth_derivative<F: Float, const D: usize>(
-    pts: &[[F; D]],
-    n: usize,
-    d_pts: &mut [[F; D]],
-) -> F {
+pub fn nth_derivative<F: Num, const D: usize>(pts: &[[F; D]], n: usize, d_pts: &mut [[F; D]]) -> F {
     assert!(
         pts.len() > n,
         "Bezier of degree {}-1 must actually be of degree {n} or higher to have an {n}th derivative",
@@ -82,16 +98,16 @@ pub fn nth_derivative<F: Float, const D: usize>(
     let degree = pts.len() - 1;
     let mut scale = F::one();
     for i in 0..n {
-        scale *= ((degree - i) as f32).into();
+        scale *= F::from_usize(degree - i).unwrap();
     }
     for (i, sp) in d_pts.iter_mut().take(degree + 1 - n).enumerate() {
         let mut m1_n_positive = (n & 1) == 0;
-        for (c, p) in BINOMIALS[n][1..].iter().zip(pts[i..].iter()) {
-            if m1_n_positive {
-                *sp = vector::add(*sp, p, (*c).into());
-            } else {
-                *sp = vector::sub(*sp, p, (*c).into());
+        for (c, p) in BINOMIALS_U[n][1..].iter().zip(pts[i..].iter()) {
+            let mut c = F::from_usize(*c).unwrap();
+            if !m1_n_positive {
+                c = -c;
             }
+            *sp = vector::add(*sp, p, c);
             m1_n_positive = !m1_n_positive;
         }
     }

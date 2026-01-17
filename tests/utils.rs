@@ -1,10 +1,14 @@
+#![allow(dead_code)]
+
 use bezier_nd::Bezier;
 use geo_nd::Float;
 use geo_nd::{
-    vector::{self}, Num,
+    vector::{self},
+    Num,
 };
 use num::rational::Rational64;
 
+/// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     assert!(
         n >= 2,
@@ -15,6 +19,7 @@ pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     (0..n).map(move |i: usize| (r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap()))
 }
 
+/// Assert that a matrix is near the identity matrix
 #[track_caller]
 pub fn assert_near_identity<N: Num>(n: usize, m: &[N]) {
     let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
@@ -30,6 +35,7 @@ pub fn assert_near_identity<N: Num>(n: usize, m: &[N]) {
     }
 }
 
+/// Assert that a matrix is nearly equal to another
 #[track_caller]
 pub fn assert_near_equal<N: Num>(m0: &[N], m1: &[N]) {
     let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
@@ -43,6 +49,7 @@ pub fn assert_near_equal<N: Num>(m0: &[N], m1: &[N]) {
     }
 }
 
+/// Assert that a scaled matrix is nearly equal to another unscaled matrix
 #[track_caller]
 pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
     let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
@@ -56,6 +63,7 @@ pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
     }
 }
 
+/// Test that a subsection of a Bezier has the same points as another between t0 and t1
 pub fn test_subsection(b: &Bezier<f64, 2>, sub: &Bezier<f64, 2>, t0: f64, t1: f64) {
     eprintln!("Testing subsections of beziers {b} {sub} {t0} {t1}");
     for sub_t in float_iter(0.0, 1.0, 100) {
@@ -68,6 +76,7 @@ pub fn test_subsection(b: &Bezier<f64, 2>, sub: &Bezier<f64, 2>, t0: f64, t1: f6
     }
 }
 
+/// Test that Beziers are approximately equal
 pub fn test_beziers_approx_eq(b0: &Bezier<f64, 2>, b1: &Bezier<f64, 2>) {
     test_subsection(b0, b1, 0.0, 1.0);
     test_subsection(b0, &b1.bezier_between(0.0, 1.0), 0.0, 1.0);
@@ -76,6 +85,7 @@ pub fn test_beziers_approx_eq(b0: &Bezier<f64, 2>, b1: &Bezier<f64, 2>) {
     test_subsection(b0, &b1.bisect().1, 0.5, 1.0);
 }
 
+/// Generate Bernstein matrices for a given degree and values of t
 #[track_caller]
 pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]) {
     assert_eq!(
@@ -93,6 +103,7 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
     }
 }
 
+/// Generate Bernstein matrices for a given degree and values of t
 pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Rational64 {
     let u = Rational64::ONE - t;
     let mut result = Rational64::ONE;
@@ -103,23 +114,24 @@ pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Ratio
             result *= u;
         }
     }
-    // Multiply by n! / (n-c)!
-    for j in 0..i {
-        eprintln!("Mult by {} {degree} {j} {i}", degree - j);
-        let f: Rational64 = ((degree - j) as i64).into();
-        result *= f;
-    }
-    // Divide by c!
-    for j in 1..=i {
-        eprintln!("Divide by {}", j);
-        let f: Rational64 = (j as i64).into();
-        result /= f;
-    }
+    // Multiply by n! / (n-i)! / i!
+    //
+    // This is multiply by (n-j) for j = 0..i-1 inclusive and divide by j for j = 1..i inclusive
+    for j in 0..=i {
+        if j < i {
+            let f: Rational64 = ((degree - j) as i64).into();
+            result *= f;
+        }
 
-    dbg!(&degree, &i, &t, &u, &result);
+        if j >= 1 {
+            let f: Rational64 = (j as i64).into();
+            result /= f;
+        }
+    }
     result
 }
 
+/// Generate a Bernstein matrices for a given degree and values of t
 #[track_caller]
 pub fn generate_bernstein_matrix_br(matrix: &mut [Rational64], degree: usize, ts: &[Rational64]) {
     assert_eq!(
