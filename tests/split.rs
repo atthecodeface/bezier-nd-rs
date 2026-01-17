@@ -4,7 +4,7 @@ use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
 use bezier_nd::{Bezier, BezierND};
 use geo_nd::{
     matrix,
-    vector::{self, reduce},
+    vector::{self},
     FArray, Float,
 };
 use utils::test_beziers_approx_eq;
@@ -348,7 +348,7 @@ fn reduce_and_elevate_cubic() {
 
 use bezier_nd::BezierBuilder;
 fn build_bezier<F: Float, const N: usize, const D: usize>(
-    mut builder: BezierBuilder<F, D>,
+    builder: BezierBuilder<F, D>,
 ) -> BezierND<F, N, D> {
     let degree = builder.bezier_min_degree();
     let n2 = (degree + 1) * (degree + 1);
@@ -373,7 +373,7 @@ fn build_bezier<F: Float, const N: usize, const D: usize>(
 
     let mut basis_inverse = basis.clone();
     let mut lu = basis.clone();
-    let mut pivot = vec![0; (degree + 1)];
+    let mut pivot = vec![0; degree + 1];
     assert_ne!(
         matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot),
         F::zero(),

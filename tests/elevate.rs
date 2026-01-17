@@ -1,12 +1,8 @@
 mod utils;
-use bezier_nd::{Bezier, BezierND};
-use geo_nd::{
-    matrix,
-    vector::{self, reduce},
-    FArray,
-};
+use bezier_nd::Bezier;
+use geo_nd::FArray;
 use utils::test_beziers_approx_eq;
-use utils::{assert_near_equal, assert_near_equal_scale, assert_near_identity, float_iter};
+use utils::assert_near_equal_scale;
 
 #[test]
 fn elevate() {

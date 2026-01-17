@@ -1,9 +1,7 @@
 use bezier_nd::Bezier;
 use geo_nd::Float;
 use geo_nd::{
-    matrix,
-    vector::{self, reduce},
-    FArray, Num,
+    vector::{self}, Num,
 };
 use num::rational::Rational64;
 

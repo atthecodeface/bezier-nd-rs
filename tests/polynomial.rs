@@ -32,7 +32,7 @@ fn test_polynomial(roots: &[isize]) {
         let mut poly_remaining = poly.clone();
         dbg!(&poly_remaining, &result, &poly);
         assert!(
-            poly_remaining.set_divide(&mut poly.clone(), &result, (0.0001_f32.into())),
+            poly_remaining.set_divide(&mut poly.clone(), &result, 0.0001_f32.into()),
             "Should divide without remainder"
         );
         poly_remaining.normalize(1E-6);
@@ -102,19 +102,19 @@ fn test_divide() {
     poly.set_multiply(&poly.clone(), &[1.0, 4.0]);
 
     let mut poly_b = poly.clone();
-    assert!(poly_b.set_divide(&mut poly.clone(), &[1.0, 4.0], (0.0001_f32.into())));
+    assert!(poly_b.set_divide(&mut poly.clone(), &[1.0, 4.0], 0.0001_f32.into()));
     assert_eq!(poly_b[0], 2.0);
     assert_eq!(poly_b[1], 3.0);
     assert_eq!(poly_b[2], 0.0);
 
     let mut poly_b = poly.clone();
-    assert!(poly_b.set_divide(&mut poly.clone(), &[2.0, 3.0], (0.0001_f32.into())));
+    assert!(poly_b.set_divide(&mut poly.clone(), &[2.0, 3.0], 0.0001_f32.into()));
     assert_eq!(poly_b[0], 1.0);
     assert_eq!(poly_b[1], 4.0);
     assert_eq!(poly_b[2], 0.0);
 
     let mut poly_b = poly.clone();
-    assert!(poly_b.set_divide(&mut poly.clone(), &poly.clone(), (0.0001_f32.into())));
+    assert!(poly_b.set_divide(&mut poly.clone(), &poly.clone(), 0.0001_f32.into()));
     assert_eq!(poly_b[0], 1.0);
     assert_eq!(poly_b[1], 0.0);
     assert_eq!(poly_b[2], 0.0);

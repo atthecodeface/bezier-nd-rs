@@ -1,12 +1,7 @@
 //a Imports
 use bezier_nd::BezierND;
-use geo_nd::{
-    matrix,
-    vector::{self, reduce},
-    FArray,
-};
 mod utils;
-use utils::{assert_near_equal, assert_near_identity, float_iter};
+use utils::assert_near_equal;
 
 #[test]
 fn derivative() {
