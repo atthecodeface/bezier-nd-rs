@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::Bezier;
+use bezier_nd::BezierND;
 use geo_nd::{
     matrix,
     vector::{self, reduce},
@@ -15,7 +15,7 @@ fn derivative() {
     let p2 = [6., 1.];
     let p3 = [20., 5.];
 
-    let b = bezier_nd::bezier::Bezier::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
+    let b = BezierND::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
     assert_eq!(b.degree(), 3);
 
     let (db, db_n) = b.nth_derivative(1);

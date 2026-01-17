@@ -1,5 +1,5 @@
 mod utils;
-use bezier_nd::bezier_fns::generate_elevate_by_one_matrix;
+use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
 use geo_nd::matrix;
 use num::rational::Rational64;
 use utils::*;

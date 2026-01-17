@@ -1,6 +1,7 @@
 //a Imports
 mod utils;
-use bezier_nd::Bezier;
+use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
+use bezier_nd::{Bezier, BezierND};
 use geo_nd::{
     matrix,
     vector::{self, reduce},
@@ -46,7 +47,6 @@ fn bernstein_matrix() {
     assert_eq!(&bern_n[0..3], &[0., 0., 1.]);
 }
 
-use bezier_nd::bezier_fns::generate_elevate_by_one_matrix;
 fn generate_bs_reduce_matrix(
     degree: usize,
     ts: &[f64],
@@ -257,7 +257,7 @@ fn reduce_and_elevate_cubic_in_parts() {
     let p2 = [6., 1.];
     let p3 = [20., 5.];
 
-    let b = bezier_nd::bezier::Bezier::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
+    let b = BezierND::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
     let nb = b.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
     let ts = [0., 0.5, 1.0];
     for t in ts {
@@ -309,7 +309,7 @@ fn reduce_and_elevate_cubic() {
     let p3 = [20., 5.];
     let max_dc = 0.03;
 
-    let b = bezier_nd::bezier::Bezier::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
+    let b = BezierND::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
     assert_eq!(b.degree(), 3);
     let mut b_split = b.reduce_and_split_iter(
         &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[1],
@@ -349,7 +349,7 @@ fn reduce_and_elevate_cubic() {
 use bezier_nd::BezierBuilder;
 fn build_bezier<F: Float, const N: usize, const D: usize>(
     mut builder: BezierBuilder<F, D>,
-) -> bezier_nd::bezier::Bezier<F, N, D> {
+) -> BezierND<F, N, D> {
     let degree = builder.bezier_min_degree();
     let n2 = (degree + 1) * (degree + 1);
     let mut bern_n = [F::zero(); 100];
@@ -369,7 +369,7 @@ fn build_bezier<F: Float, const N: usize, const D: usize>(
         degree + 1,
         "Degree must match the number of constraints given"
     );
-    let bezier = bezier_nd::bezier::Bezier::<F, N, D>::new(&pts);
+    let bezier = BezierND::<F, N, D>::new(&pts);
 
     let mut basis_inverse = basis.clone();
     let mut lu = basis.clone();

@@ -89,7 +89,8 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
     );
     for (r, t) in ts.iter().enumerate() {
         for c in 0..(degree + 1) {
-            matrix[r * (degree + 1) + c] = bezier_nd::bezier_fns::basis_coeff(degree, c, *t);
+            matrix[r * (degree + 1) + c] =
+                bezier_nd::bernstein::bezier_fns::basis_coeff(degree, c, *t);
         }
     }
 }

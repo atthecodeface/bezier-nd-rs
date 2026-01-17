@@ -1,5 +1,5 @@
 mod utils;
-use bezier_nd::Bezier;
+use bezier_nd::{Bezier, BezierND};
 use geo_nd::{
     matrix,
     vector::{self, reduce},
@@ -34,21 +34,21 @@ fn elevate_matrix_isize() {
 
     // Check point to linear matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 0),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 0),
         1
     );
     assert_eq!(&m[0..2], &[1, 1]);
 
     // Check linear - quadratic matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 1),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 1),
         2
     );
     assert_eq!(&m[0..6], &[2, 0, 1, 1, 0, 2]);
 
     // Check cubic to order 4 matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 3),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 3),
         4
     );
     assert_eq!(&m[0..4], &[4, 0, 0, 0]);
@@ -58,7 +58,7 @@ fn elevate_matrix_isize() {
     assert_eq!(&m[16..20], &[0, 0, 0, 4]);
 
     for i in 1..9 {
-        let scale = bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, i);
+        let scale = bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, i);
         eprint!("&[ ");
         let n = (i + 1) * (i + 2);
         for j in 0..n {
@@ -76,21 +76,21 @@ fn elevate_matrix() {
 
     // Check point to linear matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 0),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 0),
         1.0
     );
     assert_eq!(&m[0..2], &[1., 1.]);
 
     // Check linear - quadratic matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 1),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 1),
         2.0
     );
     assert_eq!(&m[0..6], &[2., 0., 1.0, 1.0, 0., 2.]);
 
     // Check cubic to order 4 matrix
     assert_eq!(
-        bezier_nd::bezier_fns::generate_elevate_by_one_matrix(&mut m, 3),
+        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 3),
         4.0
     );
     assert_eq!(&m[0..4], &[4., 0., 0., 0.]);

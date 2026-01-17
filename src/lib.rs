@@ -213,15 +213,16 @@ mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
-pub use bernstein::bezier;
-pub use bernstein::bezier_fns;
-pub use builder::BezierBuilder;
-pub use constants::*;
-pub use polynomial::{PolyFindRoots, Polynomial};
 
 /*a Exports
 */
 pub use self::line::BezierLineIter;
 pub use self::point::BezierPointIter;
+
+pub use builder::BezierBuilder;
+pub use constants::*;
 pub use curve::Bezier;
 pub use distance::BezierDistance2D;
+pub use polynomial::{PolyFindRoots, Polynomial};
+
+pub use bernstein::Bezier as BezierND;
