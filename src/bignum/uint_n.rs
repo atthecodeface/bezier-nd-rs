@@ -97,7 +97,7 @@ impl<const N: usize> std::iter::Iterator for UIntNDigitIter<N> {
             Some(self.remaining.value[N - 1] as u32)
         } else if self.scan.cmp_u64(self.radix as u64) == std::cmp::Ordering::Less {
             self.is_last = true;
-            return self.next();
+            self.next()
         } else {
             let (div, rem) = self.remaining.do_div_rem(&self.scan).unwrap();
             let digit = div.value[N - 1] as u32;
@@ -305,7 +305,7 @@ impl<const N: usize> UIntN<N> {
         };
         if o_i > v_i {
             // eprintln!("{o_i} > {v_i} - no shift needed");
-            return None;
+            None
         } else {
             // Self.value[v_i] is the most significant (lowest v_i) that is nonzero
             // other.value[o_i] is the most significant (lowest o_i) that is nonzero
@@ -499,7 +499,7 @@ impl<const N: usize> UIntN<N> {
     }
 
     fn do_multiply(&self, other: &Self) -> Self {
-        let (overflow, r) = self.multiply_value(&other);
+        let (overflow, r) = self.multiply_value(other);
         assert!(!overflow, "Multiplication overflowed");
         r
     }

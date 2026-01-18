@@ -317,7 +317,7 @@ impl<const N: usize> num_traits::Num for IntN<N> {
     type FromStrRadixErr = std::num::ParseIntError;
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
         use num_traits::Zero;
-        let mut is_neg = src.chars().next() == Some('-');
+        let mut is_neg = src.starts_with('-');
         let mut c = src.chars();
         if is_neg {
             let _ = c.next();

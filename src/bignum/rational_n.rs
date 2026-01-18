@@ -260,7 +260,7 @@ impl<const N: usize> RationalN<N> {
             return *self;
         }
 
-        let g0 = self.numer.magnitude().gcd(&other.numer.magnitude());
+        let g0 = self.numer.magnitude().gcd(other.numer.magnitude());
         let g1 = other.denom.gcd(&self.denom);
         let a = self.numer / g0;
         let b = self.denom / g1;
