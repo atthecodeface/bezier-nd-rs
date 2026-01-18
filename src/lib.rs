@@ -214,9 +214,7 @@ mod line;
 mod point;
 pub(crate) mod polynomial;
 
-mod int_n;
-
-pub use int_n::IntN;
+pub mod bignum;
 
 /*a Exports
 */

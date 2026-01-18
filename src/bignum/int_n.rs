@@ -1,0 +1,327 @@
+use super::UIntN;
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct IntN<const N: usize> {
+    is_neg: bool,
+    value: UIntN<N>,
+}
+
+impl<const N: usize> std::convert::From<u64> for IntN<N> {
+    fn from(value: u64) -> Self {
+        Self {
+            is_neg: false,
+            value: value.into(),
+        }
+    }
+}
+
+impl<const N: usize> std::convert::From<i64> for IntN<N> {
+    fn from(value: i64) -> Self {
+        if value < 0 {
+            Self {
+                is_neg: true,
+                value: ((-value) as u64).into(),
+            }
+        } else {
+            (value as u64).into()
+        }
+    }
+}
+
+impl<const N: usize> std::convert::From<(bool, UIntN<N>)> for IntN<N> {
+    fn from((is_neg, value): (bool, UIntN<N>)) -> Self {
+        Self { is_neg, value }
+    }
+}
+
+impl<const N: usize> std::cmp::Ord for IntN<N> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self.is_neg, other.is_neg) {
+            (true, true) => other.value.cmp(&self.value),
+            (false, false) => self.value.cmp(&other.value),
+            (false, true) => std::cmp::Ordering::Greater,
+            (true, false) => std::cmp::Ordering::Less,
+        }
+    }
+}
+
+impl<const N: usize> std::cmp::PartialOrd for IntN<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl<const N: usize> std::fmt::Display for IntN<N> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        std::fmt::Debug::fmt(self, fmt)
+    }
+}
+
+impl<const N: usize> std::ops::Neg for IntN<N> {
+    type Output = Self;
+    fn neg(mut self) -> Self {
+        if !self.value_is_zero() {
+            self.is_neg = !self.is_neg;
+        }
+        self
+    }
+}
+
+impl<const N: usize> std::ops::Add for IntN<N> {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        self.do_add(&other)
+    }
+}
+
+impl<const N: usize> std::ops::AddAssign for IntN<N> {
+    fn add_assign(&mut self, other: Self) {
+        *self = self.do_add(&other);
+    }
+}
+
+impl<const N: usize> std::ops::Sub for IntN<N> {
+    type Output = Self;
+
+    fn sub(self, other: Self) -> Self {
+        self.do_subtract(&other)
+    }
+}
+
+impl<const N: usize> std::ops::SubAssign for IntN<N> {
+    fn sub_assign(&mut self, other: Self) {
+        *self = self.do_subtract(&other);
+    }
+}
+
+impl<const N: usize> std::ops::Mul for IntN<N> {
+    type Output = Self;
+
+    fn mul(self, other: Self) -> Self {
+        self.do_multiply(&other)
+    }
+}
+
+impl<const N: usize> std::ops::Mul for &IntN<N> {
+    type Output = IntN<N>;
+
+    fn mul(self, other: &IntN<N>) -> IntN<N> {
+        self.do_multiply(other)
+    }
+}
+
+impl<const N: usize> std::ops::MulAssign for IntN<N> {
+    fn mul_assign(&mut self, other: Self) {
+        *self = self.do_multiply(&other);
+    }
+}
+
+impl<const N: usize> std::ops::Div for IntN<N> {
+    type Output = Self;
+
+    fn div(self, other: Self) -> Self {
+        let Some((d, _r)) = self.do_div_rem(&other) else {
+            panic!("Division by zero");
+        };
+        d
+    }
+}
+
+impl<const N: usize> std::ops::DivAssign for IntN<N> {
+    fn div_assign(&mut self, other: Self) {
+        let Some((d, _r)) = self.do_div_rem(&other) else {
+            panic!("Division by zero");
+        };
+        *self = d;
+    }
+}
+
+impl<const N: usize> std::ops::Mul<&UIntN<N>> for IntN<N> {
+    type Output = Self;
+
+    fn mul(mut self, other: &UIntN<N>) -> Self {
+        self.value = self.value * other;
+        self
+    }
+}
+
+impl<const N: usize> std::ops::Div<UIntN<N>> for IntN<N> {
+    type Output = Self;
+
+    fn div(mut self, other: UIntN<N>) -> Self {
+        self.value /= other;
+        self
+    }
+}
+
+impl<const N: usize> std::ops::Rem for IntN<N> {
+    type Output = Self;
+
+    fn rem(self, other: Self) -> Self {
+        let Some((_d, r)) = self.do_div_rem(&other) else {
+            panic!("Division by zero");
+        };
+        r
+    }
+}
+
+impl<const N: usize> std::ops::RemAssign for IntN<N> {
+    fn rem_assign(&mut self, other: Self) {
+        let Some((_d, r)) = self.do_div_rem(&other) else {
+            panic!("Division by zero");
+        };
+        *self = r;
+    }
+}
+
+impl<const N: usize> num_traits::FromPrimitive for IntN<N> {
+    fn from_i64(n: i64) -> Option<Self> {
+        Some(n.into())
+    }
+    fn from_u64(n: u64) -> Option<Self> {
+        Some(n.into())
+    }
+}
+
+impl<const N: usize> num_traits::identities::One for IntN<N> {
+    fn one() -> Self {
+        let mut s = Self::default();
+        s.value = UIntN::one();
+        s
+    }
+}
+
+impl<const N: usize> num_traits::identities::Zero for IntN<N> {
+    fn zero() -> Self {
+        Self::default()
+    }
+    fn is_zero(&self) -> bool {
+        self.value_is_zero()
+    }
+}
+
+impl<const N: usize> num_traits::identities::ConstZero for IntN<N> {
+    const ZERO: Self = Self {
+        is_neg: false,
+        value: UIntN::ZERO,
+    };
+}
+
+impl<const N: usize> num_traits::identities::ConstOne for IntN<N> {
+    const ONE: Self = Self {
+        is_neg: false,
+        value: <UIntN<_> as num_traits::identities::ConstOne>::ONE,
+    };
+}
+
+impl<const N: usize> IntN<N> {
+    pub fn from_int(value: UIntN<N>) -> IntN<N> {
+        IntN {
+            is_neg: false,
+            value,
+        }
+    }
+
+    pub fn magnitude(&self) -> &UIntN<N> {
+        &self.value
+    }
+
+    pub fn is_neg(&self) -> bool {
+        self.is_neg
+    }
+
+    fn value_is_zero(&self) -> bool {
+        use num_traits::Zero;
+        self.value.is_zero()
+    }
+
+    /// 20 / 7 = 2 remainder 6
+    /// 20 / -7 = -2 remainder 6
+    /// -20 / 7 = -2 remainder -6
+    /// -20 / -7 = 2 remainder -6
+    fn do_div_rem(&self, other: &Self) -> Option<(Self, Self)> {
+        if other.value_is_zero() {
+            None
+        } else {
+            let Some((div, rem)) = self.value.do_div_rem(&other.value) else {
+                panic!("Divide by zero");
+            };
+            let mut div = Self {
+                is_neg: self.is_neg != other.is_neg,
+                value: div,
+            };
+            let mut rem = Self {
+                is_neg: self.is_neg,
+                value: rem,
+            };
+            Some((div, rem))
+        }
+    }
+
+    // Subtract two values and return true if borrow
+    fn subtract_value(v0: &mut [u64; N], v1: &[u64; N]) -> bool {
+        let mut borrow = false;
+        for (p0, p1) in v0.iter_mut().rev().zip(v1.iter().rev()) {
+            let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
+            *p0 = r;
+            borrow = borrow_out;
+        }
+        borrow
+    }
+
+    fn do_add(mut self, other: &Self) -> Self {
+        if self.is_neg != other.is_neg {
+            // if self is +1 and other is -3 then subtract yields a borrow
+            // and self becomes [u64::MAX, .. u64::MAX, , u64::MAX-1]
+            //
+            // we need to replace with U64::MAX-v for each v (effectively +1 is
+            // we really store things as ones complement)
+            if self.value.subtract(&other.value) {
+                self.is_neg = !self.is_neg;
+                self.value.ones_complement();
+            }
+            if self.value_is_zero() {
+                self.is_neg = false;
+            }
+        } else {
+            self.value += other.value;
+        }
+        self
+    }
+
+    fn do_subtract(mut self, other: &Self) -> Self {
+        if self.is_neg == other.is_neg {
+            // if self is +1 and other is +3 then subtract yields a borrow
+            // and self becomes [u64::MAX, .. u64::MAX, , u64::MAX-1]
+            //
+            // we need to replace with U64::MAX-v for each v (effectively +1 is
+            // we really store things as ones complement)
+            if self.value.subtract(&other.value) {
+                self.is_neg = !self.is_neg;
+                self.value.ones_complement();
+            }
+            if self.value_is_zero() {
+                self.is_neg = false;
+            }
+        } else {
+            self.value += other.value;
+        }
+        self
+    }
+
+    fn do_multiply(&self, other: &Self) -> Self {
+        let mut r = Self::default();
+        r.value = self.value * other.value;
+        r.is_neg = self.is_neg != other.is_neg;
+        r
+    }
+}
+
+impl<const N: usize> num_traits::Num for IntN<N> {
+    type FromStrRadixErr = std::num::ParseIntError;
+    fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
+        u64::from_str_radix(src, radix)
+            .map(|s| <Self as num_traits::FromPrimitive>::from_u64(s).unwrap())
+    }
+}
