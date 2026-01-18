@@ -129,12 +129,14 @@ impl<const N: usize> std::ops::Neg for UIntN<N> {
 impl<const N: usize> std::ops::Add for UIntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn add(self, other: Self) -> Self {
         self.do_add(&other)
     }
 }
 
 impl<const N: usize> std::ops::AddAssign for UIntN<N> {
+    #[track_caller]
     fn add_assign(&mut self, other: Self) {
         *self = self.do_add(&other);
     }
@@ -143,12 +145,14 @@ impl<const N: usize> std::ops::AddAssign for UIntN<N> {
 impl<const N: usize> std::ops::Sub for UIntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn sub(self, other: Self) -> Self {
         self.do_subtract(&other)
     }
 }
 
 impl<const N: usize> std::ops::SubAssign for UIntN<N> {
+    #[track_caller]
     fn sub_assign(&mut self, other: Self) {
         *self = self.do_subtract(&other);
     }
@@ -185,6 +189,7 @@ impl<const N: usize> std::ops::MulAssign<&UIntN<N>> for UIntN<N> {
 impl<const N: usize> std::ops::Div for UIntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn div(self, other: Self) -> Self {
         let Some((d, _r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -194,6 +199,7 @@ impl<const N: usize> std::ops::Div for UIntN<N> {
 }
 
 impl<const N: usize> std::ops::DivAssign for UIntN<N> {
+    #[track_caller]
     fn div_assign(&mut self, other: Self) {
         // eprintln!("Divide {:?} {:?}", self.value, other.value);
         let Some((d, _r)) = self.do_div_rem(&other) else {
@@ -207,6 +213,7 @@ impl<const N: usize> std::ops::DivAssign for UIntN<N> {
 impl<const N: usize> std::ops::Rem for UIntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn rem(self, other: Self) -> Self {
         let Some((_d, r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -216,6 +223,7 @@ impl<const N: usize> std::ops::Rem for UIntN<N> {
 }
 
 impl<const N: usize> std::ops::RemAssign for UIntN<N> {
+    #[track_caller]
     fn rem_assign(&mut self, other: Self) {
         let Some((_d, r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -449,6 +457,7 @@ impl<const N: usize> UIntN<N> {
         (false, result)
     }
 
+    #[track_caller]
     fn do_add(mut self, other: &Self) -> Self {
         let mut carry = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {

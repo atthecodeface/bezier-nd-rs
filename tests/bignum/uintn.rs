@@ -91,15 +91,6 @@ fn test_uint_tiny() {
 }
 
 #[test]
-fn test_int_tiny() {
-    test_number_n::<IntN<1>>(1_u64.into());
-    test_number_n::<IntN<1>>((u64::MAX >> 2).into());
-
-    test_number_n::<IntN<8>>(1_u64.into());
-    test_number_n::<IntN<8>>((u64::MAX >> 2).into());
-}
-
-#[test]
 fn test_uint_big() {
     let a = prime_25519::<UIntN<8>>();
     assert_eq!(

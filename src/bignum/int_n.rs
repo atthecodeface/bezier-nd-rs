@@ -83,28 +83,32 @@ impl<const N: usize> std::ops::Neg for IntN<N> {
 impl<const N: usize> std::ops::Add for IntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn add(self, other: Self) -> Self {
-        self.do_add(&other)
+        self.do_add_sub(&other, false)
     }
 }
 
 impl<const N: usize> std::ops::AddAssign for IntN<N> {
+    #[track_caller]
     fn add_assign(&mut self, other: Self) {
-        *self = self.do_add(&other);
+        *self = self.do_add_sub(&other, false);
     }
 }
 
 impl<const N: usize> std::ops::Sub for IntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn sub(self, other: Self) -> Self {
-        self.do_subtract(&other)
+        self.do_add_sub(&other, true)
     }
 }
 
 impl<const N: usize> std::ops::SubAssign for IntN<N> {
+    #[track_caller]
     fn sub_assign(&mut self, other: Self) {
-        *self = self.do_subtract(&other);
+        *self = self.do_add_sub(&other, true);
     }
 }
 
@@ -133,6 +137,7 @@ impl<const N: usize> std::ops::MulAssign for IntN<N> {
 impl<const N: usize> std::ops::Div for IntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn div(self, other: Self) -> Self {
         let Some((d, _r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -170,6 +175,7 @@ impl<const N: usize> std::ops::Mul<UIntN<N>> for IntN<N> {
 impl<const N: usize> std::ops::Div<UIntN<N>> for IntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn div(mut self, other: UIntN<N>) -> Self {
         self.value /= other;
         self
@@ -178,7 +184,7 @@ impl<const N: usize> std::ops::Div<UIntN<N>> for IntN<N> {
 
 impl<const N: usize> std::ops::Rem for IntN<N> {
     type Output = Self;
-
+    #[track_caller]
     fn rem(self, other: Self) -> Self {
         let Some((_d, r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -188,6 +194,7 @@ impl<const N: usize> std::ops::Rem for IntN<N> {
 }
 
 impl<const N: usize> std::ops::RemAssign for IntN<N> {
+    #[track_caller]
     fn rem_assign(&mut self, other: Self) {
         let Some((_d, r)) = self.do_div_rem(&other) else {
             panic!("Division by zero");
@@ -273,35 +280,19 @@ impl<const N: usize> IntN<N> {
         }
     }
 
-    fn do_add(mut self, other: &Self) -> Self {
-        if self.is_neg != other.is_neg {
+    #[track_caller]
+    fn do_add_sub(mut self, other: &Self, negate_other: bool) -> Self {
+        let mut other_neg = other.is_neg;
+        if negate_other {
+            other_neg = !other_neg;
+        }
+        if self.is_neg != other_neg {
             // if self is +1 and other is -3 then subtract yields a borrow
             // and self becomes [u64::MAX, .. u64::MAX, , u64::MAX-1]
             //
             // we need to replace with U64::MAX-v for each v (effectively +1 is
             // we really store things as ones complement)
             if self.value.subtract(&other.value) {
-                self.is_neg = !self.is_neg;
-                self.value.twos_complement();
-            }
-            if self.value_is_zero() {
-                self.is_neg = false;
-            }
-        } else {
-            self.value += other.value;
-        }
-        self
-    }
-
-    fn do_subtract(mut self, other: &Self) -> Self {
-        if self.is_neg == other.is_neg {
-            // if self is +1 and other is +3 then subtract yields a borrow
-            // and self becomes [u64::MAX, .. u64::MAX, , u64::MAX-1]
-            //
-            // we need to replace with U64::MAX-v for each v (effectively +1 is
-            // we really store things as ones complement)
-            if self.value.subtract(&other.value) {
-                eprintln!("Subtract had borrow: {}", self.value);
                 self.is_neg = !self.is_neg;
                 self.value.twos_complement();
             }
