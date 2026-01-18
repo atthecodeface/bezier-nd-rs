@@ -460,9 +460,12 @@ impl<const N: usize> UIntN<N> {
         self
     }
 
-    pub fn ones_complement(&mut self) {
-        for v in self.value.iter_mut() {
-            *v = !(*v);
+    pub fn twos_complement(&mut self) {
+        let mut carry = true;
+        for v in self.value.iter_mut().rev() {
+            let (r, carry_out) = (!(*v)).carrying_add(0, carry);
+            *v = r;
+            carry = carry_out;
         }
     }
 

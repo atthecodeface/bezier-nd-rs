@@ -62,7 +62,11 @@ impl<const N: usize> std::cmp::PartialOrd for IntN<N> {
 
 impl<const N: usize> std::fmt::Display for IntN<N> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        std::fmt::Debug::fmt(self, fmt)
+        if self.is_neg {
+            write!(fmt, "-{}", self.value)
+        } else {
+            self.value.fmt(fmt)
+        }
     }
 }
 
@@ -233,13 +237,6 @@ impl<const N: usize> num_traits::identities::ConstOne for IntN<N> {
 }
 
 impl<const N: usize> IntN<N> {
-    pub fn from_int(value: UIntN<N>) -> IntN<N> {
-        IntN {
-            is_neg: false,
-            value,
-        }
-    }
-
     pub fn magnitude(&self) -> &UIntN<N> {
         &self.value
     }
@@ -276,17 +273,6 @@ impl<const N: usize> IntN<N> {
         }
     }
 
-    // Subtract two values and return true if borrow
-    fn subtract_value(v0: &mut [u64; N], v1: &[u64; N]) -> bool {
-        let mut borrow = false;
-        for (p0, p1) in v0.iter_mut().rev().zip(v1.iter().rev()) {
-            let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
-            *p0 = r;
-            borrow = borrow_out;
-        }
-        borrow
-    }
-
     fn do_add(mut self, other: &Self) -> Self {
         if self.is_neg != other.is_neg {
             // if self is +1 and other is -3 then subtract yields a borrow
@@ -296,7 +282,7 @@ impl<const N: usize> IntN<N> {
             // we really store things as ones complement)
             if self.value.subtract(&other.value) {
                 self.is_neg = !self.is_neg;
-                self.value.ones_complement();
+                self.value.twos_complement();
             }
             if self.value_is_zero() {
                 self.is_neg = false;
@@ -315,8 +301,9 @@ impl<const N: usize> IntN<N> {
             // we need to replace with U64::MAX-v for each v (effectively +1 is
             // we really store things as ones complement)
             if self.value.subtract(&other.value) {
+                eprintln!("Subtract had borrow: {}", self.value);
                 self.is_neg = !self.is_neg;
-                self.value.ones_complement();
+                self.value.twos_complement();
             }
             if self.value_is_zero() {
                 self.is_neg = false;
@@ -338,7 +325,16 @@ impl<const N: usize> IntN<N> {
 impl<const N: usize> num_traits::Num for IntN<N> {
     type FromStrRadixErr = std::num::ParseIntError;
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
-        u64::from_str_radix(src, radix)
-            .map(|s| <Self as num_traits::FromPrimitive>::from_u64(s).unwrap())
+        use num_traits::Zero;
+        let mut is_neg = src.chars().next() == Some('-');
+        let mut c = src.chars();
+        if is_neg {
+            let _ = c.next();
+        }
+        let value = UIntN::from_str_radix(c.as_str(), radix)?;
+        if value.is_zero() {
+            is_neg = false;
+        }
+        Ok(Self { is_neg, value })
     }
 }
