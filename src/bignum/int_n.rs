@@ -268,11 +268,11 @@ impl<const N: usize> IntN<N> {
             let Some((div, rem)) = self.value.do_div_rem(&other.value) else {
                 panic!("Divide by zero");
             };
-            let mut div = Self {
+            let div = Self {
                 is_neg: self.is_neg != other.is_neg,
                 value: div,
             };
-            let mut rem = Self {
+            let rem = Self {
                 is_neg: self.is_neg,
                 value: rem,
             };

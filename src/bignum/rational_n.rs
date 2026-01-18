@@ -136,13 +136,13 @@ impl<const N: usize> std::ops::DivAssign for RationalN<N> {
 impl<const N: usize> std::ops::Rem for RationalN<N> {
     type Output = Self;
 
-    fn rem(self, other: Self) -> Self {
+    fn rem(self, _other: Self) -> Self {
         todo!();
     }
 }
 
 impl<const N: usize> std::ops::RemAssign for RationalN<N> {
-    fn rem_assign(&mut self, other: Self) {
+    fn rem_assign(&mut self, _other: Self) {
         todo!();
     }
 }

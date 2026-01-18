@@ -1,4 +1,4 @@
-use bezier_nd::bignum::{IntN, UIntN};
+use bezier_nd::bignum::IntN;
 use geo_nd::Num;
 use num_traits::{ConstOne, ConstZero};
 

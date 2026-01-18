@@ -1,6 +1,6 @@
 use bezier_nd::bignum::RationalN;
 use geo_nd::Num;
-use num_traits::{one, zero, ConstOne, ConstZero};
+use num_traits::{one, zero, ConstZero};
 
 fn prime_25519<N: Num + From<u64>>() -> N {
     let a: N = 2.into();

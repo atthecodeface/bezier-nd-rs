@@ -16,7 +16,7 @@ pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     );
     let r = t1 - t0;
     assert!(r >= N::zero(), "Float range must be positive");
-    (0..n).map(move |i: usize| (r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap()))
+    (0..n).map(move |i: usize| r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap())
 }
 
 /// Assert that a matrix is near the identity matrix

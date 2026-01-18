@@ -90,7 +90,7 @@ impl<F: Float> BezierDistance2D<F> {
             .zip(self.flattened.iter().skip(1))
             .enumerate()
         {
-            let (distance_sq, inside) = Bezier::pt_distance_sq_from(pt, p0, p1);
+            let (distance_sq, _inside) = Bezier::pt_distance_sq_from(pt, p0, p1);
             if distance_sq < min_d2_s.0 {
                 min_d2_s = (distance_sq, i);
             }

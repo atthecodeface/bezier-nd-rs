@@ -2,3 +2,4 @@
 Cargo.lock
 *pyc
 target/
+tarpaulin*

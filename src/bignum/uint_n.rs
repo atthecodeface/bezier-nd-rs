@@ -1,5 +1,4 @@
-use super::IntN;
-use num_traits::{ConstOne, ConstZero, One, Zero};
+use num_traits::{ConstOne, ConstZero, Zero};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UIntN<const N: usize> {
@@ -121,7 +120,7 @@ impl<const N: usize> std::fmt::Display for UIntN<N> {
 
 impl<const N: usize> std::ops::Neg for UIntN<N> {
     type Output = Self;
-    fn neg(mut self) -> Self {
+    fn neg(self) -> Self {
         panic!("UIntN does not support negation");
     }
 }
