@@ -13,6 +13,17 @@ impl<const N: usize> std::default::Default for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::convert::TryFrom<i64> for UIntN<N> {
+    type Error = std::num::TryFromIntError;
+    fn try_from(value: i64) -> Result<Self, std::num::TryFromIntError> {
+        if value < 0 {
+            Err(<u64 as std::convert::TryFrom<i64>>::try_from(-1).unwrap_err())
+        } else {
+            Ok((value as u64).into())
+        }
+    }
+}
+
 impl<const N: usize> std::convert::From<u64> for UIntN<N> {
     fn from(value: u64) -> Self {
         let mut s = Self::default();
@@ -32,32 +43,79 @@ impl<const N: usize> std::cmp::Ord for UIntN<N> {
     }
 }
 
+pub struct UIntNDigitIter<const N: usize> {
+    remaining: UIntN<N>,
+    scan: UIntN<N>,
+    radix: u32,
+    radix_s: UIntN<N>,
+    is_last: bool,
+    is_complete: bool,
+}
+
+impl<const N: usize> UIntNDigitIter<N> {
+    pub fn new(value: UIntN<N>, radix: u32) -> Self {
+        if value.is_zero() {
+            Self {
+                is_last: true,
+                is_complete: false,
+                radix,
+                remaining: UIntN::ZERO,
+                scan: UIntN::ZERO,
+                radix_s: UIntN::ZERO,
+            }
+        } else {
+            let radix_s: UIntN<_> = (radix as u64).into();
+            let mut scan = radix_s;
+            while scan < value {
+                let (overflow, scan_times_radix) = scan.multiply_by_u64(radix as u64);
+                if overflow {
+                    break;
+                }
+                scan = scan_times_radix;
+            }
+            while scan > value {
+                scan /= radix_s;
+            }
+            Self {
+                is_last: false,
+                is_complete: false,
+                radix,
+                remaining: value,
+                scan,
+                radix_s,
+            }
+        }
+    }
+}
+
+impl<const N: usize> std::iter::Iterator for UIntNDigitIter<N> {
+    type Item = u32;
+    fn next(&mut self) -> Option<u32> {
+        if self.is_complete {
+            None
+        } else if self.is_last {
+            self.is_complete = true;
+            Some(self.remaining.value[N - 1] as u32)
+        } else if self.scan.cmp_u64(self.radix as u64) == std::cmp::Ordering::Less {
+            self.is_last = true;
+            return self.next();
+        } else {
+            let (div, rem) = self.remaining.do_div_rem(&self.scan).unwrap();
+            let digit = div.value[N - 1] as u32;
+            self.scan /= self.radix_s;
+            self.remaining = rem;
+            Some(digit)
+        }
+    }
+}
+
 impl<const N: usize> std::fmt::Display for UIntN<N> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         use std::fmt::Write;
-        if self.is_zero() {
-            write!(fmt, "0")
-        } else {
-            let mut s: Self = 10_000_000_000_000_000_000.into();
-            let mut remaining = *self;
-            while s.can_mult_by_ten() && &s < self {
-                s *= 10.into();
-            }
-            // eprintln!("s bigger than self {s:?} {self:?}");
-            while s > remaining {
-                s /= 10.into();
-            }
-            // eprintln!("s just less than self {s:?} {self:?}");
-            while s > 9.into() {
-                let (div, rem) = remaining.do_div_rem(&s).unwrap();
-                // eprintln!("div rem {div:?} {rem:?} for remaining / s {remaining:?} {s:?}");
-                fmt.write_char(char::from_digit(div.value[N - 1] as u32, 10).unwrap())?;
-                s /= 10.into();
-                remaining = rem;
-            }
-            // dbg!(&s, &remaining);
-            fmt.write_char(char::from_digit(remaining.value[N - 1] as u32, 10).unwrap())
+        for c in UIntNDigitIter::new(*self, 10) {
+            fmt.write_char(char::from_digit(c, 10).unwrap())?;
         }
+        Ok(())
     }
 }
 
@@ -118,6 +176,12 @@ impl<const N: usize> std::ops::MulAssign for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::ops::MulAssign<&UIntN<N>> for UIntN<N> {
+    fn mul_assign(&mut self, other: &Self) {
+        *self = self.do_multiply(other);
+    }
+}
+
 impl<const N: usize> std::ops::Div for UIntN<N> {
     type Output = Self;
 
@@ -162,13 +226,7 @@ impl<const N: usize> std::ops::RemAssign for UIntN<N> {
 
 impl<const N: usize> num_traits::FromPrimitive for UIntN<N> {
     fn from_i64(n: i64) -> Option<Self> {
-        let mut s = Self::default();
-        if n < 0 {
-            return None;
-        } else {
-            s.value[N - 1] = n as u64;
-        }
-        Some(s)
+        n.try_into().ok()
     }
     fn from_u64(n: u64) -> Option<Self> {
         Some(n.into())
@@ -177,15 +235,13 @@ impl<const N: usize> num_traits::FromPrimitive for UIntN<N> {
 
 impl<const N: usize> num_traits::identities::One for UIntN<N> {
     fn one() -> Self {
-        let mut s = Self::default();
-        s.value[N - 1] = 1;
-        s
+        Self::ONE
     }
 }
 
 impl<const N: usize> num_traits::identities::Zero for UIntN<N> {
     fn zero() -> Self {
-        Self { value: [0; N] }
+        Self::ZERO
     }
     fn is_zero(&self) -> bool {
         self.value_is_zero()
@@ -373,13 +429,22 @@ impl<const N: usize> UIntN<N> {
         overflow != 0
     }
 
-    // Multiply two values and return true if borrow
+    // Multiply two values and return true if overflow
     fn multiply_value(&self, other: &Self) -> (bool, Self) {
         let mut result = Self::default();
         for (i, v) in other.value.iter().rev().enumerate() {
             if result.mul_acc_value_step(&self.value, *v, i) {
                 return (true, result);
             }
+        }
+        (false, result)
+    }
+
+    // Multiply by a u64 and return true if overflow
+    fn multiply_by_u64(&self, value: u64) -> (bool, Self) {
+        let mut result = Self::default();
+        if result.mul_acc_value_step(&self.value, value, 0) {
+            return (true, result);
         }
         (false, result)
     }
@@ -446,7 +511,7 @@ impl<const N: usize> UIntN<N> {
                 }
                 let rem2 = b % rem;
                 if rem2.value_is_zero() {
-                    return rem2;
+                    return rem;
                 }
                 a = rem;
                 b = rem2;
@@ -454,19 +519,33 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
-    pub fn can_mult_by_ten(&self) -> bool {
-        self.value[0] < u64::MAX / 10
-    }
-
-    pub fn as_int(self) -> IntN<N> {
-        (false, self).into()
+    pub fn cmp_u64(&self, value: u64) -> std::cmp::Ordering {
+        if self.value[0..N - 1].iter().all(|s| *s == 0) {
+            self.value[N - 1].cmp(&value)
+        } else {
+            std::cmp::Ordering::Greater
+        }
     }
 }
 
 impl<const N: usize> num_traits::Num for UIntN<N> {
     type FromStrRadixErr = std::num::ParseIntError;
     fn from_str_radix(src: &str, radix: u32) -> Result<Self, std::num::ParseIntError> {
-        u64::from_str_radix(src, radix)
-            .map(|s| <Self as num_traits::FromPrimitive>::from_u64(s).unwrap())
+        let mut result = Self::default();
+        let radix_s: Self = (radix as u64).into();
+        let mut has_chars = false;
+        for c in src.chars() {
+            let Some(d) = c.to_digit(radix) else {
+                return Err(i32::from_str_radix("a", 10).unwrap_err());
+            };
+            let d: Self = (d as u64).into();
+            result = result * radix_s + d;
+            has_chars = true;
+        }
+        if has_chars {
+            Ok(result)
+        } else {
+            Err(i32::from_str_radix("", 10).unwrap_err())
+        }
     }
 }

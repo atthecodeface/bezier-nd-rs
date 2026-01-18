@@ -28,6 +28,15 @@ impl<const N: usize> std::convert::From<i64> for IntN<N> {
     }
 }
 
+impl<const N: usize> std::convert::From<UIntN<N>> for IntN<N> {
+    fn from(value: UIntN<N>) -> Self {
+        Self {
+            is_neg: false,
+            value,
+        }
+    }
+}
+
 impl<const N: usize> std::convert::From<(bool, UIntN<N>)> for IntN<N> {
     fn from((is_neg, value): (bool, UIntN<N>)) -> Self {
         Self { is_neg, value }
@@ -141,7 +150,15 @@ impl<const N: usize> std::ops::Mul<&UIntN<N>> for IntN<N> {
     type Output = Self;
 
     fn mul(mut self, other: &UIntN<N>) -> Self {
-        self.value = self.value * other;
+        self.value *= other;
+        self
+    }
+}
+impl<const N: usize> std::ops::Mul<UIntN<N>> for IntN<N> {
+    type Output = Self;
+
+    fn mul(mut self, other: UIntN<N>) -> Self {
+        self.value *= other;
         self
     }
 }

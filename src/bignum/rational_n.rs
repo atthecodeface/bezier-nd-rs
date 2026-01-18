@@ -177,18 +177,18 @@ impl<const N: usize> RationalN<N> {
         let denom_gcd = self.denom.gcd(&other.denom);
         let self_denom_no_gcd = self.denom / denom_gcd;
         let other_denom_no_gcd = other.denom / denom_gcd;
-        let mut numer = self.numer * other_denom_no_gcd.as_int();
+        let mut numer = self.numer * other_denom_no_gcd;
         if negate {
-            numer += other.numer * self_denom_no_gcd.as_int();
+            numer += other.numer * self_denom_no_gcd;
         } else {
-            numer -= other.numer * self_denom_no_gcd.as_int();
+            numer -= other.numer * self_denom_no_gcd;
         }
         let mut denom = self.denom * other_denom_no_gcd;
         if numer.is_zero() {
             Self::default()
         } else {
             let gcd = numer.magnitude().gcd(&denom);
-            numer /= gcd.as_int();
+            numer /= gcd.into();
             denom /= gcd;
             Self { numer, denom }
         }
