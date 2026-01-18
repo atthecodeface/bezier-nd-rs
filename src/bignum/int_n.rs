@@ -1,8 +1,15 @@
 use super::UIntN;
 
+/// A signed integer, of +- 64*N bits (stored with sign and magnitude),
+/// supporting copy
+///
+/// This is not optimized for performance, but to enable use of algorithms
+/// that require num_traits::Num
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct IntN<const N: usize> {
+    /// Sign of the number
     is_neg: bool,
+    /// Magnitude of the number
     value: UIntN<N>,
 }
 
@@ -214,9 +221,10 @@ impl<const N: usize> num_traits::FromPrimitive for IntN<N> {
 
 impl<const N: usize> num_traits::identities::One for IntN<N> {
     fn one() -> Self {
-        let mut s = Self::default();
-        s.value = UIntN::one();
-        s
+        Self {
+            value: UIntN::one(),
+            ..Default::default()
+        }
     }
 }
 
@@ -244,10 +252,12 @@ impl<const N: usize> num_traits::identities::ConstOne for IntN<N> {
 }
 
 impl<const N: usize> IntN<N> {
+    /// Get the magnitude of the integer
     pub fn magnitude(&self) -> &UIntN<N> {
         &self.value
     }
 
+    /// Get the sign of the integer
     pub fn is_neg(&self) -> bool {
         self.is_neg
     }
@@ -306,10 +316,10 @@ impl<const N: usize> IntN<N> {
     }
 
     fn do_multiply(&self, other: &Self) -> Self {
-        let mut r = Self::default();
-        r.value = self.value * other.value;
-        r.is_neg = self.is_neg != other.is_neg;
-        r
+        Self {
+            value: self.value * other.value,
+            is_neg: self.is_neg != other.is_neg,
+        }
     }
 }
 

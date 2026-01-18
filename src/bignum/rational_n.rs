@@ -1,9 +1,16 @@
 use super::{IntN, UIntN};
-use num_traits::{ConstOne, ConstZero, One, Zero};
+use num_traits::{ConstOne, One, Zero};
 
+/// A Rational number, with numerator and denominator as N*64-bit integers
+/// The type is Copy
+///
+/// This is not highly optimized for performance; it is designed to permit
+/// precise operations of algorithms that require num_traits::Num
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RationalN<const N: usize> {
+    /// Numerator - signed integer
     numer: IntN<N>,
+    /// Denominator - unsigned integer
     denom: UIntN<N>,
 }
 
@@ -195,12 +202,17 @@ impl<const N: usize> num_traits::identities::ConstOne for RationalN<N> {
 }
 
 impl<const N: usize> RationalN<N> {
+    /// Return a reference to the magnitude of the numerator of the rational
     pub fn numer(&self) -> &UIntN<N> {
         self.numer.magnitude()
     }
+
+    /// Return a reference to the denominator of the rational
     pub fn denom(&self) -> &UIntN<N> {
         &self.denom
     }
+
+    /// Return the sign of the rational
     pub fn is_neg(&self) -> bool {
         self.numer.is_neg()
     }

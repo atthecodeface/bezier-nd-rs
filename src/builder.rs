@@ -63,9 +63,12 @@ impl<F: Float, const D: usize> BezierBuilder<F, D> {
 
     /// Add a constraint that the nth derivative of the Bezier at parameter value 't' has
     /// a particular value
+    pub fn add_derivative_at(&mut self, t: F, n: usize, pt: [F; D]) {
+        self.constraints
+            .push(BezierBuildConstraint::DerivativeAtT(t, n, pt));
+    }
 
-    /// Add a constraint that the nth derivative of the Bezier at parameter value 't' has
-    /// a particular value
+    /// Get the number of constraints
     pub fn number_constraints(&self) -> usize {
         self.constraints.len()
     }

@@ -1,8 +1,16 @@
 use num_traits::{ConstOne, ConstZero, Zero};
 
+/// Unsigned integer of N*64 bits, supporting copy
+///
+/// This is not heavily optimized for performance, but for space; an optimization
+/// might include flags for 'is zero', 'is one', and possibly the number of u64 values
+/// that are non-zero; instead this is *purely* the array of u64 that make up the value
+///
+/// The purpose of this 'bignum' is to enable larger numbers simply for algorithms that
+/// require num_traits::Num
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct UIntN<const N: usize> {
-    // Value is stored with most significant at [0] so that PartialOrd operates correctly
+    /// Value is stored with most significant at index 0 so that PartialOrd operates correctly
     value: [u64; N],
 }
 
@@ -33,7 +41,7 @@ impl<const N: usize> std::convert::From<u64> for UIntN<N> {
 
 impl<const N: usize> std::cmp::PartialOrd for UIntN<N> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.value.partial_cmp(&other.value)
+        Some(self.cmp(other))
     }
 }
 impl<const N: usize> std::cmp::Ord for UIntN<N> {
@@ -468,6 +476,7 @@ impl<const N: usize> UIntN<N> {
         self
     }
 
+    /// Negate the value using twos complement
     pub fn twos_complement(&mut self) {
         let mut carry = true;
         for v in self.value.iter_mut().rev() {
@@ -477,6 +486,7 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Subtract other value from self
     pub fn subtract(&mut self, other: &Self) -> bool {
         let mut borrow = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
@@ -504,6 +514,7 @@ impl<const N: usize> UIntN<N> {
         r
     }
 
+    /// Calculate the GCD of two UIntN
     pub fn gcd(&self, other: &Self) -> Self {
         if self.value_is_zero() || other.value_is_zero() {
             Self::default()
@@ -530,6 +541,7 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Compare this UIntN with a pure u64 value
     pub fn cmp_u64(&self, value: u64) -> std::cmp::Ordering {
         if self.value[0..N - 1].iter().all(|s| *s == 0) {
             self.value[N - 1].cmp(&value)
@@ -556,7 +568,7 @@ impl<const N: usize> num_traits::Num for UIntN<N> {
         if has_chars {
             Ok(result)
         } else {
-            Err(i32::from_str_radix("", 10).unwrap_err())
+            Err("".parse::<i32>().unwrap_err())
         }
     }
 }
