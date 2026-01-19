@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use bezier_nd::BezierSplit;
 
 use bezier_nd::Bezier;
 use geo_nd::Float;

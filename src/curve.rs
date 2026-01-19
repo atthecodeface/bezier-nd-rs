@@ -1,4 +1,6 @@
 //a Imports
+use crate::BezierSplit;
+use crate::DynBezier;
 use geo_nd::vector;
 use geo_nd::Float;
 
@@ -85,6 +87,82 @@ where
     }
 
     //zz All done
+}
+
+impl<F, const D: usize> DynBezier<F> for Bezier<F, D>
+where
+    F: Float,
+{
+    type Point = [F; D];
+    fn point_at(&self, t: F) -> Self::Point {
+        todo!();
+    }
+    fn derivative_at(&self, t: F) -> Self::Point {
+        todo!();
+    }
+    fn endpoints(&self) -> (Self::Point, Self::Point) {
+        todo!();
+    }
+    fn is_straight(&self, straightness: F) -> bool {
+        todo!();
+    }
+    fn closeness_to_quad(&self) -> F {
+        todo!();
+    }
+    fn closeness_to_cubic(&self) -> F {
+        todo!();
+    }
+    fn num_control_points(&self) -> usize {
+        todo!();
+    }
+    fn control_point(&self, n: usize) -> &Self::Point {
+        todo!();
+    }
+}
+
+impl<F, const D: usize> BezierSplit for Bezier<F, D>
+where
+    F: Float,
+{
+    //mp bisect
+    /// Returns two Bezier's that split the curve at parameter t=0.5
+    ///
+    /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
+    fn bisect(&self) -> (Self, Self) {
+        let zero = F::zero();
+        let one = F::one();
+        let two = (2.0_f32).into();
+        let three: F = (3.0_f32).into();
+        let four: F = (4.0_f32).into();
+        let eight: F = (8.0_f32).into();
+        match self.num {
+            2 => {
+                let pm = self.vector_of(&[one, one], two);
+                (Self::line(&self.pts[0], &pm), Self::line(&pm, &self.pts[1]))
+            }
+            3 => {
+                let c0 = self.vector_of(&[one, zero, one], two);
+                let c1 = self.vector_of(&[zero, one, one], two);
+                let pm = vector::add(c0, &c1, F::one());
+                let pm = vector::reduce(pm, 2.0_f32.into());
+                (
+                    Self::quadratic(&self.pts[0], &c0, &pm),
+                    Self::quadratic(&pm, &c1, &self.pts[1]),
+                )
+            }
+            _ => {
+                let pm = self.vector_of(&[one, one, three, three], eight);
+                let c00 = self.vector_of(&[one, zero, one], two);
+                let c01 = self.vector_of(&[one, zero, two, one], four);
+                let c10 = self.vector_of(&[zero, one, one, two], four);
+                let c11 = self.vector_of(&[zero, one, zero, one], two);
+                (
+                    Self::cubic(&self.pts[0], &c00, &c01, &pm),
+                    Self::cubic(&pm, &c10, &c11, &self.pts[1]),
+                )
+            }
+        }
+    }
 }
 
 //ip Bezier
@@ -268,46 +346,6 @@ where
         }
     }
 
-    //mp bisect
-    /// Returns two Bezier's that split the curve at parameter t=0.5
-    ///
-    /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
-    pub fn bisect(&self) -> (Self, Self) {
-        let zero = F::zero();
-        let one = F::one();
-        let two = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
-        let eight: F = (8.0_f32).into();
-        match self.num {
-            2 => {
-                let pm = self.vector_of(&[one, one], two);
-                (Self::line(&self.pts[0], &pm), Self::line(&pm, &self.pts[1]))
-            }
-            3 => {
-                let c0 = self.vector_of(&[one, zero, one], two);
-                let c1 = self.vector_of(&[zero, one, one], two);
-                let pm = vector::add(c0, &c1, F::one());
-                let pm = vector::reduce(pm, 2.0_f32.into());
-                (
-                    Self::quadratic(&self.pts[0], &c0, &pm),
-                    Self::quadratic(&pm, &c1, &self.pts[1]),
-                )
-            }
-            _ => {
-                let pm = self.vector_of(&[one, one, three, three], eight);
-                let c00 = self.vector_of(&[one, zero, one], two);
-                let c01 = self.vector_of(&[one, zero, two, one], four);
-                let c10 = self.vector_of(&[zero, one, one, two], four);
-                let c11 = self.vector_of(&[zero, one, zero, one], two);
-                (
-                    Self::cubic(&self.pts[0], &c00, &c01, &pm),
-                    Self::cubic(&pm, &c10, &c11, &self.pts[1]),
-                )
-            }
-        }
-    }
-
     //mp bezier_between
     /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
     pub fn bezier_between(&self, t0: F, t1: F) -> Self {
@@ -354,7 +392,7 @@ where
     /// Return a [BezierLineIter] iterator that provides line segments
     /// when the Bezier is broken down into 'straight' enough through
     /// bisection.
-    pub fn as_lines(&self, straightness: F) -> BezierLineIter<F, D> {
+    pub fn as_lines(&self, straightness: F) -> impl Iterator<Item = ([F; D], [F; D])> {
         BezierLineIter::new(self, straightness)
     }
 
@@ -362,7 +400,7 @@ where
     /// Return a [BezierPointIter] iterator that provides points along
     /// the curve when the Bezier is broken down into 'straight'
     /// enough through bisection.
-    pub fn as_points(&self, straightness: F) -> BezierPointIter<F, D> {
+    pub fn as_points(&self, straightness: F) -> impl Iterator<Item = [F; D]> {
         BezierPointIter::new(BezierLineIter::new(self, straightness))
     }
 

@@ -1,10 +1,9 @@
-
 //a Imports
 use geo_nd::vector;
 use geo_nd::Float;
 
+use crate::traits::BezierSplit;
 use crate::Bezier;
-
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///
 /// The Beziers will be flattened to the given straightness, and if they form a closed path then
@@ -71,9 +70,10 @@ impl<F: Float> BezierDistance2D<F> {
             let first = self.flattened.len();
             for pt in b.as_points(self.straightness) {
                 if !self.flattened.is_empty()
-                    && vector::distance_sq(&pt, self.flattened.last().unwrap()) > F::epsilon() {
-                        self.flattened.push(pt);
-                    }
+                    && vector::distance_sq(&pt, self.flattened.last().unwrap()) > F::epsilon()
+                {
+                    self.flattened.push(pt);
+                }
             }
             self.bezier_indices.push((first, self.flattened.len()));
         }

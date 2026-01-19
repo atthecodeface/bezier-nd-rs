@@ -205,19 +205,34 @@ fn validate_bs_reductions_to_quad() {
     let mut reduce = [RationalN::<8>::default(); 200];
     let mut elevated_reduce = [RationalN::<8>::default(); 200];
 
-    let degree = 2;
-    let ts: Vec<RationalN<8>> = (0..(degree + 1))
-        .map(|i| (i as i64, degree).into())
-        .collect();
+    for degree in [1, 2, 3] {
+        let ts: Vec<RationalN<8>> = (0..(degree + 1))
+            .map(|i| (i as i64, degree).into())
+            .collect();
 
-    for reduce_from_degree in 3..12 {
-        generate_bs_reduce_matrix(
-            reduce_from_degree as usize,
-            degree as usize,
-            &ts,
-            &mut reduce,
-            &mut elevated_reduce,
-        );
+        for reduce_from_degree in (degree + 1)..11 {
+            generate_bs_reduce_matrix(
+                reduce_from_degree as usize,
+                degree as usize,
+                &ts,
+                &mut reduce,
+                &mut elevated_reduce,
+            );
+            eprintln!(
+                "\n\n****\nreduce = [{}]",
+                RationalN::<8>::with_common_denom(reduce.iter())
+                    .fold(String::new(), |s, (a, b)| s + &a.to_string() + ", ")
+            );
+            eprintln!(
+                "elevated_reduce = {} : [{}]",
+                RationalN::<8>::with_common_denom(elevated_reduce.iter())
+                    .next()
+                    .unwrap()
+                    .1,
+                RationalN::<8>::with_common_denom(elevated_reduce.iter())
+                    .fold(String::new(), |s, (a, b)| s + &a.to_string() + ", ")
+            );
+        }
     }
     assert!(false);
 }

@@ -214,6 +214,9 @@ mod line;
 mod point;
 pub(crate) mod polynomial;
 
+pub mod traits;
+pub use traits::{BezierSplit, DynBezier};
+
 pub mod bignum;
 
 /*a Exports

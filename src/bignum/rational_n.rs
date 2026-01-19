@@ -495,6 +495,21 @@ impl<const N: usize> RationalN<N> {
             denom,
         }
     }
+
+    /// Generate a string for an array, and return the LCM
+    ///
+    /// Should only include this if alloc
+    pub fn with_common_denom<'a, I: Iterator<Item = &'a Self> + Clone + 'a>(
+        iter: I,
+    ) -> impl Iterator<Item = (IntN<N>, UIntN<N>)> + 'a {
+        let lcm = iter
+            .clone()
+            .fold(UIntN::ONE, |lcm, v| lcm.lcm(&v.denom).unwrap());
+        iter.map(move |v| {
+            let m = lcm / v.denom;
+            (v.numer * m, lcm)
+        })
+    }
 }
 
 impl<const N: usize> num_traits::Num for RationalN<N> {

@@ -1,5 +1,6 @@
 //a Imports
 use bezier_nd::Bezier;
+use bezier_nd::BezierSplit;
 use geo_nd::{vector, FArray, Float, Vector};
 
 // type Point<F:Float> = FArray<F,2>;
