@@ -1,31 +1,32 @@
 mod utils;
 use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
-use geo_nd::matrix;
-use num::rational::Rational64;
+use bezier_nd::bignum::RationalN;
+use geo_nd::{matrix, Num};
 use utils::*;
 
 #[test]
 fn bernstein_matrix_br() {
-    let mut bern_n = [Rational64::default(); 100];
+    type N = RationalN<8>;
+    let mut bern_n = [N::default(); 100];
     generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[0_i64.into()]);
     assert_eq!(bern_n[0], 1_i64.into());
     assert_eq!(bern_n[1], 0_i64.into());
     assert_eq!(bern_n[2], 0_i64.into());
-    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[(1_i64, 2_i64).into()]);
-    assert_eq!(bern_n[0], (1_i64, 4_i64).into());
-    assert_eq!(bern_n[1], (1_i64, 2_i64).into());
-    assert_eq!(bern_n[2], (1_i64, 4_i64).into());
+    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[(1_i64, 2_u64).into()]);
+    assert_eq!(bern_n[0], (1_i64, 4_u64).into());
+    assert_eq!(bern_n[1], (1_i64, 2_u64).into());
+    assert_eq!(bern_n[2], (1_i64, 4_u64).into());
     generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[1_i64.into()]);
     assert_eq!(bern_n[0], 0_i64.into());
     assert_eq!(bern_n[1], 0_i64.into());
     assert_eq!(bern_n[2], 1_i64.into());
 }
 
-fn generate_bs_reduce_matrix(
+fn generate_bs_reduce_matrix<N: Num + From<i64> + Into<f64>>(
     degree: usize,
-    ts: &[Rational64],
-    reduce: &mut [Rational64],
-    elevated_reduce: &mut [Rational64],
+    ts: &[N],
+    reduce: &mut [N],
+    elevated_reduce: &mut [N],
 ) {
     assert_eq!(
         ts.len(),
@@ -35,7 +36,7 @@ fn generate_bs_reduce_matrix(
     );
     let n2 = (degree + 1) * (degree + 1);
     // bern_n is a (degree+1) * (degree+1) matrix
-    let mut bern_n = [Rational64::default(); 200];
+    let mut bern_n = [N::ZERO; 200];
     let mut bern_np1 = bern_n.clone();
     let mut tr0 = bern_n.clone();
     let mut tr1 = bern_n.clone();
@@ -76,8 +77,8 @@ fn generate_bs_reduce_matrix(
     );
 
     // Find reduction of elevation
-    let mut test = [Rational64::default(); 100];
-    let mut elevate = [Rational64::default(); 100];
+    let mut test = [N::zero(); 100];
+    let mut elevate = [N::zero(); 100];
     let scale = generate_elevate_by_one_matrix(&mut elevate, degree);
     for e in elevate.iter_mut() {
         *e /= scale;
@@ -101,23 +102,48 @@ fn generate_bs_reduce_matrix(
         elevated_reduce,
     );
 
-    eprintln!("Bernstein reduce for ts {ts:?} degree {degree}");
-    eprintln!("  &{:?}", &reduce[0..(degree + 1) * (degree + 2)]);
-    eprintln!("Bernstein elevated reduce for ts {ts:?} degree {degree}");
-    eprintln!("  &{:?}", &elevated_reduce[0..(degree + 2) * (degree + 2)]);
+    eprintln!("Bernstein reduce for ts degree {degree}");
+    eprintln!(
+        "  &[{}]",
+        reduce
+            .iter()
+            .take((degree + 1) * (degree + 2))
+            .fold(String::new(), |string, s| string
+                + &(<N as Into<f64>>::into(*s)).to_string()
+                + ", ")
+    );
+    eprintln!("Bernstein elevated reduce for ts degree {degree}");
+    eprintln!(
+        "  &[{}]",
+        elevated_reduce
+            .iter()
+            .take((degree + 2) * (degree + 2))
+            .fold(String::new(), |string, s| string
+                + &(<N as Into<f64>>::into(*s)).to_string()
+                + ", ")
+    );
 }
 
 #[test]
-fn bernstein_reduce_matrix() {
-    let mut reduce = [Rational64::default(); 200];
-    let mut elevated_reduce = [Rational64::default(); 200];
+fn validate_bernstein_reduce_matrices() {
+    let mut reduce = [RationalN::<8>::default(); 200];
+    let mut elevated_reduce = [RationalN::<8>::default(); 200];
 
-    let degree: i64 = 7;
-    let ts: Vec<Rational64> = (0..(degree + 1)).map(|i: i64| (i, degree).into()).collect();
-    generate_bs_reduce_matrix(degree as usize, &ts, &mut reduce, &mut elevated_reduce);
-    //   assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[0]);
-    //   assert_near_equal(
-    //       &elevated_reduce,
-    //      &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0],
-    //  );
+    for degree in 1..7 {
+        let ts: Vec<RationalN<8>> = (0..(degree + 1))
+            .map(|i| (i as i64, degree).into())
+            .collect();
+        generate_bs_reduce_matrix(degree as usize, &ts, &mut reduce, &mut elevated_reduce);
+        let reduce_f64: Vec<f64> = reduce.iter().map(|v| v.into()).collect();
+        assert_near_equal(
+            &bezier_nd::REDUCE_BY_ONE_BS_UNIFORM_F64[degree as usize - 1],
+            &reduce_f64,
+        );
+        let elevated_reduce_f64: Vec<f64> = elevated_reduce.iter().map(|v| v.into()).collect();
+        assert_near_equal(
+            &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[degree as usize - 1],
+            &elevated_reduce_f64,
+        );
+    }
+    // assert!(false);
 }

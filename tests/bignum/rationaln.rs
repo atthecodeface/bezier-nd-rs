@@ -1,8 +1,7 @@
 use bezier_nd::bignum::RationalN;
-use geo_nd::Num;
-use num_traits::{one, zero, ConstZero};
+use num_traits::{one, zero, ConstZero, Num, Zero};
 
-fn prime_25519<N: Num + From<u64>>() -> N {
+fn prime_25519<N: Num + Copy + From<u64>>() -> N {
     let a: N = 2.into();
     let a2_4 = a * a * a * a;
     let a2_16 = a2_4 * a2_4 * a2_4 * a2_4;
@@ -133,6 +132,120 @@ fn test_int_big() {
 
     let a = prime_25519::<RationalN<5>>();
     test_number_n(a);
+}
+
+fn assert_bits_almost_eq<const N: usize>(a: RationalN<N>, v: f64) {
+    let a_bits = a.as_f64_bits().unwrap();
+    let v_bits = v.to_bits();
+
+    assert_eq!(
+        a_bits & !1,
+        v_bits & !1,
+        "Mismatch for {a} {a_bits} to {v_bits}",
+    );
+
+    let a_bits = a.as_f32_bits().unwrap();
+    let v_bits = (v as f32).to_bits();
+    assert_eq!(
+        a_bits & !1,
+        v_bits & !1,
+        "Mismatch for {a} {a_bits} to {v_bits}",
+    );
+
+    let a_f64: f64 = a.into();
+    let a_f32: f32 = a.into();
+    assert!((v - a_f64).abs() < 1E-12);
+    assert!(((v as f32) - a_f32).abs() < 1E-6);
+}
+
+fn test_mantissa<const N: usize>(a: RationalN<N>, m: u64, exp: i32, v: f64, precise: bool) {
+    assert_eq!(a.to_mantissa64_exp(), (m, exp));
+    assert_eq!((-a).to_mantissa64_exp(), (m, exp));
+    assert_bits_almost_eq(a, v);
+
+    if precise {
+        assert_eq!(a, v.try_into().unwrap());
+        assert_eq!(a, (v as f32).try_into().unwrap());
+    }
+
+    // Note that -0.0 !+ 0.0 but 0/1 == -0/1
+    if !a.is_zero() {
+        assert_bits_almost_eq(-a, -v);
+        if precise {
+            assert_eq!(-v, (-a).into());
+            assert_eq!((-v) as f32, (-a).into());
+        }
+    }
+}
+
+fn mantissa_exp<const N: usize>() {
+    test_mantissa::<N>(0_u64.into(), 0, 0, 0.0, true);
+    test_mantissa::<N>(1_i64.into(), 1 << 63, 0, 1.0, true);
+    test_mantissa::<N>(2_i64.into(), 1 << 63, 1, 2.0, true);
+    test_mantissa::<N>((1_i64, 2_u64).into(), 1 << 63, -1, 0.5, true);
+    test_mantissa::<N>((1_i64, 4_u64).into(), 1 << 63, -2, 0.25, true);
+    test_mantissa::<N>((3_i64, 4_u64).into(), 3 << 62, -1, 0.75, true);
+    test_mantissa::<N>((3_i64, 1_u64).into(), 3 << 62, 1, 3.0, true);
+    test_mantissa::<N>(
+        (1_i64, 3_u64).into(),
+        0xaaaaaaaaaaaaaaaa,
+        -2,
+        1.0 / 3.0,
+        false,
+    );
+}
+
+#[test]
+fn test_mantissa_exp() {
+    mantissa_exp::<1>();
+    mantissa_exp::<4>();
+    mantissa_exp::<16>();
+
+    let f = (1.0_f64 / 12.0);
+    let value: RationalN<8> = f.try_into().unwrap();
+    eprintln!("Value {value}");
+    let value_f: f64 = value.into();
+    assert!((f - value_f).abs() < 1E-8);
+}
+
+fn assert_approx_eq<const N: usize>(a: &RationalN<N>, scale: &RationalN<N>, value: f64) {
+    let a_f64: f64 = a.into();
+    let scale_f64: f64 = scale.into();
+    let delta = (a_f64 * scale_f64 - value).abs();
+    assert!(
+        delta < 1E-8,
+        "{a}*{scale} = {a_f64}*{scale_f64} should equal {value}",
+    );
+}
+
+fn test_arithmetic<const N: usize>(value: f64, scale: f64) {
+    let mut v_r: RationalN<N> = value.try_into().unwrap();
+    let s_r: RationalN<N> = scale.try_into().unwrap();
+    v_r /= s_r;
+    assert_approx_eq(&v_r, &s_r, value);
+    assert_approx_eq(&(v_r + v_r), &s_r, value * 2.0);
+    //    assert_approx_eq(&(v_r * v_r), &s_r, value * value / scale);
+    //    assert_approx_eq(&((v_r + v_r) / v_r), &s_r, 2.0 * scale);
+}
+
+#[test]
+fn test_arithmetic_one() {
+    for scale in [1.0, 2., 3., 4., 8.] {
+        test_arithmetic::<1>(0.25, scale);
+        test_arithmetic::<1>(0.5, scale);
+        test_arithmetic::<1>(1000., scale);
+    }
+}
+
+#[test]
+fn test_arithmetic_two() {
+    for scale in [1.0, 2., 3., 4., 8.] {
+        test_arithmetic::<2>(0.25, scale);
+        test_arithmetic::<2>(0.5, scale);
+        test_arithmetic::<2>(1000., scale);
+        test_arithmetic::<2>(0.1, scale);
+        test_arithmetic::<2>(0.01, scale);
+    }
 }
 
 #[test]

@@ -6,7 +6,6 @@ use geo_nd::{
     vector::{self},
     Num,
 };
-use num::rational::Rational64;
 
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
@@ -104,9 +103,9 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
 }
 
 /// Generate Bernstein matrices for a given degree and values of t
-pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Rational64 {
-    let u = Rational64::ONE - t;
-    let mut result = Rational64::ONE;
+pub fn bernstein_basis_coeff_br<N: Num + From<i64>>(degree: usize, i: usize, t: N) -> N {
+    let u = N::ONE - t;
+    let mut result = N::ONE;
     for c in 0..degree {
         if c < i {
             result *= t;
@@ -119,12 +118,12 @@ pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Ratio
     // This is multiply by (n-j) for j = 0..i-1 inclusive and divide by j for j = 1..i inclusive
     for j in 0..=i {
         if j < i {
-            let f: Rational64 = ((degree - j) as i64).into();
+            let f: N = ((degree - j) as i64).into();
             result *= f;
         }
 
         if j >= 1 {
-            let f: Rational64 = (j as i64).into();
+            let f: N = (j as i64).into();
             result /= f;
         }
     }
@@ -133,7 +132,7 @@ pub fn bernstein_basis_coeff_br(degree: usize, i: usize, t: Rational64) -> Ratio
 
 /// Generate a Bernstein matrices for a given degree and values of t
 #[track_caller]
-pub fn generate_bernstein_matrix_br(matrix: &mut [Rational64], degree: usize, ts: &[Rational64]) {
+pub fn generate_bernstein_matrix_br<N: Num + From<i64>>(matrix: &mut [N], degree: usize, ts: &[N]) {
     assert_eq!(
         matrix.len(),
         (degree + 1) * ts.len(),

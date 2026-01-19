@@ -20,6 +20,13 @@ impl<const N: usize> std::default::Default for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::ops::Deref for UIntN<N> {
+    type Target = [u64; N];
+    fn deref(&self) -> &Self::Target {
+        &self.value
+    }
+}
+
 impl<const N: usize> std::convert::TryFrom<i64> for UIntN<N> {
     type Error = std::num::TryFromIntError;
     fn try_from(value: i64) -> Result<Self, std::num::TryFromIntError> {
@@ -283,14 +290,14 @@ impl<const N: usize> UIntN<N> {
     /// Find top bit of u64
     ///
     /// Return false if v is zero
-    fn find_top_bit(v: u64) -> Option<u32> {
+    pub fn find_top_bit(v: u64) -> Option<u32> {
         (0..64).rev().find(|i| ((v >> i) & 1) != 0)
     }
 
     /// Return n where self.value[n] is nonzero
     ///
     /// Returns None if self is zero
-    fn most_significant_n(&self) -> Option<u32> {
+    pub fn most_significant_n(&self) -> Option<u32> {
         self.value
             .iter()
             .enumerate()
@@ -332,8 +339,31 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Most significant 128 bits
+    ///
+    pub fn most_significant_u128(&self) -> (u128, u32) {
+        let Some(i) = self.most_significant_n() else {
+            return (0, 0);
+        };
+        let i = i as usize;
+        let bit = Self::find_top_bit(self.value[i]).unwrap() as usize;
+        let top_bit = 64 * (N - 1) + bit;
+        let mut top_bits = self.value[i] as u128;
+        top_bits <<= 127 - bit;
+        if i + 1 < N {
+            top_bits |= (self.value[i + 1] as u128) << (63 - bit);
+        }
+        if i + 2 < N && bit < 63 {
+            top_bits |= (self.value[i + 2] as u128) >> (bit + 1);
+        }
+        (top_bits, top_bit as u32)
+    }
+
     /// Shift left by n bits
-    fn shift_left(&mut self, amount: u32) -> bool {
+    ///
+    /// Return true if it overflows
+    #[track_caller]
+    pub fn shift_left(&mut self, amount: u32) -> bool {
         if amount == 0 {
             return false;
         }
@@ -363,8 +393,14 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Shift right by 64 bits
+    pub fn shift_right_64(&mut self) {
+        self.value.copy_within(0..N - 1, 1);
+        self.value[0] = 0;
+    }
+
     /// Shift right by one bit
-    fn shift_right(&mut self) {
+    pub fn shift_right_one(&mut self) {
         let mut shift_in = false;
         for i in 0..N {
             let v_i = self.value[i];
@@ -410,7 +446,7 @@ impl<const N: usize> UIntN<N> {
                 rem -= thing;
                 div.set_bit(bit_num);
             }
-            thing.shift_right();
+            thing.shift_right_one();
             if bit_num == 0 {
                 break;
             }

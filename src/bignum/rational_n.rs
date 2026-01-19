@@ -41,6 +41,57 @@ impl<const N: usize> std::convert::From<i64> for RationalN<N> {
     }
 }
 
+impl<const N: usize> std::convert::From<(i64, u64)> for RationalN<N> {
+    fn from((numer, denom): (i64, u64)) -> Self {
+        Self {
+            numer: numer.into(),
+            denom: denom.into(),
+        }
+    }
+}
+
+impl<const N: usize> std::convert::TryFrom<f64> for RationalN<N> {
+    type Error = &'static str;
+    #[inline]
+    fn try_from(f: f64) -> Result<Self, &'static str> {
+        Self::of_f64_bits(f.to_bits()).ok_or("value out of range for conversion to Rational")
+    }
+}
+
+impl<const N: usize> std::convert::TryFrom<f32> for RationalN<N> {
+    type Error = &'static str;
+    #[inline]
+    fn try_from(f: f32) -> Result<Self, &'static str> {
+        Self::of_f32_bits(f.to_bits()).ok_or("value out of range for conversion to Rational")
+    }
+}
+
+impl<const N: usize> std::convert::From<RationalN<N>> for f32 {
+    #[inline]
+    fn from(r: RationalN<N>) -> f32 {
+        (&r).into()
+    }
+}
+
+impl<const N: usize> std::convert::From<RationalN<N>> for f64 {
+    #[inline]
+    fn from(r: RationalN<N>) -> f64 {
+        (&r).into()
+    }
+}
+
+impl<const N: usize> std::convert::From<&RationalN<N>> for f32 {
+    fn from(r: &RationalN<N>) -> f32 {
+        r.as_f32_bits().map(f32::from_bits).unwrap_or(f32::NAN)
+    }
+}
+
+impl<const N: usize> std::convert::From<&RationalN<N>> for f64 {
+    fn from(r: &RationalN<N>) -> f64 {
+        r.as_f64_bits().map(f64::from_bits).unwrap_or(f64::NAN)
+    }
+}
+
 impl<const N: usize> std::cmp::Ord for RationalN<N> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self.is_neg(), other.is_neg()) {
@@ -217,15 +268,174 @@ impl<const N: usize> RationalN<N> {
         self.numer.is_neg()
     }
 
+    /// Calculate the mantissa and exponent. Ignores sign.
+    ///
+    /// For zero, return (0,0); for 1 return (1<<63,0); 2 returns (1<<63,1), half (1<<63,-1)
+    ///
+    /// Shift numerator up until top bit is set, and denominator up until top bit is set
+    /// if denominator is bigger than numerator then shift it right by one
+    /// shift denominator right by 64
+    ///
+    /// Divide shifted numerator by shifted numerator; the dividend is the mantissa (could do some rounding...)
+    pub fn to_mantissa64_exp(&self) -> (u64, i32) {
+        let (numer, numer_top_bit) = self.numer().most_significant_u128();
+        if numer == 0 {
+            return (0, 0);
+        };
+        let (mut denom, denom_top_bit) = self.denom().most_significant_u128();
+        let mut exponent = (numer_top_bit as i32) - (denom_top_bit as i32);
+        // eprintln!("denom , numer {} {denom} {numer} ", denom > numer);
+        if denom > numer {
+            exponent -= 1;
+            denom >>= 1;
+        }
+        denom >>= 63;
+        // eprintln!("{numer} / {denom}, {exponent}");
+        ((numer / denom) as u64, exponent)
+    }
+
+    pub fn normalize(&mut self) -> bool {
+        let gcd = self.numer().gcd(&self.denom);
+        if gcd.is_zero() {
+            if !self.denom.is_one() {
+                self.denom = UIntN::<N>::ONE;
+                true
+            } else {
+                false
+            }
+        } else if gcd.is_one() {
+            false
+        } else {
+            self.numer = self.numer / gcd;
+            self.denom /= gcd;
+            true
+        }
+    }
+
+    /// Take a mantissa (bit 63 set if not zero) and exponent (0=> divide by 2^63)
+    /// to generate a (normalized) rational
+    pub fn of_sign_mantissa_exp(is_neg: bool, mantissa: u64, exp: i32) -> Option<Self> {
+        // eprintln!("of_sign_me: {is_neg} {mantissa:x} {exp}");
+        if mantissa == 0 {
+            Some(Self::default())
+        } else {
+            // bottom_bit is the right-most bit of mantissa that is set
+            // num_bits is the number of bits set in mantissa (top bit downwards)
+            //
+            // for 1 (mantissa = 1<<63, exp=0); num_bits=1, bottom_bit=63
+            // for 3 (mantissa = 3<<62, exp=1); num_bits=2, bottom_bit=62
+            // for int N of num_bits mantissa = N<<(63-num_bits), exp=num_bits-1
+            let bottom_bit = (0..64).find(|i| (mantissa >> (*i) & 1) != 0).unwrap();
+            let num_bits = 64 - bottom_bit;
+            let mantissa = mantissa >> (bottom_bit as u64);
+            let left_shift = exp + 1 - num_bits;
+            if left_shift == 0 {
+                Some(mantissa.into())
+            } else if left_shift + num_bits >= 64 * (N as i32) {
+                None
+            } else if left_shift > 0 {
+                let mut numer: UIntN<N> = mantissa.into();
+                numer.shift_left(left_shift as u32);
+                let denom = UIntN::ONE;
+                Some(Self {
+                    numer: (is_neg, numer).into(),
+                    denom,
+                })
+            } else if (-left_shift) >= 64 * (N as i32) {
+                None
+            } else {
+                let numer: UIntN<N> = mantissa.into();
+                let mut denom = UIntN::ONE;
+                denom.shift_left((-left_shift) as u32);
+                Some(Self {
+                    numer: (is_neg, numer).into(),
+                    denom,
+                })
+            }
+        }
+    }
+
+    /// Get a RationalN from f64 bits, if it fits in the range
+    /// for the numerator/denominator, by using powers of two
+    /// for the denominator
+    pub fn of_f64_bits(bits: u64) -> Option<Self> {
+        // eprintln!("of_f64_bits: {bits:x} {}", f64::from_bits(bits));
+        if bits & (u64::MAX >> 1) == 0 {
+            Some(Self::default())
+        } else {
+            let is_neg = (bits & (1 << 63)) != 0;
+            let mantissa = (1 << 52) | (bits & ((1 << 52) - 1));
+            let exp = (bits >> 52) & 0x7ff;
+            let exp = (exp as i32) - 1023;
+            Self::of_sign_mantissa_exp(is_neg, mantissa << 11, exp)
+        }
+    }
+
+    /// Get a RationalN from f32 bits, if it fits in the range
+    /// for the numerator/denominator, by using powers of two
+    /// for the denominator
+    pub fn of_f32_bits(bits: u32) -> Option<Self> {
+        // eprintln!("of_f32_bits: {bits:x} {}", f32::from_bits(bits));
+        if bits & (u32::MAX >> 1) == 0 {
+            Some(Self::default())
+        } else {
+            let is_neg = (bits & (1 << 31)) != 0;
+            let mantissa = (1 << 23) | (bits & ((1 << 23) - 1));
+            let exp = (bits >> 23) & 0xff;
+            let exp = (exp as i32) - 127;
+            Self::of_sign_mantissa_exp(is_neg, (mantissa as u64) << 40, exp)
+        }
+    }
+
+    /// Get the bit-value of this RationalN as an f64
+    ///
+    /// This can be converted to an f64 with f64::from_bits()
+    pub fn as_f64_bits(&self) -> Option<u64> {
+        let mut result = 0;
+        if self.is_neg() {
+            result |= 1 << 63;
+        }
+        let (mantissa, exp) = self.to_mantissa64_exp();
+        if mantissa == 0 {
+            Some(0)
+        } else if exp < -1022 || exp > 1023 {
+            None
+        } else {
+            result |= (((exp + 1023) & 0x7ff) as u64) << 52;
+            result |= (mantissa >> 11) & ((1 << 52) - 1);
+            Some(result)
+        }
+    }
+
+    /// Get the bit-value of this RationalN as an f32
+    ///
+    /// This can be converted to an f32 with f32::from_bits()
+    pub fn as_f32_bits(&self) -> Option<u32> {
+        let mut result = 0;
+        if self.is_neg() {
+            result |= 1 << 31;
+        }
+        let (mantissa, exp) = self.to_mantissa64_exp();
+        if mantissa == 0 {
+            Some(0)
+        } else if exp < -126 || exp > 127 {
+            None
+        } else {
+            result |= (((exp + 127) & 0xff) as u32) << 23;
+            result |= ((mantissa >> 40) & ((1 << 23) - 1)) as u32;
+            Some(result)
+        }
+    }
+
     fn do_add_sub(&self, other: &Self, negate: bool) -> Self {
         let denom_gcd = self.denom.gcd(&other.denom);
         let self_denom_no_gcd: IntN<_> = (negate, self.denom / denom_gcd).into();
         let other_denom_no_gcd = other.denom / denom_gcd;
         let mut numer = self.numer * other_denom_no_gcd;
-        eprintln!(
-            "{self} +-? {other} {numer} {} {}",
-            other.numer, self_denom_no_gcd
-        );
+        // eprintln!(
+        //     "{self} +-? {other} {numer} {} {}",
+        //     other.numer, self_denom_no_gcd
+        // );
         numer += other.numer * self_denom_no_gcd;
         let mut denom = self.denom * other_denom_no_gcd;
         if numer.is_zero() {
