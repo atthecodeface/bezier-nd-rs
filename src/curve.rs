@@ -95,16 +95,74 @@ where
 {
     type Point = [F; D];
     fn point_at(&self, t: F) -> Self::Point {
-        todo!();
+        let two: F = (2.0_f32).into();
+        let three: F = (3.0_f32).into();
+        let omt = F::one() - t;
+        match self.num {
+            2 => self.vector_of(&[omt, t], F::one()),
+            3 => {
+                let p0_sc = omt * omt;
+                let c_sc = two * omt * t;
+                let p1_sc = t * t;
+                self.vector_of(&[p0_sc, p1_sc, c_sc], F::one())
+            }
+            _ => {
+                let p0_sc = omt * omt * omt;
+                let c0_sc = three * omt * omt * t;
+                let c1_sc = three * omt * t * t;
+                let p1_sc = t * t * t;
+                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], F::one())
+            }
+        }
     }
     fn derivative_at(&self, t: F) -> Self::Point {
-        todo!();
+        let one = F::one();
+        let two: F = (2.0_f32).into();
+        let three: F = (3.0_f32).into();
+        let four: F = (4.0_f32).into();
+        match self.num {
+            2 => self.vector_of(&[-one, one], one),
+            3 => {
+                let p0_sc = t - one; // d/dt (1-t)^2
+                let c_sc = one - two * t; // d/dt 2t(1-t)
+                let p1_sc = t; // d/dt t^2
+                self.vector_of(&[p0_sc, p1_sc, c_sc], one)
+            }
+            _ => {
+                let p0_sc = two * t - t * t - one; // d/dt (1-t)^3
+                let c0_sc = three * t * t - four * t + one; // d/dt 3t(1-t)^2
+                let c1_sc = two * t - three * t * t; // d/dt 3t^2(1-t)
+                let p1_sc = t * t; // d/dt t^3
+                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], one)
+            }
+        }
     }
-    fn endpoints(&self) -> (Self::Point, Self::Point) {
-        todo!();
+    fn endpoints(&self) -> (&Self::Point, &Self::Point) {
+        (&self.pts[0], &self.pts[1])
     }
     fn is_straight(&self, straightness: F) -> bool {
-        todo!();
+        match self.num {
+            2 => true,
+            3 => {
+                let dv = vector::sub(self.pts[2], &self.pts[0], (0.5_f32).into());
+                let dv = vector::sub(dv, &self.pts[1], (0.5_f32).into());
+                let dc2 = vector::length_sq(&dv);
+                dc2 < straightness * straightness
+            }
+            _ => {
+                let dv = vector::sub(self.pts[2], &self.pts[0], (0.33333333_f32).into());
+                let dv = vector::sub(dv, &self.pts[1], (0.66666666_f32).into());
+                let dc2 = vector::length_sq(&dv);
+                if dc2 > straightness * straightness {
+                    return false;
+                }
+
+                let dv = vector::sub(self.pts[3], &self.pts[1], (0.33333333_f32).into());
+                let dv = vector::sub(dv, &self.pts[0], (0.66666666_f32).into());
+                let dc2 = vector::length_sq(&dv);
+                dc2 < straightness * straightness
+            }
+        }
     }
     fn closeness_to_quad(&self) -> F {
         todo!();
@@ -113,10 +171,10 @@ where
         todo!();
     }
     fn num_control_points(&self) -> usize {
-        todo!();
+        self.num
     }
     fn control_point(&self, n: usize) -> &Self::Point {
-        todo!();
+        &self.pts[n]
     }
 }
 
@@ -170,33 +228,6 @@ impl<F, const D: usize> Bezier<F, D>
 where
     F: Float,
 {
-    //ap borrow_pt
-    /// Borrow the start or end point of the Bezier - index 0 gives the
-    /// start point, index 1 the end point
-    ///
-    /// It can also be used to borrow the control points (which are
-    /// index 2 and 3) if they are used for the Bezier; this is not
-    /// generally required, as a Bezier is designed to be rendered
-    /// into straight lines.
-    pub fn borrow_pt(&self, index: usize) -> &[F; D] {
-        &self.pts[index]
-    }
-
-    //dp endpoints
-    /// Deconstruct and get the endpoints
-    pub fn endpoints(self) -> ([F; D], [F; D]) {
-        (self.pts[0], self.pts[1])
-    }
-
-    //mp get_distance
-    /// Get the distance between the start and end points
-    ///
-    /// This is not the same as the length of the Bezier, as it may be
-    /// a curve.
-    pub fn get_distance(&self) -> F {
-        vector::distance(&self.pts[0], &self.pts[1])
-    }
-
     //fp line
     /// Create a new Bezier that is a line between two points
     pub fn line(p0: &[F; D], p1: &[F; D]) -> Self {
@@ -295,57 +326,6 @@ where
         vector::reduce(r, reduce)
     }
 
-    //mp point_at
-    /// Returns the point at parameter 't' along the Bezier
-    pub fn point_at(&self, t: F) -> [F; D] {
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let omt = F::one() - t;
-        match self.num {
-            2 => self.vector_of(&[omt, t], F::one()),
-            3 => {
-                let p0_sc = omt * omt;
-                let c_sc = two * omt * t;
-                let p1_sc = t * t;
-                self.vector_of(&[p0_sc, p1_sc, c_sc], F::one())
-            }
-            _ => {
-                let p0_sc = omt * omt * omt;
-                let c0_sc = three * omt * omt * t;
-                let c1_sc = three * omt * t * t;
-                let p1_sc = t * t * t;
-                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], F::one())
-            }
-        }
-    }
-
-    //mp tangent_at
-    /// Returns the tangent vector at parameter 't' along the Bezier
-    ///
-    /// Note that this is not necessarily a unit vector
-    pub fn tangent_at(&self, t: F) -> [F; D] {
-        let one = F::one();
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
-        match self.num {
-            2 => self.vector_of(&[-one, one], one),
-            3 => {
-                let p0_sc = t - one; // d/dt (1-t)^2
-                let c_sc = one - two * t; // d/dt 2t(1-t)
-                let p1_sc = t; // d/dt t^2
-                self.vector_of(&[p0_sc, p1_sc, c_sc], one)
-            }
-            _ => {
-                let p0_sc = two * t - t * t - one; // d/dt (1-t)^3
-                let c0_sc = three * t * t - four * t + one; // d/dt 3t(1-t)^2
-                let c1_sc = two * t - three * t * t; // d/dt 3t^2(1-t)
-                let p1_sc = t * t; // d/dt t^3
-                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], one)
-            }
-        }
-    }
-
     //mp bezier_between
     /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
     pub fn bezier_between(&self, t0: F, t1: F) -> Self {
@@ -371,8 +351,8 @@ where
                 // and if we scale the curve to t1-t0 in size, tangents scale the same
                 let rp0 = self.point_at(t0);
                 let rp1 = self.point_at(t1);
-                let rt0 = self.tangent_at(t0);
-                let rt1 = self.tangent_at(t1);
+                let rt0 = self.derivative_at(t0);
+                let rt1 = self.derivative_at(t1);
 
                 let t1_m_t0 = t1 - t0;
 
@@ -522,7 +502,8 @@ where
     /// `straightness` is independent of the length of the Bezier
     pub fn length(&self, straightness: F) -> F {
         if self.is_straight(straightness) {
-            self.get_distance()
+            let (ep0, ep1) = self.endpoints();
+            vector::distance(&ep0, &ep1)
         } else {
             let (b0, b1) = self.bisect();
             b0.length(straightness) + b1.length(straightness)
@@ -544,7 +525,8 @@ where
         if distance <= acc_length {
             (Some(t_start), zero)
         } else if self.is_straight(straightness) {
-            let d = self.get_distance();
+            let (ep0, ep1) = self.endpoints();
+            let d = vector::distance(&ep0, &ep1);
             if distance > acc_length + d {
                 (None, acc_length + d)
             } else if d < F::epsilon() {
@@ -848,8 +830,8 @@ where
         let one = F::one();
         let p0 = self.point_at(zero);
         let p1 = self.point_at(one);
-        let t0 = self.tangent_at(zero);
-        let t1 = self.tangent_at(one);
+        let t0 = self.derivative_at(zero);
+        let t1 = self.derivative_at(one);
         let t0 = vector::normalize(t0);
         let t1 = vector::normalize(t1);
         let t1_d_t0 = vector::dot(&t1, &t0);
@@ -918,7 +900,7 @@ where
 {
     /// Return the normal at a paramenter 't' (for 2D beziers only)
     pub fn normal_at(&self, t: F) -> [F; 2] {
-        let x = self.tangent_at(t);
+        let x = self.derivative_at(t);
         [x[1], x[0]]
     }
 

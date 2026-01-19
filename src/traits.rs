@@ -1,10 +1,10 @@
 use geo_nd::{vector, Num};
 
 pub trait DynBezier<F: Num> {
-    type Point;
+    type Point: Clone;
     fn point_at(&self, t: F) -> Self::Point;
     fn derivative_at(&self, t: F) -> Self::Point;
-    fn endpoints(&self) -> (Self::Point, Self::Point);
+    fn endpoints(&self) -> (&Self::Point, &Self::Point);
     fn is_straight(&self, straightness: F) -> bool;
     fn closeness_to_quad(&self) -> F;
     fn closeness_to_cubic(&self) -> F;
@@ -23,8 +23,8 @@ impl<F: Num + From<f32>, const D: usize> DynBezier<F> for [[F; D]; 2] {
     fn derivative_at(&self, _t: F) -> [F; D] {
         vector::add(self[1], &self[0], -F::ONE)
     }
-    fn endpoints(&self) -> (Self::Point, Self::Point) {
-        (self[0], self[1])
+    fn endpoints(&self) -> (&Self::Point, &Self::Point) {
+        (&self[0], &self[1])
     }
     fn is_straight(&self, _straightness: F) -> bool {
         true

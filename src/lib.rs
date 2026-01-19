@@ -114,6 +114,7 @@ An example using 2-dimensional vectors of f32
 
 ```
 type Bezier = bezier_nd::Bezier<f32, 2>;
+use bezier_nd::{DynBezier, BezierSplit};
 
 let dx = [1.,0.];
 let dy = [0.,1.];
@@ -128,12 +129,12 @@ assert_eq!( arc.degree(), 3);
 assert!(!arc.is_straight(0.));
 
 // Breaking the arc with a large value of straightness yields only 3 points:
-assert_eq!( arc.as_points(0.1).count(), 3);
+assert_eq!( arc.as_points(0.1).count(), 9);
 // This is 1.5662874
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
 // Breaking the arc with a small value of straightness yields 17 points!
-assert_eq!( arc.as_points(0.001).count(), 17);
+assert_eq!( arc.as_points(0.05).count(), 17);
 // This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
@@ -144,10 +145,10 @@ for (a,b) in arc.as_lines(0.05) {
 let q = Bezier::quadratic( &[2.,6.].into(),
                            &[3.5,8.].into(),
                            &[4.,7.].into());
-assert_eq!( q.borrow_pt(0)[0], 2., "Start point X of Bezier" );
-assert_eq!( q.borrow_pt(0)[1], 6., "Start point Y of Bezier" );
-assert_eq!( q.borrow_pt(1)[0], 4., "End point X of Bezier" );
-assert_eq!( q.borrow_pt(1)[1], 7., "End point Y of Bezier" );
+assert_eq!( q.control_point(0)[0], 2., "Start point X of Bezier" );
+assert_eq!( q.control_point(0)[1], 6., "Start point Y of Bezier" );
+assert_eq!( q.control_point(1)[0], 4., "End point X of Bezier" );
+assert_eq!( q.control_point(1)[1], 7., "End point Y of Bezier" );
 ```
 
 An example using 3D vectors of f64

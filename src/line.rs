@@ -75,7 +75,8 @@ where
             None => None,
             Some(b) => {
                 if b.is_straight(self.straightness) {
-                    Some(b.endpoints())
+                    let (ep0, ep1) = b.endpoints();
+                    Some((ep0.clone(), ep1.clone()))
                 } else {
                     let (b0, b1) = b.bisect();
                     self.stack.push(b1);

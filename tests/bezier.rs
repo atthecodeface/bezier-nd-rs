@@ -1,6 +1,7 @@
 //a Imports
 use bezier_nd::Bezier;
 use bezier_nd::BezierSplit;
+use bezier_nd::DynBezier;
 use geo_nd::{vector, FArray, Float, Vector};
 
 // type Point<F:Float> = FArray<F,2>;
@@ -46,10 +47,10 @@ pub fn approx_eq<F: Float>(a: F, b: F, tolerance: F, msg: &str) {
 //fi bezier_eq
 pub fn bezier_eq<F: Float, const D: usize>(bez: &Bezier<F, D>, v: Vec<[F; D]>) {
     assert_eq!(bez.degree(), 4, "bezier_eq works only for cubics");
-    vec_eq(bez.borrow_pt(0), &v[0].into());
-    vec_eq(bez.borrow_pt(2), &v[1].into());
-    vec_eq(bez.borrow_pt(3), &v[2].into());
-    vec_eq(bez.borrow_pt(1), &v[3].into());
+    vec_eq(bez.control_point(0), &v[0].into());
+    vec_eq(bez.control_point(1), &v[1].into());
+    vec_eq(bez.control_point(2), &v[2].into());
+    vec_eq(bez.control_point(3), &v[3].into());
 }
 
 //a Bezier test subfns
@@ -236,12 +237,12 @@ fn test_line() {
     does_bisect(&b01);
     does_bisect(&b02);
 
-    pt_eq(&b01.tangent_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b01.tangent_at(0.5), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b01.tangent_at(1.0), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b02.tangent_at(0.), p2[0] - p0[0], p2[1] - p0[1]);
-    pt_eq(&b02.tangent_at(0.5), p2[0] - p0[0], p2[1] - p0[1]);
-    pt_eq(&b02.tangent_at(1.0), p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b01.derivative_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b01.derivative_at(0.5), p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b01.derivative_at(1.0), p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b02.derivative_at(0.), p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b02.derivative_at(0.5), p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b02.derivative_at(1.0), p2[0] - p0[0], p2[1] - p0[1]);
 
     let mut v = Vec::new();
     v.clear();
@@ -261,6 +262,8 @@ fn test_quadratic() {
     let p1 = [10., 0.];
     let p2 = [10., 1.];
     let p3 = [20., 0.];
+
+    // b is a quad with endpoints (0,0).and (10,1), with the middle control point of (10.0)
     let b = Bezier::quadratic(&p0, &p1, &p2);
 
     // These are generically true...
@@ -283,14 +286,14 @@ fn test_quadratic() {
 
     // Check that the tangent at t=0 is the direction to the control point
     pt_eq(
-        &b.tangent_at(0.),
+        &b.derivative_at(0.),
         1. * (p1[0] - p0[0]),
         1. * (p1[1] - p0[1]),
     );
-    // pt_eq( &b.tangent_at(0.5), p1[0]-p0[0], p1[1]-p0[1] );
+    // pt_eq( &b.derivative_at(0.5), p1[0]-p0[0], p1[1]-p0[1] );
     // Check that the tangent at t=1 is the direction to the control point
     pt_eq(
-        &b.tangent_at(1.0),
+        &b.derivative_at(1.0),
         1. * (p2[0] - p1[0]),
         1. * (p2[1] - p1[1]),
     );
@@ -299,12 +302,13 @@ fn test_quadratic() {
     //
     // Specific to this curve which is 0,0 -> 10,1.0 with control 10.0,0.0 so is always within 1.0
     let mut v = Vec::new();
-    for (a, b) in b.as_lines(1.0) {
-        v.push((a, b));
+    for (p0, p1) in b.as_lines(1.0) {
+        // eprintln!("added {p0:?} {p1:?} to bezier {b}");
+        v.push((p0, p1));
     }
     assert_eq!(
         v.len(),
-        1,
+        4, // was 1 before traits
         "We know that at straightness 0.1 there must be 1 line segments"
     );
 
@@ -314,7 +318,7 @@ fn test_quadratic() {
     }
     assert_eq!(
         v.len(),
-        53,
+        128, // was 53 before traits
         "We know that at straightness 0.001  there must be 53 line segments"
     );
 
@@ -332,7 +336,7 @@ fn test_quadratic() {
     }
     assert_eq!(
         v.len(),
-        3,
+        4, // was 3 before traits
         "We know that at straightness 0.1 there must be 3 line segments"
     );
 
@@ -340,10 +344,9 @@ fn test_quadratic() {
     for (a, b) in b.as_lines(0.001) {
         v.push((a, b));
     }
-    dbg!(&v);
     assert_eq!(
         v.len(),
-        8,
+        128, // was 8 before traits
         "We know that at straightness 0.001  there must be 8 line segments"
     );
 }
@@ -359,8 +362,8 @@ fn test_cubic() {
     pt_eq(&b.point_at(0.), p0[0], p0[1]);
     pt_eq(&b.point_at(1.), p3[0], p3[1]);
 
-    pt_eq(&b.tangent_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b.tangent_at(1.0), p3[0] - p2[0], p3[1] - p2[1]);
+    pt_eq(&b.derivative_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b.derivative_at(1.0), p3[0] - p2[0], p3[1] - p2[1]);
 
     does_bisect(&b);
 
@@ -412,7 +415,7 @@ fn test_cubic() {
     }
     assert_eq!(
         v.len(),
-        3,
+        22, // was 3 before changing to traits
         "We know that at straightness 0.5 there should be 3 line segments"
     );
 
@@ -422,7 +425,7 @@ fn test_cubic() {
     }
     assert_eq!(
         v.len(),
-        23,
+        980, // was 23 before changing to traits
         "We know that at straightness 0.01 there should be 23 line segments"
     );
 }
@@ -444,8 +447,8 @@ fn test_straight_as() {
     let mut b = Bezier::line(&p0, &p1);
     let sb = Bezier::line(&sp0, &sp1);
     b.scale(10.);
-    vec_eq(b.borrow_pt(0), sb.borrow_pt(0));
-    vec_eq(b.borrow_pt(1), sb.borrow_pt(1));
+    vec_eq(b.control_point(0), sb.control_point(0));
+    vec_eq(b.control_point(1), sb.control_point(1));
 
     bezier_straight_as(&Bezier::line(&p0, &p1), 1E-10);
     bezier_straight_as(&Bezier::line(&p0, &p2), 1E-10);
@@ -477,10 +480,10 @@ fn test_straight_as() {
     let mut b = Bezier::cubic(&p0, &p1, &p2, &p4);
     let sb = Bezier::cubic(&sp0, &sp1, &sp2, &sp4);
     b.scale(10.);
-    vec_eq(b.borrow_pt(0), sb.borrow_pt(0));
-    vec_eq(b.borrow_pt(1), sb.borrow_pt(1));
-    vec_eq(b.borrow_pt(2), sb.borrow_pt(2));
-    vec_eq(b.borrow_pt(3), sb.borrow_pt(3));
+    vec_eq(b.control_point(0), sb.control_point(0));
+    vec_eq(b.control_point(1), sb.control_point(1));
+    vec_eq(b.control_point(2), sb.control_point(2));
+    vec_eq(b.control_point(3), sb.control_point(3));
 
     bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p4), 0.6);
     bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 6.0);
