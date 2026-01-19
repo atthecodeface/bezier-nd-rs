@@ -577,6 +577,17 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Calculate the LCMof two UIntN
+    pub fn lcm(&self, other: &Self) -> Option<Self> {
+        if self.value_is_zero() || other.value_is_zero() {
+            None
+        } else {
+            let gcd = self.gcd(other);
+            let result = *self / gcd;
+            Some(result * other)
+        }
+    }
+
     /// Compare this UIntN with a pure u64 value
     pub fn cmp_u64(&self, value: u64) -> std::cmp::Ordering {
         if self.value[0..N - 1].iter().all(|s| *s == 0) {

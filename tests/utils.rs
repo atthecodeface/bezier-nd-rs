@@ -3,6 +3,7 @@
 use bezier_nd::Bezier;
 use geo_nd::Float;
 use geo_nd::{
+    matrix,
     vector::{self},
     Num,
 };
@@ -130,7 +131,11 @@ pub fn bernstein_basis_coeff_br<N: Num + From<i64>>(degree: usize, i: usize, t: 
     result
 }
 
-/// Generate a Bernstein matrices for a given degree and values of t
+/// Generate a Bernstein matrix for a given degree and values of t
+///
+/// This generates an N * (degree+1) matrix which can be applied to 'degree' control points
+/// to generate the positions on the Bezier (of that degree with those control points) at
+/// N specified values of 't' (given by ts)
 #[track_caller]
 pub fn generate_bernstein_matrix_br<N: Num + From<i64>>(matrix: &mut [N], degree: usize, ts: &[N]) {
     assert_eq!(
@@ -145,4 +150,37 @@ pub fn generate_bernstein_matrix_br<N: Num + From<i64>>(matrix: &mut [N], degree
             matrix[r * (degree + 1) + c] = bernstein_basis_coeff_br(degree, c, *t);
         }
     }
+}
+
+/// Generate an elevate-by-N matrix for a given degree
+///
+/// This is a (degree+1+N)*(degree+1) matrix that should be applied to the control points
+/// to generate a new array of control points of the elevated Bezier
+#[track_caller]
+#[must_use]
+pub fn generate_elevate_by_n_matrix<N: Num>(degree: usize, by_n: usize) -> Vec<N> {
+    use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
+
+    assert!(by_n >= 1);
+    let mut result = vec![N::ZERO; (degree + 1) * (degree + 1 + by_n)];
+    if by_n == 1 {
+        let scale = generate_elevate_by_one_matrix(&mut result, degree);
+        for e in result.iter_mut() {
+            *e /= scale;
+        }
+    } else {
+        // m_a is degree+2 * degree+1
+        // m_a is degree+1+by_n * degree+2
+        let m_a = generate_elevate_by_n_matrix(degree, 1);
+        let m_b = generate_elevate_by_n_matrix(degree + 1, by_n - 1);
+        matrix::multiply_dyn(
+            degree + 1 + by_n,
+            degree + 2,
+            degree + 1,
+            &m_b,
+            &m_a,
+            &mut result,
+        );
+    }
+    result
 }
