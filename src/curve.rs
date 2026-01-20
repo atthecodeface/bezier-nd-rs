@@ -1,6 +1,6 @@
 //a Imports
+use crate::BezierEval;
 use crate::BezierSplit;
-use crate::DynBezier;
 use geo_nd::vector;
 use geo_nd::Float;
 
@@ -89,12 +89,11 @@ where
     //zz All done
 }
 
-impl<F, const D: usize> DynBezier<F> for Bezier<F, D>
+impl<F, const D: usize> BezierEval<F, [F; D]> for Bezier<F, D>
 where
     F: Float,
 {
-    type Point = [F; D];
-    fn point_at(&self, t: F) -> Self::Point {
+    fn point_at(&self, t: F) -> [F; D] {
         let two: F = (2.0_f32).into();
         let three: F = (3.0_f32).into();
         let omt = F::one() - t;
@@ -115,7 +114,7 @@ where
             }
         }
     }
-    fn derivative_at(&self, t: F) -> Self::Point {
+    fn derivative_at(&self, t: F) -> [F; D] {
         let one = F::one();
         let two: F = (2.0_f32).into();
         let three: F = (3.0_f32).into();
@@ -137,7 +136,7 @@ where
             }
         }
     }
-    fn endpoints(&self) -> (&Self::Point, &Self::Point) {
+    fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self.pts[0], &self.pts[1])
     }
     fn is_straight(&self, straightness: F) -> bool {
@@ -173,7 +172,7 @@ where
     fn num_control_points(&self) -> usize {
         self.num
     }
-    fn control_point(&self, n: usize) -> &Self::Point {
+    fn control_point(&self, n: usize) -> &[F; D] {
         &self.pts[n]
     }
 }
@@ -186,7 +185,7 @@ where
     /// Returns two Bezier's that split the curve at parameter t=0.5
     ///
     /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
-    fn bisect(&self) -> (Self, Self) {
+    fn split(&self) -> (Self, Self) {
         let zero = F::zero();
         let one = F::one();
         let two = (2.0_f32).into();
@@ -505,7 +504,7 @@ where
             let (ep0, ep1) = self.endpoints();
             vector::distance(&ep0, &ep1)
         } else {
-            let (b0, b1) = self.bisect();
+            let (b0, b1) = self.split();
             b0.length(straightness) + b1.length(straightness)
         }
     }
@@ -537,7 +536,7 @@ where
             }
         } else {
             let t_subscale = t_scale / two;
-            let (b0, b1) = self.bisect();
+            let (b0, b1) = self.split();
             match b0.t_of_distance_rec(straightness, distance, t_start, t_subscale, acc_length) {
                 (None, length) => b1.t_of_distance_rec(
                     straightness,

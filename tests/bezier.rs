@@ -1,7 +1,7 @@
 //a Imports
 use bezier_nd::Bezier;
+use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
-use bezier_nd::DynBezier;
 use geo_nd::{vector, FArray, Float, Vector};
 
 // type Point<F:Float> = FArray<F,2>;
@@ -77,7 +77,7 @@ fn does_bisect<F: Float, const D: usize>(bezier: &Bezier<F, D>)
 where
     FArray<F, D>: Vector<F, D>,
 {
-    let (b0, b1) = bezier.bisect();
+    let (b0, b1) = bezier.split();
     println!("Test bisection of {} into {}, {}", bezier, b0, b1);
     for i in 0..21 {
         let t: F = ((i as f32) / 20.0).into();
@@ -211,18 +211,18 @@ fn test_line() {
     );
     pt_eq(&b02.point_at(1.), p2[0], p2[1]);
 
-    pt_eq(&b01.bisect().0.point_at(0.), p0[0], p0[1]);
+    pt_eq(&b01.split().0.point_at(0.), p0[0], p0[1]);
     pt_eq(
-        &b01.bisect().0.point_at(1.),
+        &b01.split().0.point_at(1.),
         (p0[0] + p1[0]) / 2.,
         (p0[1] + p1[1]) / 2.,
     );
     pt_eq(
-        &b01.bisect().1.point_at(0.),
+        &b01.split().1.point_at(0.),
         (p0[0] + p1[0]) / 2.,
         (p0[1] + p1[1]) / 2.,
     );
-    pt_eq(&b01.bisect().1.point_at(1.), p1[0], p1[1]);
+    pt_eq(&b01.split().1.point_at(1.), p1[0], p1[1]);
 
     does_split(&b01, 0., 1.);
     does_split(&b01, 0.1, 0.3);

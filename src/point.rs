@@ -1,6 +1,6 @@
 //a Imports
 use crate::line::BezierLineIter;
-use crate::{BezierSplit, DynBezier};
+use crate::{BezierEval, BezierSplit};
 use geo_nd::Float;
 
 //a BezierPointIter

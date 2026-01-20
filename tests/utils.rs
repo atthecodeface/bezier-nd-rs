@@ -1,6 +1,6 @@
 #![allow(dead_code)]
+use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
-use bezier_nd::DynBezier;
 
 use bezier_nd::Bezier;
 use geo_nd::Float;
@@ -83,8 +83,8 @@ pub fn test_beziers_approx_eq(b0: &Bezier<f64, 2>, b1: &Bezier<f64, 2>) {
     test_subsection(b0, b1, 0.0, 1.0);
     test_subsection(b0, &b1.bezier_between(0.0, 1.0), 0.0, 1.0);
     test_subsection(b0, &b1.bezier_between(0.1, 0.4), 0.1, 0.4);
-    test_subsection(b0, &b1.bisect().0, 0.0, 0.5);
-    test_subsection(b0, &b1.bisect().1, 0.5, 1.0);
+    test_subsection(b0, &b1.split().0, 0.0, 0.5);
+    test_subsection(b0, &b1.split().1, 0.5, 1.0);
 }
 
 /// Generate Bernstein matrices for a given degree and values of t

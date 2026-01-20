@@ -114,7 +114,7 @@ An example using 2-dimensional vectors of f32
 
 ```
 type Bezier = bezier_nd::Bezier<f32, 2>;
-use bezier_nd::{DynBezier, BezierSplit};
+use bezier_nd::{BezierEval, BezierSplit};
 
 let dx = [1.,0.];
 let dy = [0.,1.];
@@ -215,8 +215,10 @@ mod line;
 mod point;
 pub(crate) mod polynomial;
 
+mod farrays;
+
 pub mod traits;
-pub use traits::{BezierSplit, DynBezier};
+pub use traits::{BezierEval, BezierSplit, BoxedBezier};
 
 pub mod bignum;
 

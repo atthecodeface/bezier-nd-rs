@@ -52,7 +52,7 @@ impl<F: Float> BezierDistance2D<F> {
         if bezier.is_straight(straightness) {
             self.beziers.push(bezier);
         } else {
-            let (b0, b1) = bezier.bisect();
+            let (b0, b1) = bezier.split();
             self.add_bezier_with_straightness(b0, straightness);
             self.add_bezier_with_straightness(b1, straightness);
         }
