@@ -222,15 +222,13 @@ mod point;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
-pub use bezier_iter::BezierSplitIter;
 mod farrays;
 
 pub mod bignum;
 
 /*a Exports
 */
-pub use self::line::BezierLineIter;
-pub use self::point::BezierPointIter;
+pub use bezier_iter::{BezierLineIter, BezierPointIter, BezierSplitIter};
 
 pub use builder::BezierBuilder;
 pub use constants::*;
