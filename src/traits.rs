@@ -21,14 +21,14 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// Return true if the Bezier is within 'straightness' of a straight line
     fn is_straight(&self, straightness: F) -> bool;
 
-    /// Find how close the Bezier is to a quadratic with the same endpoints
+    /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
     ///
     /// The metric should be quadratic with respect to the units of length of P,
     /// i.e. if P were in reality measured in meters, then this metric should be
     /// in units of square meteres
-    fn closeness_sq_to_quad(&self) -> F;
+    fn closeness_sq_to_quadratic(&self) -> F;
 
-    /// Find how close the Bezier to a cubic with the same endpoints
+    /// Find how close the Bezier to a Bezier of degree 3 with the same endpoints
     ///
     /// The metric should be quadratic with respect to the units of length of P,
     /// i.e. if P were in reality measured in meters, then this metric should be
@@ -115,7 +115,7 @@ pub trait BezierDistance<F: Num, P> {
     /// = d_line_sq - dc_sq - 2D.dc < d_sq - d_line_sq
     ///
     /// So a value of d_line_sq - dc_sq can be returned, or 0. if this is negative.
-    fn est_min_distance_sq_to(&self, p: &P) -> F {
+    fn est_min_distance_sq_to(&self, _p: &P) -> F {
         F::ZERO
     }
 }
@@ -165,11 +165,57 @@ pub trait BezierSplit: Sized {
     fn split(&self) -> (Self, Self);
 }
 
-/// A trait provided by a Bezier to allow it to be reduced by one degree
-pub trait BezierReduce<F: Num, P: Clone> {
+/// A trait provided by a Bezier to allow it to be reduced
+///
+/// This provides methods to generate reduced Beziers; at a
+/// minimum the type must provide a way to produce a Bezier
+/// reduced by at least one degree.
+///
+///
+///
+///  by one degree
+pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// The Bezier that this reduces to
     type Reduced: BezierEval<F, P>;
 
-    /// Return a Bezier reduced by one degree
+    /// The quadratic Bezier that this reduces to
+    ///
+    /// If the Bezier does not have a mechanism to reduce it
+    /// to a quadratic then this can be 'Self', and 'reduced_to_quadratic' should return None
+    type Quadratic: BezierEval<F, P>;
+
+    /// The cubic Bezier that this reduces to
+    ///
+    /// If the Bezier does not have a mechanism to reduce it
+    /// to a cubic then this can be 'Self', and 'reduced_to_cubic' should return None
+    type Cubic: BezierEval<F, P>;
+
+    /// Return the Bezier reduced by at least one degree
+    ///
+    /// The reduced Bezier *can* be reduced by more than one degree (such as
+    /// a cubic Bezier from a Bezier of degree 10); the reduction *must* have a lower
+    /// degree than the original.
     fn reduce(&self) -> Self::Reduced;
+
+    /// Return a Bezier of this reduced to a quadratic Bezier
+    ///
+    /// Invoking self.closeness_sq_to_quadratic will give a measure of how
+    /// close the quadratic would be to 'self'
+    ///
+    /// If the Bezier does not have a mechanism to reduce it
+    /// to a quadratic then this should return None
+    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
+        None
+    }
+
+    /// Return a Bezier of this reduced to a cubic Bezier
+    ///
+    /// Invoking self.closeness_sq_to_cubic will give a measure of how
+    /// close the cubic would be to 'self'
+    ///
+    /// If the Bezier does not have a mechanism to reduce it
+    /// to a cubic then this should return None
+    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
+        None
+    }
 }

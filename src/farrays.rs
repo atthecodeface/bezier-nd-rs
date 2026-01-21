@@ -15,7 +15,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     fn is_straight(&self, _straightness: F) -> bool {
         true
     }
-    fn closeness_sq_to_quad(&self) -> F {
+    fn closeness_sq_to_quadratic(&self) -> F {
         F::ZERO
     }
     fn closeness_sq_to_cubic(&self) -> F {
@@ -67,7 +67,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
         let dc2 = vector::length_sq(&dv);
         dc2 < straightness * straightness
     }
-    fn closeness_sq_to_quad(&self) -> F {
+    fn closeness_sq_to_quadratic(&self) -> F {
         F::ZERO
     }
     fn closeness_sq_to_cubic(&self) -> F {

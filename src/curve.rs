@@ -163,11 +163,27 @@ where
             }
         }
     }
-    fn closeness_sq_to_quad(&self) -> F {
+    fn closeness_sq_to_quadratic(&self) -> F {
         if self.num <= 3 {
             F::ZERO
         } else {
-            todo!();
+            // elevated_reduce_minus_identity for control points[1] and [2] are:
+            // [1/6, -0.5, 0.5, -1/6], [-1/6, 0.5, -0.5, 1/6], which are negations
+            //
+            // so dc_s1 = 1/36 * |p[0] - 3p[1] + 3p[2] - p[3]|^2
+            let three: F = (3.0_f32).into();
+            let dc = vector::add(
+                vector::add(
+                    vector::add(self.pts[0], &self.pts[2], -three),
+                    &self.pts[3],
+                    three,
+                ),
+                &self.pts[1],
+                F::ONE,
+            );
+            vector::length_sq(&dc)
+            // Reduction to quadratic is     &[1., 0., 0., 0., -0.25, 0.75, 0.75, -0.25, 0., 0., 0., 1.0],
+            // todo!();
         }
     }
     fn closeness_sq_to_cubic(&self) -> F {
