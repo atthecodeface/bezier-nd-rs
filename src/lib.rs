@@ -6,6 +6,7 @@ TO DO:
 
 * New building of Bezier
 * Reduce to quadratics, reduce to straight lines, ele_red matrix minus identity creation and use for dc metrics
+* Move line / point stuff to bezier_iter
 
 # Bezier curve library
 
@@ -209,16 +210,20 @@ to this problem!
 pub mod bernstein;
 mod builder;
 pub(crate) mod constants;
+pub(crate) mod utils;
+
+mod traits;
+pub use traits::{BezierDistance, BezierEval, BezierSplit, BoxedBezier};
+
 mod curve;
 mod distance;
 mod line;
 mod point;
 pub(crate) mod polynomial;
 
+mod bezier_iter;
+pub use bezier_iter::BezierSplitIter;
 mod farrays;
-
-pub mod traits;
-pub use traits::{BezierEval, BezierSplit, BoxedBezier};
 
 pub mod bignum;
 

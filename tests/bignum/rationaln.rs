@@ -201,7 +201,7 @@ fn test_mantissa_exp() {
     mantissa_exp::<4>();
     mantissa_exp::<16>();
 
-    let f = (1.0_f64 / 12.0);
+    let f = 1.0_f64 / 12.0 ;
     let value: RationalN<8> = f.try_into().unwrap();
     eprintln!("Value {value}");
     let value_f: f64 = value.into();

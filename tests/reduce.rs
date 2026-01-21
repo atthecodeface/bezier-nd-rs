@@ -1,5 +1,4 @@
 mod utils;
-use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
 use bezier_nd::bignum::RationalN;
 use geo_nd::{matrix, Num};
 use utils::*;
@@ -221,7 +220,7 @@ fn validate_bs_reductions_to_quad() {
             eprintln!(
                 "\n\n****\nreduce = [{}]",
                 RationalN::<8>::with_common_denom(reduce.iter())
-                    .fold(String::new(), |s, (a, b)| s + &a.to_string() + ", ")
+                    .fold(String::new(), |s, (a, _b)| s + &a.to_string() + ", ")
             );
             eprintln!(
                 "elevated_reduce = {} : [{}]",
@@ -230,7 +229,7 @@ fn validate_bs_reductions_to_quad() {
                     .unwrap()
                     .1,
                 RationalN::<8>::with_common_denom(elevated_reduce.iter())
-                    .fold(String::new(), |s, (a, b)| s + &a.to_string() + ", ")
+                    .fold(String::new(), |s, (a, _b)| s + &a.to_string() + ", ")
             );
         }
     }

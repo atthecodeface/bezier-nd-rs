@@ -1,6 +1,6 @@
 use geo_nd::{vector, Num};
 
-use crate::{BezierEval, BezierSplit, BoxedBezier};
+use crate::{BezierDistance, BezierEval, BezierSplit, BoxedBezier};
 
 impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
     fn point_at(&self, t: F) -> [F; D] {
@@ -15,10 +15,10 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     fn is_straight(&self, _straightness: F) -> bool {
         true
     }
-    fn closeness_to_quad(&self) -> F {
+    fn closeness_sq_to_quad(&self) -> F {
         F::ZERO
     }
-    fn closeness_to_cubic(&self) -> F {
+    fn closeness_sq_to_cubic(&self) -> F {
         F::ZERO
     }
     fn num_control_points(&self) -> usize {
@@ -67,10 +67,10 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
         let dc2 = vector::length_sq(&dv);
         dc2 < straightness * straightness
     }
-    fn closeness_to_quad(&self) -> F {
+    fn closeness_sq_to_quad(&self) -> F {
         F::ZERO
     }
-    fn closeness_to_cubic(&self) -> F {
+    fn closeness_sq_to_cubic(&self) -> F {
         F::ZERO
     }
     fn num_control_points(&self) -> usize {
@@ -117,5 +117,43 @@ impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[
     )> {
         let (b0, b1) = <Self as BezierSplit>::split(self);
         Some((Box::new(b0), Box::new(b1)))
+    }
+}
+
+impl<F: 'static + geo_nd::Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 2] {
+    fn t_at_min_distance(&self, p: &[F; D]) -> Option<F> {
+        let (t_times_len_sq, line_len_sq, valid) =
+            crate::utils::relative_to_line(p, &self[0], &self[1]);
+        if valid {
+            Some(t_times_len_sq / line_len_sq)
+        } else {
+            None
+        }
+    }
+
+    fn min_distance_sq_to(&self, p: &[F; D]) -> Option<F> {
+        let (t_times_len_sq, line_len_sq, valid) =
+            crate::utils::relative_to_line(p, &self[0], &self[1]);
+        if valid {
+            if t_times_len_sq < F::ZERO || t_times_len_sq > line_len_sq {
+                None
+            } else {
+                Some(vector::length_sq(&vector::sub(self[0], p, F::ONE)) - t_times_len_sq)
+            }
+        } else {
+            Some(vector::distance_sq(p, &self[0]))
+        }
+    }
+
+    fn est_min_distance_sq_to(&self, p: &[F; D]) -> F {
+        let (t_times_len_sq, line_len_sq, valid) =
+            crate::utils::relative_to_line(p, &self[0], &self[1]);
+        if valid && t_times_len_sq >= F::ZERO && t_times_len_sq <= line_len_sq {
+            vector::length_sq(&vector::sub(self[0], p, F::ONE)) - t_times_len_sq
+        } else if valid && t_times_len_sq > line_len_sq {
+            vector::distance_sq(p, &self[1])
+        } else {
+            vector::distance_sq(p, &self[0])
+        }
     }
 }

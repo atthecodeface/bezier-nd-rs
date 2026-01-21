@@ -294,6 +294,11 @@ impl<const N: usize> RationalN<N> {
         ((numer / denom) as u64, exponent)
     }
 
+    /// Normalize a RationalN by reducing numer/denom by GCD, setting zero
+    /// correctly, etc
+    ///
+    /// If the RationalN were more optimized (such as having flags for zero,
+    /// integer, and exponent, etc) then this would set those appropriately
     pub fn normalize(&mut self) -> bool {
         let gcd = self.numer().gcd(&self.denom);
         if gcd.is_zero() {

@@ -163,11 +163,15 @@ where
             }
         }
     }
-    fn closeness_to_quad(&self) -> F {
-        todo!();
+    fn closeness_sq_to_quad(&self) -> F {
+        if self.num <= 3 {
+            F::ZERO
+        } else {
+            todo!();
+        }
     }
-    fn closeness_to_cubic(&self) -> F {
-        todo!();
+    fn closeness_sq_to_cubic(&self) -> F {
+        F::ZERO
     }
     fn num_control_points(&self) -> usize {
         self.num
