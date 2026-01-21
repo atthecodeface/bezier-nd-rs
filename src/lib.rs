@@ -212,20 +212,21 @@ pub(crate) mod constants;
 pub(crate) mod utils;
 
 mod traits;
-pub use traits::{BezierDistance, BezierEval, BezierSplit, BoxedBezier};
 
 mod curve;
 mod distance;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
-mod farrays;
+mod farray_line;
+mod farray_quadratic;
 
 pub mod bignum;
 
 /*a Exports
 */
 pub use bezier_iter::{BezierLineIter, BezierPointIter, BezierSplitIter};
+pub use traits::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
 
 pub use builder::BezierBuilder;
 pub use constants::*;
