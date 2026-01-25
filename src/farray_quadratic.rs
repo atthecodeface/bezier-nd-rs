@@ -1,8 +1,6 @@
-use std::os::unix::raw::pthread_t;
-
-use geo_nd::{vector, Float, Num};
-
 use crate::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
+use crate::{Float, Num};
+use geo_nd::vector;
 
 impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     fn point_at(&self, t: F) -> [F; D] {
@@ -100,7 +98,7 @@ impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 
             vector::dot(&p01, &p012) * (3.0_f32).into(),
             vector::dot(&p012, &p012),
         ];
-        use crate::polynomial::{PolyFindRoots, Polynomial};
+        use crate::polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
         let Some(t0) = d_dt_dsq_poly.find_root_nr(0.5_f32.into(), 1E7_f32.into()) else {
             // panic!("Failed to find root for polynomial {d_dt_dsq_poly:?}");
             return Some((t_min, dsq_min));
@@ -217,7 +215,7 @@ impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierSplit for [[F; D]; 3] {
+impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 3] {
     fn split(&self) -> (Self, Self) {
         let c0 = vector::scale(vector::add(self[0], &self[1], F::ONE), (0.5_f32).into());
         let c1 = vector::scale(vector::add(self[1], &self[2], F::ONE), (0.5_f32).into());
@@ -226,9 +224,13 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierSplit for [[F; D]; 3] {
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
+// This requires Float as BezierDistance for [[F;D];3] requires Float for closest point to curve
+impl<F: 'static + Float, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
     fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
         Some(Box::new([self[0], self[1]]))
+    }
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
+        None
     }
     fn boxed_split(
         &self,
@@ -241,7 +243,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
+impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     type Reduced = [[F; D]; 2];
     type Quadratic = Self;
     type Cubic = Self;
@@ -251,7 +253,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierReduce<F, [F; D]> for [
     fn can_reduce() -> bool {
         true
     }
-    fn closeness_sq_to_reduction(&self) -> F {
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
         todo!()
     }
 

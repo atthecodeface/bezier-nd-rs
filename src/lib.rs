@@ -17,15 +17,33 @@ Implementations are provided for arrays of vectors, where a vector is an array o
 
 The Beziers are stored using standard control points, and hence use Bernstein polynomials of a parameter 't' to find trace the locus of the Bezier.
 
-# Bezier types
+# Fundamental numeric types
 
-The simplest Bezier types are just arrays of points, where points are D-dimensional arrays of a type F (which requires num_traits::Num and From<f32>)
+Traits are used throughout that define the numeric types that Bezier curves use as parameters or for distances etc.
+This is fundamentally to provide support for 'f32' and 'f64' as generic floats, but it (in general) also allows for
+rational number types - provided they are Copy.
+
+Two traits are used. Firstly there is Num, which is effectively a collection of num_traits, with From<32>, PartialOrd, Copy and Display.
+This trait has a blanket implementation for all types that support the required traits. This 'Num' trait is all that is required for the Bezier traits.
+
+Secondly there is Float, which is Num plus the
+addition of num_traits::Float - which provides sqrt() and cbrt(). These latter are required for some root finding, or minimum distance
+determination. Hence some Bezier *implementations*, such as for [[F;D];4] for cubic Bezier curves, require F to support not just Num but Float, as the
+mathematics for the analytical functions require sqrt() or cbrt().
+
+The fundamental types 'f32' and 'f64' implement Num and Float.
+
+# Bezier curve types
+
+The simplest Bezier types are just arrays of points, where points are D-dimensional arrays of a type F.
 An array of two points can be used as a linear Bezier; an array of three points can be used as a quadratic Bezier; and array of four points can be used
 as a cubic Bezier.
 
 A legacy generic type Bezier is provided which can represent any one of linear, quadratic or cubic Bezier.
 
-
+A BezierN type is provided that has a generic usize 'N' indicating the *maximum* degree the individual curve can have, but the
+type also includes a degree that the curve actually has. The type stores its control points in an array [[F;D];N], and so
+every Bezier curve the type can describes requires the same memory size.
 
 # Bezier traits
 
@@ -67,16 +85,6 @@ This is implemented for:
 * [[F; D]; 2] as a linear Bezier, with parameter of type F and points of type [F;D]
 * [[F; D]; 3] as a quadratic Bezier, with parameter of type F and points of type [F;D]
 * [[F; D]; 4] as a cubic Bezier, with parameter of type F and points of type [F;D]
-
-F can be f32 or f64, or anything that supports all of:
-    Copy
-    PartialOrd
-    std::fmt::Debug
-    std::ops::Neg<Output = Self>
-    num_traits::Num
-    num_traits::ConstOne
-    num_traits::ConstZero
-    num_traits::FromPrimitive
 
 ## BezierSplit
 
@@ -151,14 +159,14 @@ a current distance to a closest Bezier, to test if *another* Bezier is potential
 method returns a value less than the closest current distance) to see if it should be split (or if it is quadratic or linear
 then a precise determination used).
 
+The estimation method must therefore always provide a result that is less than or equal to the *actual* distance from
+the point to the Bezier.
 
-///
-/// This provides for the evaluation of the Bezier, and determination of how
-/// straight (or how close to a quadratic/cubic Bezier) it is.
-///
-/// It also provides access to the points
-///
-/// This is dyn-compatible
+## BoxedBezier (requires BezierEval)
+
+This trait is explicitly dyn-compatible, and it provides for a mechanism for splitting and reducing Beziers
+(akin to BezierSplit and/or BezierReduce) - into Boxed dyn BoxedBezier. If a type does not support reduce
+but does support split then it can implement this trait; the methods all return Option of a Boxed object.
 
 ## Legacy
 
@@ -376,6 +384,7 @@ pub(crate) mod constants;
 pub(crate) mod utils;
 
 mod traits;
+pub use traits::{Float, Num};
 
 mod curve;
 mod distance;
@@ -397,6 +406,6 @@ pub use builder::BezierBuilder;
 pub use constants::*;
 pub use curve::Bezier;
 pub use distance::BezierDistance2D;
-pub use polynomial::{PolyFindRoots, Polynomial};
+pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
 pub use bernstein::Bezier as BezierND;

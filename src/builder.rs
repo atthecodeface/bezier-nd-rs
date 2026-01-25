@@ -1,18 +1,18 @@
-use geo_nd::Float;
+use crate::Num;
 
 /// BezierBuildConstraint is a constraint that can be specified when
 /// building a Bezier, to constraint the point at a particular value
 /// of parameter 't' to a location, or to constraint the nth derivative
 /// of the Bezier at a parameter 't' to a particular value
 #[derive(Debug, Clone)]
-pub enum BezierBuildConstraint<F: Float, const D: usize> {
+pub enum BezierBuildConstraint<F: Num, const D: usize> {
     /// Constraint that the Bezier to pass through a particular location at paratmer 't'
     PositionAtT(F, [F; D]),
     /// Constraint that the Bezier to have an nth derivative value at a particular location at paratmer 't'
     DerivativeAtT(F, usize, [F; D]),
 }
 
-impl<F: Float, const D: usize> BezierBuildConstraint<F, D> {
+impl<F: Num, const D: usize> BezierBuildConstraint<F, D> {
     /// Get the depth of derivative of the constraint
     ///
     /// For a constraint of a pure position, this will return 0
@@ -49,12 +49,12 @@ impl<F: Float, const D: usize> BezierBuildConstraint<F, D> {
 /// requires precisely N+1 constraints, and there must not be a constraint for the nth
 /// derivative with n greater than the degree.
 #[derive(Default, Debug, Clone)]
-pub struct BezierBuilder<F: Float, const D: usize> {
+pub struct BezierBuilder<F: Num, const D: usize> {
     /// The constraints that the Bezier will have to meet after building
     constraints: Vec<BezierBuildConstraint<F, D>>,
 }
 
-impl<F: Float, const D: usize> BezierBuilder<F, D> {
+impl<F: Num, const D: usize> BezierBuilder<F, D> {
     /// Add a constraint that the Bezier passes throught a point at parameter value 't'
     pub fn add_point_at(&mut self, t: F, pt: [F; D]) {
         self.constraints

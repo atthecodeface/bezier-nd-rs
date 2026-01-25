@@ -36,7 +36,7 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 !*/
 
 //a Imports
-use geo_nd::{Float, Num};
+use crate::{Float, Num};
 
 #[inline(always)]
 fn abs<F: Num>(f: F) -> F {
@@ -177,7 +177,7 @@ pub trait Polynomial<F: Num> {
 }
 
 //ip Polynomial for [F; N]
-impl<F: Num + From<f32>, const N: usize> Polynomial<F> for [F; N] {
+impl<F: Num, const N: usize> Polynomial<F> for [F; N] {
     fn degree(&self) -> usize {
         poly_degree(self)
     }
@@ -206,7 +206,7 @@ impl<F: Num + From<f32>, const N: usize> Polynomial<F> for [F; N] {
 }
 
 //ip Polynomial for [F; N]
-impl<F: Num + From<f32>> Polynomial<F> for [F] {
+impl<F: Num> Polynomial<F> for [F] {
     fn degree(&self) -> usize {
         poly_degree(self)
     }
@@ -398,6 +398,9 @@ pub trait PolyFindRoots<F: Float> {
     fn find_roots_quad(&self) -> (Option<F>, Option<F>);
     /// Assume the polynomial is cubic, and solve
     fn find_roots_cubic(&self) -> (Option<F>, Option<F>, Option<F>);
+}
+
+pub trait PolyNewtonRaphson<F: Num> {
     /// Improve a root using Newton-Raphson
     fn improve_root(&self, x: F, eps: F, max_dx: F) -> Option<(F, F)>;
     /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
@@ -410,7 +413,8 @@ pub trait PolyFindRoots<F: Float> {
             x = improved_x;
             max_dx = improved_dx;
         }
-        if self.calc(x).abs() < min {
+        let c = self.calc(x);
+        if -min < c && c < min {
             Some(x)
         } else {
             None
@@ -429,6 +433,8 @@ impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
     fn find_roots_cubic(&self) -> (Option<F>, Option<F>, Option<F>) {
         find_real_roots_cubic(self.as_slice())
     }
+}
+impl<F: Float, const N: usize> PolyNewtonRaphson<F> for [F; N] {
     fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
         improve_root(self, x, min_grad, max_dx)
     }

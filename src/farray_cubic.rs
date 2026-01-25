@@ -1,8 +1,9 @@
-use geo_nd::{vector, Float, Num};
-
+use crate::Num;
 use crate::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
+use geo_nd::vector;
+
+impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn point_at(&self, t: F) -> [F; D] {
         let three: F = (3.0_f32).into();
         let u = F::ONE - t;
@@ -49,14 +50,15 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     }
 }
 
-impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
+impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
     /// The closest point on a cubic bezier to a point is not analytically determinable
     fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
         None
     }
 
     /// An estimate of the minimum distance squared from the Bezier to the point
-    /// for 0<=t<=1.
+    /// for 0<=t<=1. This must ALWAYS be less than or equal to the true minimum distance.
+    /// If a Bezier does not support this estimate then it *can* return ZERO.
     ///
     /// The points on the Bezier are all within the convex hull of the Bezier, which is
     /// not simple to determine for a cubic.
@@ -73,20 +75,25 @@ impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 
         if d_sq < dc_sq {
             F::ZERO
         } else {
-            let dc = dc_sq.sqrt();
-            let d = d_sq.sqrt();
-            (dc - d) * (dc - d)
+            // dout <= dmin = sqrt(d_sq) - sqrt(dc_sq)
+            // dout^2 <= (sqrt(d_sq) - sqrt(dc_sq)).sqrt(d_sq) - sqrt(dc_sq)
+            // dout^2 <= d_sq + dc_sq - 2.sqrt(dc_sq).sqrt(d_sq)
+            // dout^2 <= d_sq - dc_sq
+            d_sq - dc_sq
         }
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierSplit for [[F; D]; 4] {
+impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 4] {
     fn split(&self) -> (Self, Self) {
         todo!();
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
+impl<F: 'static + Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
+        None
+    }
     fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
         Some(Box::new([self[0], self[1]]))
     }
@@ -101,7 +108,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
+impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     type Reduced = [[F; D]; 3];
     type Quadratic = [[F; D]; 3];
     type Cubic = Self;
@@ -111,8 +118,8 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierReduce<F, [F; D]> for [
     fn can_reduce() -> bool {
         true
     }
-    fn closeness_sq_to_reduction(&self) -> F {
-        todo!()
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
+        None
     }
 
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {

@@ -1,7 +1,7 @@
 //a Imports
 use std::collections::HashSet;
 
-use bezier_nd::{PolyFindRoots, Polynomial};
+use bezier_nd::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
 fn test_polynomial(roots: &[isize]) {
     assert!(roots.len() <= 4, "Can only test up to four roots");

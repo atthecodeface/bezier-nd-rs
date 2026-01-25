@@ -1,9 +1,9 @@
+use crate::Num;
 use geo_nd::vector;
-use geo_nd::Float;
 
 /// Calculate the length squared of a line, the projection of the point onto the line
 /// and if the line is approximately zero length
-pub fn relative_to_line<F: Float, const D: usize>(
+pub fn relative_to_line<F: Num, const D: usize>(
     pt: &[F; D],
     l0: &[F; D],
     l1: &[F; D],
@@ -15,13 +15,13 @@ pub fn relative_to_line<F: Float, const D: usize>(
     // Note P = kL + N for some k and normal to the line N (N.L = 0)
     //
     // P.L = k(L.L) + N.L = k|L|^2
-    let l1_m_l0 = vector::sub(*l1, l0, F::one());
+    let l1_m_l0 = vector::sub(*l1, l0, F::ONE);
     // len_l1_m_l0_sq = |L|^2
     let len_l1_m_l0_sq = vector::length_sq(&l1_m_l0);
 
-    let pt_m_l0 = vector::sub(*pt, l0, F::one());
+    let pt_m_l0 = vector::sub(*pt, l0, F::ONE);
 
-    if len_l1_m_l0_sq < (f32::EPSILON).into() {
+    if len_l1_m_l0_sq.is_unreliable_divisor() {
         return (F::ZERO, len_l1_m_l0_sq, false);
     }
 
@@ -31,7 +31,7 @@ pub fn relative_to_line<F: Float, const D: usize>(
 }
 
 /// Calculate the distance squared to a line segment l0<>l1
-pub fn distance_sq_to_line_segment<F: Float, const D: usize>(
+pub fn distance_sq_to_line_segment<F: Num, const D: usize>(
     pt: &[F; D],
     l0: &[F; D],
     l1: &[F; D],
@@ -68,7 +68,7 @@ pub fn distance_sq_to_line_segment<F: Float, const D: usize>(
 /// A point is within or on the edge of the triangle if 0<=k0,k1,k2<=1
 ///
 /// Only k1 and k2 are returned, and None if the triangle is degenerate
-pub fn barycentric_coordinates<F: Float, const D: usize>(
+pub fn barycentric_coordinates<F: Num, const D: usize>(
     pt: &[F; D],
     p0: &[F; D],
     p1: &[F; D],
@@ -85,7 +85,7 @@ pub fn barycentric_coordinates<F: Float, const D: usize>(
 
     // Note that det is always positive
     let det = p1_sq * p2_sq - p1_dot_p2 * p1_dot_p2;
-    if det < F::epsilon() {
+    if det.is_unreliable_divisor() {
         None
     } else {
         let k1 = (p2_sq * p_dot_p1 - p1_dot_p2 * p_dot_p2) / det;
@@ -108,9 +108,7 @@ pub fn barycentric_coordinates<F: Float, const D: usize>(
 /// Difference sqaured = (ut)^2 . |u.A + t.B|^2
 /// |uA + tB| (with u=1-t, 0<=t<=1) has a maximum value of max(|A|, |B|)
 /// Hence difference squared <= (ut)^2 . max(A^2, B^2) <= max(A^2, B^2)
-pub fn straightness_sq_of_cubic<F: geo_nd::Num + From<f32>, const D: usize>(
-    cubic: &[[F; D]; 4],
-) -> F {
+pub fn straightness_sq_of_cubic<F: crate::Num, const D: usize>(cubic: &[[F; D]; 4]) -> F {
     let m_third = (-0.33333333_f32).into();
     let m_twothird = (-0.66666667_f32).into();
     let dv_0 = vector::sum_scaled(cubic, &[m_twothird, F::ONE, F::ZERO, m_third]);

@@ -1,4 +1,50 @@
-use geo_nd::Num;
+/// A trait that is required for most of the 'F' parameters
+///
+/// This is a superset of geo_nd::Num as its requirements are needed
+pub trait Num:
+    Copy
+    + PartialEq
+    + PartialOrd
+    + std::fmt::Display
+    + std::fmt::Debug
+    + std::ops::Neg<Output = Self>
+    + num_traits::Num
+    + num_traits::NumAssignOps
+    + num_traits::ConstOne
+    + num_traits::ConstZero
+    + num_traits::FromPrimitive
+    + From<f32>
+{
+    fn recip_f32(f: f32) -> Self;
+    fn is_unreliable_divisor(self) -> bool;
+}
+
+pub trait Float: Num + num_traits::Float {}
+
+impl<T> Float for T where T: Num + num_traits::Float {}
+
+impl<T> Num for T
+where
+    T: Copy
+        + PartialEq
+        + PartialOrd
+        + std::fmt::Display
+        + std::fmt::Debug
+        + std::ops::Neg<Output = Self>
+        + num_traits::Num
+        + num_traits::NumAssignOps
+        + num_traits::ConstOne
+        + num_traits::ConstZero
+        + num_traits::FromPrimitive
+        + From<f32>,
+{
+    fn recip_f32(f: f32) -> Self {
+        (1.0 / f).into()
+    }
+    fn is_unreliable_divisor(self) -> bool {
+        self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
+    }
+}
 
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
 ///
@@ -57,7 +103,9 @@ pub trait BezierEval<F: Num, P: Clone> {
 }
 
 /// A trait that provides for measurement of distance from a point to the Bezier, and closest
-/// point on a Bezier to an actual point
+/// point on a Bezier to an actual point.
+///
+/// This is dyn-compatible.
 ///
 /// This is not analytically feasible for higher degree Beziers, and so has methods that return
 /// Option. A method is included to help determine if a point is potentially closer than a specific
@@ -125,7 +173,7 @@ pub trait BezierDistance<F: Num, P> {
 ///
 /// Implementing this requires 'alloc', but permits a Bezier to be split into
 /// lines, quadratic Beziers, or cubic Beziers, to within a certain straightness
-pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
+pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> + BezierDistance<F, P> {
     /// Optionally reduce the bezier by one degree in some manner
     fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
         None
@@ -135,6 +183,15 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
     fn boxed_split(&self) -> Option<(Box<dyn BoxedBezier<F, P>>, Box<dyn BoxedBezier<F, P>>)> {
         None
     }
+
+    /// Find how close the Bezier is to the (potenital) reduction of the Bezier
+    ///
+    /// The metric should be quadratic with respect to the units of length of P,
+    /// i.e. if P were in reality measured in meters, then this metric should be
+    /// in units of square meteres
+    ///
+    /// If this returns None then 'reduce' need not return a sensible reult.
+    fn closeness_sq_to_reduction(&self) -> Option<F>;
 
     /// Optionally reduce the Bezier down to a quadratic Bezier
     ///
@@ -225,7 +282,7 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// in units of square meteres
     ///
     /// If this returns None then 'reduce' need not return a sensible reult.
-    fn closeness_sq_to_reduction(&self) -> F;
+    fn closeness_sq_to_reduction(&self) -> Option<F>;
 
     /// Return the Bezier reduced by at least one degree
     ///

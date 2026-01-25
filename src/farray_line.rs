@@ -1,8 +1,9 @@
-use geo_nd::{vector, Num};
-
+use crate::Num;
 use crate::{BezierDistance, BezierEval, BezierSplit, BoxedBezier};
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
+use geo_nd::vector;
+
+impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
     fn point_at(&self, t: F) -> [F; D] {
         vector::add(vector::scale(self[0], F::ONE - t), &self[1], t)
     }
@@ -29,7 +30,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierSplit for [[F; D]; 2] {
+impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 2] {
     fn split(&self) -> (Self, Self) {
         let m = vector::scale(
             vector::add(self[0], &self[1], 1.0_f32.into()),
@@ -39,8 +40,11 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierSplit for [[F; D]; 2] {
     }
 }
 
-impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 2] {
+impl<F: 'static + Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 2] {
     fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
+        None
+    }
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
         None
     }
     fn boxed_split(
@@ -54,7 +58,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BoxedBezier<F, [F; D]> for [[
     }
 }
 
-impl<F: 'static + geo_nd::Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 2] {
+impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 2] {
     /// A value of t and distance squared to it, 0<=t<=1, for which the distance between the point
     ///  P and the line between the two points is a minimum.
     ///
