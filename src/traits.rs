@@ -12,14 +12,18 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// Evaluate the Bezier at parameter 't' and return the point P
     fn point_at(&self, t: F) -> P;
 
-    /// Evaluate the deriative of the Bezier at parameter 't' and return the point P
-    fn derivative_at(&self, t: F) -> P;
+    /// Evaluate the deriative of the Bezier at parameter 't' and return the
+    /// value and a scale factor (i.e. the actual deriviative is F*P)
+    fn derivative_at(&self, t: F) -> (F, P);
 
     /// Borrow the endpoints of the Bezier
     fn endpoints(&self) -> (&P, &P);
 
-    /// Return true if the Bezier is within 'straightness' of a straight line
-    fn is_straight(&self, straightness: F) -> bool;
+    /// Return true if the Bezier is within the sqrt of 'straightness' of a straight line
+    ///
+    /// Normally this requires evaluating a metric that is a distance squared, hence using
+    /// straigthness_sq here
+    fn is_straight(&self, straightness_sq: F) -> bool;
 
     /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
     ///
@@ -60,43 +64,39 @@ pub trait BezierEval<F: Num, P: Clone> {
 /// distance, which allows that Bezier to be refined (and split, reduced etc) *only* if the point
 /// *might* b closer than a specific distance
 pub trait BezierDistance<F: Num, P> {
-    /// The value of t (in range 0<=t<=1) of the Bezier whose point is a minimum distance from p
+    /// A value of t, 0<=t<=1, for which the distance between the point P and the Bezier at that parameter t
+    /// (point Q) is D, and where D is the minimum distance between the point B and any point on
+    /// the Bezier with 0<=t<=1.
     ///
-    /// If there is not a minimum in the distance function between the Bezier and the point
-    /// for t in the range 0<=t<=1 then None should be returned.
+    /// Also returns the distance squared to the Bezier with parameter value t.
     ///
-    /// If there is only one minimum in the distance function between the Bezier and the point
-    /// for t in the range 0<=t<=1 then it should be returned
+    /// If this is too complicated to calculate (without iteration, for example) then None should be returned
     ///
-    /// If there are two minima in the distance function between the Bezier and the
-    /// point for t in the range 0<=t<=1 then the value with the smaller distance should be returned
+    /// If this value returns Some((t,d_sq)), then no other point on the Bezier with t in that range
+    /// has a smaller distance to the point P
     ///
-    /// If there are two equal minima in the distance function between the Bezier and the
-    /// point for t in the range 0<=t<=1 then either value should be returned
+    /// In other words:
     ///
-    /// Note that the distance between P and an endpoint (t=0 or 1) *may* be less than the Bezier point
-    /// at the value of t provided by this function
-    fn t_at_min_distance(&self, p: &P) -> Option<F>;
-
-    /// The minimum distance squared from the Bezier to the point if
-    /// the Bezier has a minimum in its distance function to the point provided
-    /// with 0<=t<=1 (if minimum is outside 0<=t<=1 then return None)
+    /// * if there is at least one minimum in the distance function between the Bezier and the point
+    ///   P for t in the range 0<=t<=1 then this returns t at the minimum with the smallest distance
+    ///   (or any one of them, if more than one are equidistant from P)
     ///
-    /// If Some(t) = self.t_at_min_distance(p) then
-    /// this = distance squared between P and bezier.position_at(t)
+    /// * if there are no minima in the distance function between the Bezier and the point
+    ///   for t in the range 0<=t<=1 then this returns t=0 or t=1 depending on which endpoint is closer to P,
+    ///   (i.e. all points on the Bezier with 0<=t<=1 are at least as far as the endpoint).
     ///
-    /// If this returns Some(f) then f must be greater than or equal to the value returned by est_min_distance_sq_to()
-    ///
-    /// The true minimum distance squared to the Bezier including endpoints
-    /// is the minimum of (d0_sq, d1_sq, dp_sq) (d0_sq = distance squared to endpoint 0,
-    /// d1_sq is distance squared to endpoint 1)
-    fn min_distance_sq_to(&self, p: &P) -> Option<F>;
+    fn t_dsq_closest_to_pt(&self, pt: &P) -> Option<(F, F)>;
 
     /// An estimate of the minimum distance squared from the Bezier to the point
     /// for 0<=t<=1. This must ALWAYS be less than or equal to the true minimum distance.
     /// If a Bezier does not support this estimate then it *can* return ZERO.
     ///
-    /// This can be used to determine if a point *cannot* be closer than distance D from the
+    /// Another way to term it is the point cannot be any closer to the Bezier than this distance squared.
+    ///
+    /// This value *could* be determined by the distance from the point to the convex hull of a
+    /// Bernstein Bezier's control points.
+    ///
+    /// This method can be used to determine if a point *cannot* be closer than distance D from the
     /// Bezier, and so the Bezier can be ignored if the point is closer to a different Bezier in a set
     /// and the 'closest distance to set of Beziers' is being calculated.
     ///
@@ -159,10 +159,29 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
     }
 }
 
-/// A trait provided by a Bezier to allow it to be split
+/// A trait provided by a Bezier to allow it to be split into two
+///
+/// This trait could be enhanced with a 'split_at' method, but that then
+/// requires it to have a 'F:Num' generic, which means that any generic
+/// type that just uses split-in-half would need F:Num, which is onerous
+///
+/// Hence BezierSplitAt is a separate trait
 pub trait BezierSplit: Sized {
     /// Bisect the Bezier into two of the same degree
     fn split(&self) -> (Self, Self);
+
+    // Bisect the Bezier into two of the same degree
+    // fn split_at(&self, t:F) -> (Self, Self);1
+}
+
+/// A trait provided by a Bezier to allow it to be split into two
+///
+/// This trait could be enhanced with a 'split_at' method, but that then
+/// requires it to have a 'F:Num' generic, which means that any generic
+/// type that just uses split-in-half would need F:Num, which is onerous
+pub trait BezierSplitAt<F: Num>: Sized {
+    /// Bisect the Bezier into two of the same degree
+    fn split_at(&self, t: F) -> (Self, Self);
 }
 
 /// A trait provided by a Bezier to allow it to be reduced
@@ -176,6 +195,9 @@ pub trait BezierSplit: Sized {
 ///  by one degree
 pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// The Bezier that this reduces to
+    ///
+    /// If the Bezier does not readily reduce (because it is already
+    /// a linear Bezier, for example) then this can be Self
     type Reduced: BezierEval<F, P>;
 
     /// The quadratic Bezier that this reduces to
@@ -189,6 +211,21 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// If the Bezier does not have a mechanism to reduce it
     /// to a cubic then this can be 'Self', and 'reduced_to_cubic' should return None
     type Cubic: BezierEval<F, P>;
+
+    /// Determine if reduction actually reduces
+    ///
+    /// If this returns false then the 'reduce' method should not be invoked, and the
+    /// 'closeness_sq_to_reduction' method will return a value that must be ignored
+    fn can_reduce() -> bool;
+
+    /// Find how close the Bezier is to the (potenital) reduction of the Bezier
+    ///
+    /// The metric should be quadratic with respect to the units of length of P,
+    /// i.e. if P were in reality measured in meters, then this metric should be
+    /// in units of square meteres
+    ///
+    /// If this returns None then 'reduce' need not return a sensible reult.
+    fn closeness_sq_to_reduction(&self) -> F;
 
     /// Return the Bezier reduced by at least one degree
     ///

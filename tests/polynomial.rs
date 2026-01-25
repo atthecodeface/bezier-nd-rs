@@ -118,6 +118,23 @@ fn test_divide() {
     assert_eq!(poly_b[0], 1.0);
     assert_eq!(poly_b[1], 0.0);
     assert_eq!(poly_b[2], 0.0);
+
+    let poly: [f32; 5] = [0., 0., 0., 1., 0.];
+    let mut poly_b = poly.clone();
+    assert!(poly_b.set_divide(&mut poly.clone(), &[0., 1., 0.], 0.0001_f32.into()));
+    assert_eq!(poly_b[0], 0.0);
+    assert_eq!(poly_b[1], 0.0);
+    assert_eq!(poly_b[2], 1.0);
+    assert_eq!(poly_b[3], 0.0);
+    assert_eq!(poly_b[4], 0.0);
+
+    let mut poly_c = poly_b.clone();
+    assert!(poly_c.set_divide(&mut poly_b.clone(), &[0., 1., 0.], 0.0001_f32.into()));
+    assert_eq!(poly_c[0], 0.0);
+    assert_eq!(poly_c[1], 1.0);
+    assert_eq!(poly_c[2], 0.0);
+    assert_eq!(poly_c[3], 0.0);
+    assert_eq!(poly_c[4], 0.0);
 }
 
 #[test]

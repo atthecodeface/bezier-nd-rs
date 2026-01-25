@@ -114,25 +114,25 @@ where
             }
         }
     }
-    fn derivative_at(&self, t: F) -> [F; D] {
+    fn derivative_at(&self, t: F) -> (F, [F; D]) {
         let one = F::one();
         let two: F = (2.0_f32).into();
         let three: F = (3.0_f32).into();
         let four: F = (4.0_f32).into();
         match self.num {
-            2 => self.vector_of(&[-one, one], one),
+            2 => (one, self.vector_of(&[-one, one], one)),
             3 => {
                 let p0_sc = t - one; // d/dt (1-t)^2
                 let c_sc = one - two * t; // d/dt 2t(1-t)
                 let p1_sc = t; // d/dt t^2
-                self.vector_of(&[p0_sc, p1_sc, c_sc], one)
+                (one, self.vector_of(&[p0_sc, p1_sc, c_sc], one))
             }
             _ => {
                 let p0_sc = two * t - t * t - one; // d/dt (1-t)^3
                 let c0_sc = three * t * t - four * t + one; // d/dt 3t(1-t)^2
                 let c1_sc = two * t - three * t * t; // d/dt 3t^2(1-t)
                 let p1_sc = t * t; // d/dt t^3
-                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], one)
+                (one, self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], one))
             }
         }
     }
@@ -370,15 +370,15 @@ where
                 // and if we scale the curve to t1-t0 in size, tangents scale the same
                 let rp0 = self.point_at(t0);
                 let rp1 = self.point_at(t1);
-                let rt0 = self.derivative_at(t0);
-                let rt1 = self.derivative_at(t1);
+                let (_sc0, rt0) = self.derivative_at(t0);
+                let (_sc1, rt1) = self.derivative_at(t1);
 
                 let t1_m_t0 = t1 - t0;
 
                 let mut rc0 = [F::zero(); D];
                 let mut rc1 = [F::zero(); D];
                 for i in 0..D {
-                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i];
+                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i]; // *sc0*sc1?
                     rc1[i] = rp1[i] - t1_m_t0 * rt1[i];
                 }
 
@@ -849,8 +849,8 @@ where
         let one = F::one();
         let p0 = self.point_at(zero);
         let p1 = self.point_at(one);
-        let t0 = self.derivative_at(zero);
-        let t1 = self.derivative_at(one);
+        let (_sc0, t0) = self.derivative_at(zero);
+        let (_sc1, t1) = self.derivative_at(one);
         let t0 = vector::normalize(t0);
         let t1 = vector::normalize(t1);
         let t1_d_t0 = vector::dot(&t1, &t0);
@@ -919,8 +919,8 @@ where
 {
     /// Return the normal at a paramenter 't' (for 2D beziers only)
     pub fn normal_at(&self, t: F) -> [F; 2] {
-        let x = self.derivative_at(t);
-        [x[1], x[0]]
+        let (sc, x) = self.derivative_at(t);
+        [x[1] * sc, x[0] * sc]
     }
 
     //mp min_distance_sq_from

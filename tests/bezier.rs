@@ -237,12 +237,12 @@ fn test_line() {
     does_bisect(&b01);
     does_bisect(&b02);
 
-    pt_eq(&b01.derivative_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b01.derivative_at(0.5), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b01.derivative_at(1.0), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b02.derivative_at(0.), p2[0] - p0[0], p2[1] - p0[1]);
-    pt_eq(&b02.derivative_at(0.5), p2[0] - p0[0], p2[1] - p0[1]);
-    pt_eq(&b02.derivative_at(1.0), p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b01.derivative_at(0.).1, p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b01.derivative_at(0.5).1, p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b01.derivative_at(1.0).1, p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b02.derivative_at(0.).1, p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b02.derivative_at(0.5).1, p2[0] - p0[0], p2[1] - p0[1]);
+    pt_eq(&b02.derivative_at(1.0).1, p2[0] - p0[0], p2[1] - p0[1]);
 
     let mut v = Vec::new();
     v.clear();
@@ -286,14 +286,14 @@ fn test_quadratic() {
 
     // Check that the tangent at t=0 is the direction to the control point
     pt_eq(
-        &b.derivative_at(0.),
+        &b.derivative_at(0.).1,
         1. * (p1[0] - p0[0]),
         1. * (p1[1] - p0[1]),
     );
     // pt_eq( &b.derivative_at(0.5), p1[0]-p0[0], p1[1]-p0[1] );
     // Check that the tangent at t=1 is the direction to the control point
     pt_eq(
-        &b.derivative_at(1.0),
+        &b.derivative_at(1.0).1,
         1. * (p2[0] - p1[0]),
         1. * (p2[1] - p1[1]),
     );
@@ -362,8 +362,8 @@ fn test_cubic() {
     pt_eq(&b.point_at(0.), p0[0], p0[1]);
     pt_eq(&b.point_at(1.), p3[0], p3[1]);
 
-    pt_eq(&b.derivative_at(0.), p1[0] - p0[0], p1[1] - p0[1]);
-    pt_eq(&b.derivative_at(1.0), p3[0] - p2[0], p3[1] - p2[1]);
+    pt_eq(&b.derivative_at(0.).1, p1[0] - p0[0], p1[1] - p0[1]);
+    pt_eq(&b.derivative_at(1.0).1, p3[0] - p2[0], p3[1] - p2[1]);
 
     does_bisect(&b);
 

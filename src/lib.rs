@@ -9,6 +9,159 @@ TO DO:
 
 # Bezier curve library
 
+This library provides traits for implementing Bezier curves, such as
+evaluation at parameter values, derivatives, splitting into lines, and
+reduction/elevation of degree.
+
+Implementations are provided for arrays of vectors, where a vector is an array of D dimensions of floats (such as f32 or f64).
+
+The Beziers are stored using standard control points, and hence use Bernstein polynomials of a parameter 't' to find trace the locus of the Bezier.
+
+# Bezier types
+
+The simplest Bezier types are just arrays of points, where points are D-dimensional arrays of a type F (which requires num_traits::Num and From<f32>)
+An array of two points can be used as a linear Bezier; an array of three points can be used as a quadratic Bezier; and array of four points can be used
+as a cubic Bezier.
+
+A legacy generic type Bezier is provided which can represent any one of linear, quadratic or cubic Bezier.
+
+
+
+# Bezier traits
+
+Bezier curves have many uses, and there are many ways in which they may be manipulated and used. A variety of traits
+are provided by this library to encompass those use cases. Some example applications are:
+
+* Font outlines (quadratic or potentially cubic Beziers)
+* Drawing programs (generally cubic or lower, but potentially arbitrary degree)
+* Path description for postiion of objects (such as robotic joints), with arbitrary degreee Beziers
+
+The broad category of functionality required is:
+
+* Evaluation of points and derivatives
+* Arc length calculation
+* Curve simplification (reduction to lines, lower Beziers) with some tolerance
+* Curve splitting
+* Minimum distance from a curve, and closest point (point projection)
+* Reparametrization of a curve
+* Curvature
+* Intersection with a line
+* Self-intersectoin
+* Curve building (from points and derivatives)
+* Bounding box
+
+The library's traits expect Bezier's to use a parameter 't' of some type 'F' which must be similar to a float (e.g. f32, f64) and points that are clonable.
+Normally the trait implementation will be for D-dimensional points with coordinates of type 'F'.
+
+## BezierEval
+
+The simplest trait provided is [BezierEval], which is a dyn-compatible trait that allows a type to provide:
+
+* Access to the degree and control points of a Bezier
+* Evaluation of points and first derivatives at a parameter value 't'
+* Determination of how close to a straight line a Bezier is
+* Determination of the worst case distance between points on the Bezier and a Bezier reduced simply to a quadratic or cubic Bezier with the same endpoints
+
+This is implemented for:
+
+* [[F; D]; 2] as a linear Bezier, with parameter of type F and points of type [F;D]
+* [[F; D]; 3] as a quadratic Bezier, with parameter of type F and points of type [F;D]
+* [[F; D]; 4] as a cubic Bezier, with parameter of type F and points of type [F;D]
+
+F can be f32 or f64, or anything that supports all of:
+    Copy
+    PartialOrd
+    std::fmt::Debug
+    std::ops::Neg<Output = Self>
+    num_traits::Num
+    num_traits::ConstOne
+    num_traits::ConstZero
+    num_traits::FromPrimitive
+
+## BezierSplit
+
+This trait provides a method to split a Bezier curve into two of the same degree; it requires the type
+to be Sized, and is not dyn compatible as the split method must return two Beziers.
+
+Splitting a Bezier curve into two (curves A and B, at the point with t=0.5) yields two Beziers that provide precisely the
+same points; the first for P(t)=Pa(2*t) 0<=t<=0.5, and the second for P(t)=Pb(2*t-0.5) 0.5<=t<=1.
+
+If a type provides this trait then a BezierSplitIter can be created, which is an iterator that can provide
+for recursive splitting of the Bezier; in a loop such as
+
+```ignore
+let mut split = bezier.split_iter();
+while let Some(b) = split.next() {
+  if some_criterion {
+    // Argh! Bezier 'b' is not refined enough
+    //
+    // Recurse using b split into two Bezier curves at t=0.5!
+    split.add_split(b);
+  } else {
+    ...
+  }
+}
+```
+
+An example of this provides for splitting a Bezier curve into an iterator of connected line segments, if the
+Bezier supports Clone, BezierSplit and BezierEval, such as:
+
+```ignore
+fn draw_bezier(bezier:&Bez, tolerance_sq:f32) {
+  for (p0, p1) in BezierLineIter::new(&bezier, tolerance_sq) {
+    // Next line in approximation of bezier, connected to the previous line (if any)
+    // is p0 -> p1
+    draw_line(p0, p1);
+  }
+}
+```
+
+## BezierReduce
+
+This trait is again not dyn-compatible; it provides methods for reducing a Bezier from one degree to
+a lower degree, and potentially down to a cubic or quadratic. The latter methods expect the reduced Bezier
+to have the same endpoints (although this is not an absolute guarantee, if supported it enables the
+use of recursive splitting of a high degree Bezier into connected cubic or quadratic Bezier curves).
+
+The trait also has methods for determining how close the Bezier is to its reductions (be they by one degree,
+or to quadratic or cubic). With these methods, an algorithm can recursively split a Bezier into smaller Beziers (if BezierSplit
+is provided for the type), until a smaller Bezier is close enough to a cubic (or quadratic, etc) so that
+the initial Bezier ends up being split into a list of connected cubic (or quadratic etc) Bezier curves.
+
+A Bezier that supports this trait is normally expected to support reduction; however, it can be useful to implement this for
+linear Beziers, where a reduction makes no sense, and so there is a 'can_reduce' method here that should be used to gate
+the reduction when required.
+
+## BezierDistance
+
+This trait provides methods that can estimate and potentially can accurately provide the (minimum) distance (squared) between
+a point P (of the type the Bezier supports) and the Bezier.
+
+A quadratic Bezier is expected to provide an accurate distance to a point; a linear Bezier (a line segment) *must* provide
+an accurate distance. Higher degree Bezier curves need not (i.e. can return None from such methods).
+
+If the Bezier supports BezierSplit and BezierReduce, then the distance of a point from the Bezier can be determined
+to a tolerance - by splitting/reducing the curve to the tolerance into quadratics or lines, and then determining the
+minimum distance from the point to the quadratics or lines.
+
+The estimation method in this trait should be relatively light-weight; the aim is that a set of Bezier curves
+(even of high degree) that support BezierSplit can be iterated over to find the distance between a point P
+and the curves (and which curve, and where on the curve). This allows extending the distance-to-Bezier algorithm, given
+a current distance to a closest Bezier, to test if *another* Bezier is potentially closer (i.e. its estimation
+method returns a value less than the closest current distance) to see if it should be split (or if it is quadratic or linear
+then a precise determination used).
+
+
+///
+/// This provides for the evaluation of the Bezier, and determination of how
+/// straight (or how close to a quadratic/cubic Bezier) it is.
+///
+/// It also provides access to the points
+///
+/// This is dyn-compatible
+
+## Legacy
+
 This library provides linear, quadratic and cubic Bezier curves, using
 generic types for the scalar that they are made up of; this can be
 either f32 or f64 (anything that supports the geo_nd::Float trait).
@@ -202,6 +355,17 @@ have been done; the purpose is to provide something that is clean,
 works across the range, and is efficient. There is no perfect solution
 to this problem!
 
+# References
+
+A Primer on Bézier Curves ("Pomax")
+
+https://pomax.github.io/bezierinfo/
+
+Adaptive Bezier Degree Reduction and Splitting
+for Computationally Efficient Motion Planning (Omur Arslan and Aron Tiemessen):
+
+https://arxiv.org/pdf/2201.07834
+
 !*/
 
 /*a Imports
@@ -218,6 +382,7 @@ mod distance;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
+mod farray_cubic;
 mod farray_line;
 mod farray_quadratic;
 

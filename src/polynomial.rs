@@ -36,11 +36,20 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 !*/
 
 //a Imports
-use geo_nd::Float;
+use geo_nd::{Float, Num};
 
-fn poly_calc<F: Float>(poly: &[F], x: F) -> F {
-    let mut r = F::zero();
-    let mut xn = F::one();
+#[inline(always)]
+fn abs<F: Num>(f: F) -> F {
+    if f < F::ZERO {
+        -f
+    } else {
+        f
+    }
+}
+
+fn poly_calc<F: Num>(poly: &[F], x: F) -> F {
+    let mut r = F::ZERO;
+    let mut xn = F::ONE;
     for p in poly.iter() {
         r += (*p) * xn;
         xn *= x;
@@ -48,9 +57,9 @@ fn poly_calc<F: Float>(poly: &[F], x: F) -> F {
     r
 }
 
-fn poly_gradient<F: Float>(poly: &[F], x: F) -> F {
-    let mut r = F::zero();
-    let mut xn = F::one();
+fn poly_gradient<F: Num + From<f32>>(poly: &[F], x: F) -> F {
+    let mut r = F::ZERO;
+    let mut xn = F::ONE;
     for (i, p) in poly.iter().enumerate().skip(1) {
         r += (*p) * xn * (i as f32).into();
         xn *= x;
@@ -58,7 +67,7 @@ fn poly_gradient<F: Float>(poly: &[F], x: F) -> F {
     r
 }
 
-fn poly_differentiate<F: Float>(poly: &mut [F]) {
+fn poly_differentiate<F: Num + From<f32>>(poly: &mut [F]) {
     let n = poly.len();
     if n < 1 {
         return;
@@ -66,22 +75,22 @@ fn poly_differentiate<F: Float>(poly: &mut [F]) {
     for i in 0..n - 1 {
         poly[i] = poly[i + 1] * ((i + 1) as f32).into();
     }
-    poly[n - 1] = F::zero();
+    poly[n - 1] = F::ZERO;
 }
 
-fn poly_degree<F: Float>(poly: &[F]) -> usize {
+fn poly_degree<F: Num>(poly: &[F]) -> usize {
     for (i, v) in poly.iter().enumerate().rev() {
-        if v.abs() != F::zero() {
+        if !v.is_zero() {
             return i;
         }
     }
     0
 }
 
-fn poly_normalize<F: Float>(poly: &mut [F], eps: F) {
+fn poly_normalize<F: Num>(poly: &mut [F], eps: F) {
     for v in poly.iter_mut() {
-        if v.abs() < eps {
-            *v = F::zero();
+        if (*v > -eps) && (*v < eps) {
+            *v = F::ZERO;
         }
     }
 }
@@ -94,11 +103,11 @@ fn poly_normalize<F: Float>(poly: &mut [F], eps: F) {
 /// If the multiplier has degree 1 then it is linear; two polys of degree 1
 /// produce a polynomial which has a degree of 2, and hence an array length of 3
 #[track_caller]
-fn poly_multiply<F: Float>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
+fn poly_multiply<F: Num>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
     let mul_deg = poly_degree(multiplicand);
     let poly_deg = poly_degree(poly);
     for p in result.iter_mut() {
-        *p = F::zero();
+        *p = F::ZERO;
     }
     assert!(
         result.len() > mul_deg + poly_deg,
@@ -119,11 +128,11 @@ fn poly_multiply<F: Float>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
 
 // Return true if the remeainder is all less than or equal to eps
 #[track_caller]
-fn poly_divide<F: Float>(poly: &mut [F], divisor: &[F], result: &mut [F], eps: F) -> bool {
+fn poly_divide<F: Num>(poly: &mut [F], divisor: &[F], result: &mut [F], eps: F) -> bool {
     let div_deg = poly_degree(divisor);
     let poly_deg = poly_degree(poly);
     for p in result.iter_mut() {
-        *p = F::zero();
+        *p = F::ZERO;
     }
     if poly_deg >= div_deg {
         let n_iter = poly_deg + 1 - div_deg;
@@ -142,12 +151,12 @@ fn poly_divide<F: Float>(poly: &mut [F], divisor: &[F], result: &mut [F], eps: F
             }
         }
     }
-    poly.iter().all(|v| v.abs() <= eps)
+    poly.iter().all(|v| *v > -eps && *v < eps)
 }
 
 //tt Polynomial
 /// A collections of methods for polynomials
-pub trait Polynomial<F: Float> {
+pub trait Polynomial<F: Num> {
     /// Differentiate the polynomial
     fn differentiate(&mut self);
     /// Get the degree of the polynomial (largest non-zero coefficient)
@@ -161,11 +170,14 @@ pub trait Polynomial<F: Float> {
     /// Multiply by a polynomial
     fn set_multiply(&mut self, poly: &[F], multiplicand: &[F]);
     /// Set to result of polynomial divided by divisor, leaving the remainder in poly
+    ///
+    /// Return false if the polynomial division left a remainder polynomial with any
+    /// coefficient greater than 'eps'
     fn set_divide(&mut self, poly: &mut [F], divisor: &[F], eps: F) -> bool;
 }
 
 //ip Polynomial for [F; N]
-impl<F: Float, const N: usize> Polynomial<F> for [F; N] {
+impl<F: Num + From<f32>, const N: usize> Polynomial<F> for [F; N] {
     fn degree(&self) -> usize {
         poly_degree(self)
     }
@@ -194,7 +206,7 @@ impl<F: Float, const N: usize> Polynomial<F> for [F; N] {
 }
 
 //ip Polynomial for [F; N]
-impl<F: Float> Polynomial<F> for [F] {
+impl<F: Num + From<f32>> Polynomial<F> for [F] {
     fn degree(&self) -> usize {
         poly_degree(self)
     }
@@ -223,34 +235,34 @@ impl<F: Float> Polynomial<F> for [F] {
 /// Improve an estimate for a root; as we get closer the dx should get smaller
 ///
 /// If the dx is *larger* than the last dx then stop
-fn improve_root<F: Float>(poly: &[F], x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
+fn improve_root<F: Num + From<f32>>(poly: &[F], x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
-    if df.abs() < min_grad {
+    if abs(df) < min_grad {
         None
     } else {
         let new_x = x - f / df;
-        if (new_x - x).abs() < max_dx {
-            Some((new_x, (new_x - x).abs()))
+        if abs(new_x - x) < max_dx {
+            Some((new_x, abs(new_x - x)))
         } else {
             None
         }
     }
 }
 
-fn find_real_roots_linear<F: Float>(poly: &[F]) -> Option<F> {
+pub fn find_real_roots_linear<F: Float>(poly: &[F]) -> Option<F> {
     assert!(
         poly.len() >= 2,
         "Root of a linear polynomial requires at least two coefficients (and [2..] should be zero)"
     );
-    if poly[1].abs() < F::epsilon() {
+    if abs(poly[1]) <= F::epsilon() {
         None
     } else {
         Some(-poly[0] / poly[1])
     }
 }
 
-fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
+pub fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
     assert!(
         poly.len() >= 3,
         "Root of a quadratic polynomial requires at least three coefficients (and [3..] should be zero)"
@@ -272,7 +284,7 @@ fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
     }
 }
 
-fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Option<F>) {
+pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Option<F>) {
     assert!(
         poly.len() >= 4,
         "Root of a cubic polynomial requires at least four coefficients (and [4..] should be zero)"
