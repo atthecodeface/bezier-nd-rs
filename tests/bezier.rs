@@ -2,7 +2,8 @@
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
-use geo_nd::{vector, FArray, Float, Vector};
+use bezier_nd::Float;
+use geo_nd::{vector, FArray, Vector};
 
 // type Point<F:Float> = FArray<F,2>;
 // type B<F:Float> = Bezier<F, Point<F>, 2>;
@@ -165,8 +166,8 @@ where
     }
     dbg!(straightness, max_excursion);
     assert!(
-        max_excursion < straightness,
-        "Worst case Min dist from bezier to line segments should be less than straightness {} {}",
+        max_excursion < straightness.sqrt(),
+        "Worst case Min dist from bezier to line segments {} should be less than straightness {}",
         max_excursion,
         straightness.sqrt()
     );
@@ -180,8 +181,8 @@ where
     }
     dbg!(straightness, max_excursion);
     assert!(
-        max_excursion < straightness,
-        "Worst case Min dist from line segments to bezier should be less than straightness {} {}",
+        max_excursion < straightness.sqrt(),
+        "Worst case Min dist from line segments to bezier {} should be less than straightness {}",
         max_excursion,
         straightness.sqrt()
     );
@@ -318,8 +319,8 @@ fn test_quadratic() {
     }
     assert_eq!(
         v.len(),
-        128, // was 53 before traits
-        "We know that at straightness 0.001  there must be 53 line segments"
+        16,
+        "We know that at straightness_sq 0.001 there must be 16 line segments"
     );
 
     // Use a Bezier with a control point outside the endpoints
@@ -346,7 +347,7 @@ fn test_quadratic() {
     }
     assert_eq!(
         v.len(),
-        128, // was 8 before traits
+        32, // was 8 before traits
         "We know that at straightness 0.001  there must be 8 line segments"
     );
 }
@@ -415,8 +416,8 @@ fn test_cubic() {
     }
     assert_eq!(
         v.len(),
-        22, // was 3 before changing to traits
-        "We know that at straightness 0.5 there should be 3 line segments"
+        6, // was 3 before changing to traits
+        "We know that at straightness_sq of 0.5 there should be 6 line segments"
     );
 
     v.clear();
@@ -425,8 +426,8 @@ fn test_cubic() {
     }
     assert_eq!(
         v.len(),
-        980, // was 23 before changing to traits
-        "We know that at straightness 0.01 there should be 23 line segments"
+        13,
+        "We know that at straightness_sq of 0.01 there should be 13 line segments"
     );
 }
 
@@ -689,23 +690,25 @@ fn test_within_straightness() {
     let p3: FArray<f32, 2> = [20., 0.].into();
     // let p4: FArray<f32, 2> = [20., 1.].into();
 
-    let b = Bezier::quadratic(&p0, &p3, &p1);
-    bezier_lines_within_straightness(&b, 0.1);
+    for straightness_sq in [0.1, 0.01, 0.001] {
+        let b = Bezier::quadratic(&p0, &p3, &p1);
+        bezier_lines_within_straightness(&b, straightness_sq);
 
-    let b = Bezier::cubic(&p0, &p1, &p2, &p3);
-    bezier_lines_within_straightness(&b, 0.1);
+        let b = Bezier::cubic(&p0, &p1, &p2, &p3);
+        bezier_lines_within_straightness(&b, straightness_sq);
 
-    let b = Bezier::cubic(&p0, &p2, &p1, &p3);
-    bezier_lines_within_straightness(&b, 0.1);
+        let b = Bezier::cubic(&p0, &p2, &p1, &p3);
+        bezier_lines_within_straightness(&b, straightness_sq);
 
-    let b = Bezier::cubic(&p3, &p2, &p1, &p0);
-    bezier_lines_within_straightness(&b, 0.1);
+        let b = Bezier::cubic(&p3, &p2, &p1, &p0);
+        bezier_lines_within_straightness(&b, straightness_sq);
 
-    let b = Bezier::cubic(&p2, &p3, &p0, &p1);
-    bezier_lines_within_straightness(&b, 0.1);
+        let b = Bezier::cubic(&p2, &p3, &p0, &p1);
+        bezier_lines_within_straightness(&b, straightness_sq);
 
-    let b = Bezier::cubic(&p0, &p3, &p3, &p1);
-    bezier_lines_within_straightness(&b, 0.1);
+        let b = Bezier::cubic(&p0, &p3, &p3, &p1);
+        bezier_lines_within_straightness(&b, straightness_sq);
+    }
 }
 
 //a Tests

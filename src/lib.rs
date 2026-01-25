@@ -290,12 +290,12 @@ assert_eq!( arc.degree(), 3);
 assert!(!arc.is_straight(0.));
 
 // Breaking the arc with a large value of straightness yields only 3 points:
-assert_eq!( arc.as_points(0.1).count(), 9);
+assert_eq!( arc.as_points(0.01).count(), 3);
 // This is 1.5662874
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 
 // Breaking the arc with a small value of straightness yields 17 points!
-assert_eq!( arc.as_points(0.05).count(), 17);
+assert_eq!( arc.as_points(0.00001).count(), 9);
 // This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
 println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
 

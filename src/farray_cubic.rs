@@ -23,9 +23,18 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self[0], &self[3])
     }
-    fn is_straight(&self, straightness_sq: F) -> bool {
-        let dc_sq = crate::utils::straightness_sq_of_cubic(self);
-        dc_sq < straightness_sq
+    fn closeness_sq_to_line(&self) -> F {
+        let one_third: F = (0.33333333).into();
+        let two_thirds: F = (0.66666667).into();
+        let dv_0 = vector::sum_scaled(self, &[-two_thirds, F::ONE, F::ZERO, -one_third]);
+        let dc2_0 = vector::length_sq(&dv_0);
+        let dv_1 = vector::sum_scaled(self, &[-one_third, F::ZERO, F::ONE, -two_thirds]);
+        let dc2_1 = vector::length_sq(&dv_1);
+        if dc2_0 < dc2_1 {
+            dc2_1
+        } else {
+            dc2_0
+        }
     }
     fn closeness_sq_to_quadratic(&self) -> F {
         let m_half = (-0.5_f32).into();

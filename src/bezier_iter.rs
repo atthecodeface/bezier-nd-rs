@@ -92,7 +92,7 @@ pub struct BezierLineIter<F: Num, B: BezierSplit + BezierEval<F, P> + Clone, P: 
     /// Bezier iterator
     split_iter: BezierSplitIter<B>,
     /// Maximum curviness of the line segments returned
-    straightness: F,
+    straightness_sq: F,
     phantom: PhantomData<P>,
 }
 
@@ -108,10 +108,10 @@ where
     /// straightness
     ///
     /// This clones the Bezier.
-    pub fn new(bezier: &B, straightness: F) -> Self {
+    pub fn new(bezier: &B, straightness_sq: F) -> Self {
         let split_iter = BezierSplitIter::new(bezier);
         Self {
-            straightness,
+            straightness_sq,
             split_iter,
             phantom: PhantomData,
         }
@@ -122,8 +122,8 @@ where
     /// straightness
     ///
     /// This clones the Bezier.
-    pub fn restart(&mut self, bezier: &B, straightness: F) {
-        self.straightness = straightness;
+    pub fn restart(&mut self, bezier: &B, straightness_sq: F) {
+        self.straightness_sq = straightness_sq;
         self.split_iter.restart(bezier);
     }
 
@@ -149,7 +149,7 @@ where
     /// and to leave the top of the stack starting with pb.
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(bezier) = self.split_iter.next() {
-            if bezier.is_straight(self.straightness) {
+            if bezier.closeness_sq_to_line() < self.straightness_sq {
                 let (ep0, ep1) = bezier.endpoints();
                 return Some((ep0.clone(), ep1.clone()));
             } else {

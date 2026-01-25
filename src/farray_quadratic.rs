@@ -16,11 +16,11 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self[0], &self[2])
     }
-    fn is_straight(&self, straightness_sq: F) -> bool {
+    fn closeness_sq_to_line(&self) -> F {
         let m_half = (-0.5_f32).into();
         let dv = vector::sum_scaled(self, &[m_half, F::ONE, m_half]);
         let dc2 = vector::length_sq(&dv);
-        dc2 < straightness_sq
+        dc2
     }
     fn closeness_sq_to_quadratic(&self) -> F {
         F::ZERO

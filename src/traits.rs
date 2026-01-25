@@ -14,14 +14,15 @@ pub trait Num:
     + num_traits::ConstZero
     + num_traits::FromPrimitive
     + From<f32>
+    + 'static
 {
     fn recip_f32(f: f32) -> Self;
     fn is_unreliable_divisor(self) -> bool;
 }
 
-pub trait Float: Num + num_traits::Float {}
+pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
 
-impl<T> Float for T where T: Num + num_traits::Float {}
+impl<T> Float for T where T: Num + num_traits::Float + num_traits::FloatConst {}
 
 impl<T> Num for T
 where
@@ -36,7 +37,8 @@ where
         + num_traits::ConstOne
         + num_traits::ConstZero
         + num_traits::FromPrimitive
-        + From<f32>,
+        + From<f32>
+        + 'static,
 {
     fn recip_f32(f: f32) -> Self {
         (1.0 / f).into()
@@ -65,11 +67,12 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// Borrow the endpoints of the Bezier
     fn endpoints(&self) -> (&P, &P);
 
-    /// Return true if the Bezier is within the sqrt of 'straightness' of a straight line
+    /// Find how close the Bezier is to a line segment with the same endpoints
     ///
-    /// Normally this requires evaluating a metric that is a distance squared, hence using
-    /// straigthness_sq here
-    fn is_straight(&self, straightness_sq: F) -> bool;
+    /// The metric should be quadratic with respect to the units of length of P,
+    /// i.e. if P were in reality measured in meters, then this metric should be
+    /// in units of square meteres
+    fn closeness_sq_to_line(&self) -> F;
 
     /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
     ///

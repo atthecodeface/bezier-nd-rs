@@ -1,11 +1,11 @@
 //a Imports
 mod utils;
 use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
-use bezier_nd::{Bezier, BezierND};
+use bezier_nd::{Bezier, BezierND, Float};
 use geo_nd::{
     matrix,
     vector::{self},
-    FArray, Float,
+    FArray,
 };
 use utils::test_beziers_approx_eq;
 use utils::{assert_near_equal, assert_near_identity, float_iter, generate_bernstein_matrix};

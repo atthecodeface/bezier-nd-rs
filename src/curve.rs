@@ -1,8 +1,8 @@
 //a Imports
 use crate::BezierEval;
 use crate::BezierSplit;
+use crate::Float;
 use geo_nd::vector;
-use geo_nd::Float;
 
 use crate::{BezierLineIter, BezierPointIter};
 
@@ -136,54 +136,23 @@ where
             }
         }
     }
+
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self.pts[0], &self.pts[1])
     }
-    fn is_straight(&self, straightness: F) -> bool {
-        match self.num {
-            2 => true,
-            3 => {
-                let dv = vector::sub(self.pts[2], &self.pts[0], (0.5_f32).into());
-                let dv = vector::sub(dv, &self.pts[1], (0.5_f32).into());
-                let dc2 = vector::length_sq(&dv);
-                dc2 < straightness * straightness
-            }
-            _ => {
-                let dv = vector::sub(self.pts[2], &self.pts[0], (0.33333333_f32).into());
-                let dv = vector::sub(dv, &self.pts[1], (0.66666666_f32).into());
-                let dc2 = vector::length_sq(&dv);
-                if dc2 > straightness * straightness {
-                    return false;
-                }
 
-                let dv = vector::sub(self.pts[3], &self.pts[1], (0.33333333_f32).into());
-                let dv = vector::sub(dv, &self.pts[0], (0.66666666_f32).into());
-                let dc2 = vector::length_sq(&dv);
-                dc2 < straightness * straightness
-            }
+    fn closeness_sq_to_line(&self) -> F {
+        match self.num {
+            2 => F::ZERO,
+            3 => [self.pts[0], self.pts[2], self.pts[1]].closeness_sq_to_line(),
+            _ => [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].closeness_sq_to_line(),
         }
     }
     fn closeness_sq_to_quadratic(&self) -> F {
         if self.num <= 3 {
             F::ZERO
         } else {
-            // elevated_reduce_minus_identity for control points[1] and [2] are:
-            // [1/6, -0.5, 0.5, -1/6], [-1/6, 0.5, -0.5, 1/6], which are negations
-            //
-            // so dc_s1 = 1/36 * |p[0] - 3p[1] + 3p[2] - p[3]|^2
-            let three: F = (3.0_f32).into();
-            let dc = vector::add(
-                vector::add(
-                    vector::add(self.pts[0], &self.pts[2], -three),
-                    &self.pts[3],
-                    three,
-                ),
-                &self.pts[1],
-                F::ONE,
-            );
-            vector::length_sq(&dc)
-            // Reduction to quadratic is     &[1., 0., 0., 0., -0.25, 0.75, 0.75, -0.25, 0., 0., 0., 1.0],
-            // todo!();
+            [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].closeness_sq_to_quadratic()
         }
     }
     fn closeness_sq_to_cubic(&self) -> F {
@@ -391,16 +360,16 @@ where
     /// Return a [BezierLineIter] iterator that provides line segments
     /// when the Bezier is broken down into 'straight' enough through
     /// bisection.
-    pub fn as_lines(&self, straightness: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::new(self, straightness)
+    pub fn as_lines(&self, straightness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
+        BezierLineIter::new(self, straightness_sq)
     }
 
     //mp as_points
     /// Return a [BezierPointIter] iterator that provides points along
     /// the curve when the Bezier is broken down into 'straight'
     /// enough through bisection.
-    pub fn as_points(&self, straightness: F) -> impl Iterator<Item = [F; D]> {
-        BezierPointIter::new(BezierLineIter::new(self, straightness))
+    pub fn as_points(&self, straightness_sq: F) -> impl Iterator<Item = [F; D]> {
+        BezierPointIter::new(BezierLineIter::new(self, straightness_sq))
     }
 
     //mp is_straight

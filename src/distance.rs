@@ -1,6 +1,6 @@
 //a Imports
+use crate::Float;
 use geo_nd::vector;
-use geo_nd::Float;
 
 use crate::traits::BezierSplit;
 use crate::Bezier;

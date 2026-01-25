@@ -13,8 +13,8 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self[0], &self[1])
     }
-    fn is_straight(&self, _straightness_sq: F) -> bool {
-        true
+    fn closeness_sq_to_line(&self) -> F {
+        F::ZERO
     }
     fn closeness_sq_to_quadratic(&self) -> F {
         F::ZERO
