@@ -491,7 +491,7 @@ where
     pub fn length(&self, straightness: F) -> F {
         if self.is_straight(straightness) {
             let (ep0, ep1) = self.endpoints();
-            vector::distance(&ep0, &ep1)
+            vector::distance(ep0, ep1)
         } else {
             let (b0, b1) = self.split();
             b0.length(straightness) + b1.length(straightness)
@@ -514,7 +514,7 @@ where
             (Some(t_start), zero)
         } else if self.is_straight(straightness) {
             let (ep0, ep1) = self.endpoints();
-            let d = vector::distance(&ep0, &ep1);
+            let d = vector::distance(ep0, ep1);
             if distance > acc_length + d {
                 (None, acc_length + d)
             } else if d < F::epsilon() {

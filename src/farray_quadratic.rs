@@ -19,8 +19,8 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     fn closeness_sq_to_line(&self) -> F {
         let m_half = (-0.5_f32).into();
         let dv = vector::sum_scaled(self, &[m_half, F::ONE, m_half]);
-        let dc2 = vector::length_sq(&dv);
-        dc2
+        
+        vector::length_sq(&dv)
     }
     fn closeness_sq_to_quadratic(&self) -> F {
         F::ZERO

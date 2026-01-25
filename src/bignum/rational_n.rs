@@ -403,7 +403,7 @@ impl<const N: usize> RationalN<N> {
         let (mantissa, exp) = self.to_mantissa64_exp();
         if mantissa == 0 {
             Some(0)
-        } else if exp < -1022 || exp > 1023 {
+        } else if !(-1022..=1023).contains(&exp) {
             None
         } else {
             result |= (((exp + 1023) & 0x7ff) as u64) << 52;
@@ -423,7 +423,7 @@ impl<const N: usize> RationalN<N> {
         let (mantissa, exp) = self.to_mantissa64_exp();
         if mantissa == 0 {
             Some(0)
-        } else if exp < -126 || exp > 127 {
+        } else if !(-126..=127).contains(&exp) {
             None
         } else {
             result |= (((exp + 127) & 0xff) as u32) << 23;

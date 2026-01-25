@@ -110,7 +110,7 @@ pub fn barycentric_coordinates<F: Num, const D: usize>(
 /// Hence difference squared <= (ut)^2 . max(A^2, B^2) <= max(A^2, B^2)
 pub fn straightness_sq_of_cubic<F: crate::Num, const D: usize>(cubic: &[[F; D]; 4]) -> F {
     let m_third = (-0.33333333_f32).into();
-    let m_twothird = (-0.66666667_f32).into();
+    let m_twothird = (-0.666_666_7_f32).into();
     let dv_0 = vector::sum_scaled(cubic, &[m_twothird, F::ONE, F::ZERO, m_third]);
     let dc2_0 = vector::length_sq(&dv_0);
     let dv_1 = vector::sum_scaled(cubic, &[m_third, F::ZERO, F::ONE, m_twothird]);

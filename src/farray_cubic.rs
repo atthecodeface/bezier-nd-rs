@@ -25,7 +25,7 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     }
     fn closeness_sq_to_line(&self) -> F {
         let one_third: F = (0.33333333).into();
-        let two_thirds: F = (0.66666667).into();
+        let two_thirds: F = 0.666_666_7.into();
         let dv_0 = vector::sum_scaled(self, &[-two_thirds, F::ONE, F::ZERO, -one_third]);
         let dc2_0 = vector::length_sq(&dv_0);
         let dv_1 = vector::sum_scaled(self, &[-one_third, F::ZERO, F::ONE, -two_thirds]);
@@ -61,7 +61,7 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
 
 impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
     /// The closest point on a cubic bezier to a point is not analytically determinable
-    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+    fn t_dsq_closest_to_pt(&self, _pt: &[F; D]) -> Option<(F, F)> {
         None
     }
 
