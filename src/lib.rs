@@ -399,7 +399,7 @@ pub mod bignum;
 
 /*a Exports
 */
-pub use bezier_iter::{BezierLineIter, BezierPointIter, BezierSplitIter};
+pub use bezier_iter::{BezierLineIter, BezierPointIter, BezierQuadIter, BezierSplitIter};
 pub use traits::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
 
 pub use builder::BezierBuilder;
