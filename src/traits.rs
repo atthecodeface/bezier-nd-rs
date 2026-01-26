@@ -19,6 +19,7 @@ pub trait Num:
     fn recip_f32(f: f32) -> Self;
     fn is_unreliable_divisor(self) -> bool;
 }
+use geo_nd::vector;
 
 pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
 
@@ -72,6 +73,9 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// The metric should be quadratic with respect to the units of length of P,
     /// i.e. if P were in reality measured in meters, then this metric should be
     /// in units of square meteres
+    ///
+    /// All points on the Bezier with 0<=t<=1 must line within this closeness of the
+    /// line segment between the endpoints
     fn closeness_sq_to_line(&self) -> F;
 
     /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
@@ -105,12 +109,41 @@ pub trait BezierEval<F: Num, P: Clone> {
     }
 }
 
+pub trait BezierFloatArray<F: Float, const D: usize> {
+    fn closeness_to_line(&self) -> F;
+    fn closeness_to_quadratic(&self) -> F;
+    fn closeness_to_cubic(&self) -> F;
+    fn bbox_estimate(&self) -> ([F; D], [F; D]);
+}
+
+impl<B, F: Float, const D: usize> BezierFloatArray<F, D> for B
+where
+    B: BezierEval<F, [F; D]>,
+{
+    fn closeness_to_line(&self) -> F {
+        self.closeness_sq_to_line().sqrt()
+    }
+    fn closeness_to_quadratic(&self) -> F {
+        self.closeness_sq_to_quadratic().sqrt()
+    }
+    fn closeness_to_cubic(&self) -> F {
+        self.closeness_sq_to_cubic().sqrt()
+    }
+    fn bbox_estimate(&self) -> ([F; D], [F; D]) {
+        let pts = self.endpoints();
+        let mut min = *pts.0;
+        let mut max = *pts.0;
+        let _ = vector::update_bbox(&[*pts.1], &mut min, &mut max);
+        (min, max)
+    }
+}
+
 /// A trait that provides for measurement of distance from a point to the Bezier, and closest
 /// point on a Bezier to an actual point.
 ///
 /// This is dyn-compatible.
 ///
-/// This is not analytically feasible for higher degree Beziers, and so has methods that return
+/// Precise calculation is not analytically feasible for higher degree Beziers, and so has methods that return
 /// Option. A method is included to help determine if a point is potentially closer than a specific
 /// distance, which allows that Bezier to be refined (and split, reduced etc) *only* if the point
 /// *might* b closer than a specific distance
@@ -171,52 +204,24 @@ pub trait BezierDistance<F: Num, P> {
     }
 }
 
-/// A dyn-compatible trait supported by a Bezier that allows it to be reduced/split
-/// into potentially *different* Bezier types that themselves can be reduced/split
+/// A trait that provides for estimating and calcuating the bounding box for a Bezier.
 ///
-/// Implementing this requires 'alloc', but permits a Bezier to be split into
-/// lines, quadratic Beziers, or cubic Beziers, to within a certain straightness
-pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> + BezierDistance<F, P> {
-    /// Optionally reduce the bezier by one degree in some manner
-    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
-
-    /// Optionally split the bezier into two at t=0.5
-    fn boxed_split(&self) -> Option<(Box<dyn BoxedBezier<F, P>>, Box<dyn BoxedBezier<F, P>>)> {
-        None
-    }
-
-    /// Find how close the Bezier is to the (potenital) reduction of the Bezier
+/// This is dyn-compatible.
+///
+/// Precise calculation is not analytically feasible for higher degree Beziers, and so the method returns
+/// Option.
+///
+/// An *estimate* of the bounding box can always be obtained by finding the endpoints of the Bezier, and finding
+/// the closeness of the Bezier to a line segment; find the BBox of the endpoints, and expand by the closeness.
+pub trait BezierMinMax<F: Num> {
+    /// Find a value of t, 0<=t<=1 and the associated point coordinate value where the point coordinate
+    /// value is the minimum (or maximum if 'use_max' is true).
     ///
-    /// The metric should be quadratic with respect to the units of length of P,
-    /// i.e. if P were in reality measured in meters, then this metric should be
-    /// in units of square meteres
+    /// This enables finding the bounding box of a Bezier by requesting the minimum and maximum for each
+    /// index in the dimensions of the point coordinate space.
     ///
-    /// If this returns None then 'reduce' need not return a sensible reult.
-    fn closeness_sq_to_reduction(&self) -> Option<F>;
-
-    /// Optionally reduce the Bezier down to a quadratic Bezier
-    ///
-    /// If bezier.closeness_to_quad() returns 'straightness' then the
-    /// Bezier returned by this call should be within 'straightness' for all
-    /// parameter values t in 0 <= t <= 1.0
-    ///
-    /// A Bezier of degree 2 or lower (a quadratic or linear Bezier) should return None
-    fn boxed_reduce_to_quad(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
-
-    /// Optionally reduce the Bezier down to a cubic Bezier
-    ///
-    /// If bezier.closeness_to_cubic() returns 'straightness' then the
-    /// Bezier returned by this call should be within 'straightness' for all
-    /// parameter values t in 0 <= t <= 1.0
-    ///
-    /// A Bezier of degree 3 or lower (a cubic, quadratic or linear Bezier) should return None
-    fn boxed_reduce_to_cubic(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
+    /// The value may not be analytically calculatable, in which case None can be returned.
+    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)>;
 }
 
 /// A trait provided by a Bezier to allow it to be split into two
@@ -229,19 +234,20 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> + BezierDistance<F, P>
 pub trait BezierSplit: Sized {
     /// Bisect the Bezier into two of the same degree
     fn split(&self) -> (Self, Self);
-
-    // Bisect the Bezier into two of the same degree
-    // fn split_at(&self, t:F) -> (Self, Self);1
 }
 
-/// A trait provided by a Bezier to allow it to be split into two
+/// A trait provided by a Bezier to allow it to be split in a manner more
+/// complex than just bisection
 ///
-/// This trait could be enhanced with a 'split_at' method, but that then
-/// requires it to have a 'F:Num' generic, which means that any generic
-/// type that just uses split-in-half would need F:Num, which is onerous
-pub trait BezierSplitAt<F: Num>: Sized {
-    /// Bisect the Bezier into two of the same degree
+/// This is separate from bisection, as to split at an arbitrary point requires
+/// a generic 'F'
+pub trait BezierSplitExtra<F: Num>: Sized {
+    /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self);
+
+    /// Generate the Bezier with parameter t' where 0<=t'<=1 provides the same points
+    /// as the original Bezier with t0<=t<=1
+    fn section(&self, t0: F, t1: F) -> Self;
 }
 
 /// A trait provided by a Bezier to allow it to be reduced
@@ -313,6 +319,54 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// If the Bezier does not have a mechanism to reduce it
     /// to a cubic then this should return None
     fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
+        None
+    }
+}
+
+/// A dyn-compatible trait supported by a Bezier that allows it to be reduced/split
+/// into potentially *different* Bezier types that themselves can be reduced/split
+///
+/// Implementing this requires 'alloc', but permits a Bezier to be split into
+/// lines, quadratic Beziers, or cubic Beziers, to within a certain straightness
+pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
+    /// Optionally reduce the bezier by one degree in some manner
+    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
+        None
+    }
+
+    /// Optionally split the bezier into two at t=0.5
+    fn boxed_split(&self) -> Option<(Box<dyn BoxedBezier<F, P>>, Box<dyn BoxedBezier<F, P>>)> {
+        None
+    }
+
+    /// Find how close the Bezier is to the (potenital) reduction of the Bezier
+    ///
+    /// The metric should be quadratic with respect to the units of length of P,
+    /// i.e. if P were in reality measured in meters, then this metric should be
+    /// in units of square meteres
+    ///
+    /// If this returns None then 'reduce' need not return a sensible reult.
+    fn closeness_sq_to_reduction(&self) -> Option<F>;
+
+    /// Optionally reduce the Bezier down to a quadratic Bezier
+    ///
+    /// If bezier.closeness_to_quad() returns 'straightness' then the
+    /// Bezier returned by this call should be within 'straightness' for all
+    /// parameter values t in 0 <= t <= 1.0
+    ///
+    /// A Bezier of degree 2 or lower (a quadratic or linear Bezier) should return None
+    fn boxed_reduce_to_quad(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
+        None
+    }
+
+    /// Optionally reduce the Bezier down to a cubic Bezier
+    ///
+    /// If bezier.closeness_to_cubic() returns 'straightness' then the
+    /// Bezier returned by this call should be within 'straightness' for all
+    /// parameter values t in 0 <= t <= 1.0
+    ///
+    /// A Bezier of degree 3 or lower (a cubic, quadratic or linear Bezier) should return None
+    fn boxed_reduce_to_cubic(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
         None
     }
 }

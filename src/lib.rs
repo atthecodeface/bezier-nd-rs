@@ -162,11 +162,13 @@ then a precise determination used).
 The estimation method must therefore always provide a result that is less than or equal to the *actual* distance from
 the point to the Bezier.
 
-## BoxedBezier (requires BezierEval)
+## BoxedBezier (requires BezierEval and alloc)
 
 This trait is explicitly dyn-compatible, and it provides for a mechanism for splitting and reducing Beziers
 (akin to BezierSplit and/or BezierReduce) - into Boxed dyn BoxedBezier. If a type does not support reduce
 but does support split then it can implement this trait; the methods all return Option of a Boxed object.
+
+# Overview of Bezier curves
 
 ## Legacy
 
@@ -206,8 +208,6 @@ is:
 ```text
 p(t,u=1-t) = u^3.p0 + 3.t.u^2.c0 + 3.u.t^2.c1 + t^3.p1
 ```
-
-## Overview of Bezier curve type
 
 The Bezier type supports construction and interrogation of the type
 instance.  The type utilizes a `num_pts` field, which is 2 for linear
@@ -386,6 +386,7 @@ pub(crate) mod utils;
 mod traits;
 pub use traits::{Float, Num};
 
+mod approximation;
 mod curve;
 mod distance;
 pub(crate) mod polynomial;
@@ -399,7 +400,10 @@ pub mod bignum;
 
 /*a Exports
 */
-pub use bezier_iter::{BezierLineIter, BezierPointIter, BezierQuadIter, BezierSplitIter};
+pub use bezier_iter::{
+    BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter, BezierQuadIter,
+    BezierSplitIter, BezierSplitTIter,
+};
 pub use traits::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
 
 pub use builder::BezierBuilder;
