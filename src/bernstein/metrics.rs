@@ -1,6 +1,8 @@
-use geo_nd::{vector, Float};
+use crate::Float;
+use geo_nd::vector;
 
 use super::Bezier;
+use crate::BezierEval;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where

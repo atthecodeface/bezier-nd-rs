@@ -1,5 +1,5 @@
+use crate::{Float, Num};
 use geo_nd::vector;
-use geo_nd::{Float, Num};
 
 /// This type stores a Bernstein Bezier of up to N control points each of dimension D
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -23,7 +23,7 @@ where
     F: Float,
 {
     fn default() -> Self {
-        let pts = [[F::zero(); D]; N];
+        let pts = [[F::ZERO; D]; N];
         Self { degree: 0, pts }
     }
 }

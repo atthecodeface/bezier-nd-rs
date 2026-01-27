@@ -1,7 +1,8 @@
 //! A collection of functions for use with Bernstein polynomial Beziers
 
 use crate::constants::BINOMIALS_U;
-use geo_nd::{vector, Float, Num};
+use crate::{Float, Num};
+use geo_nd::vector;
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
@@ -10,7 +11,7 @@ use geo_nd::{vector, Float, Num};
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
 pub fn basis_coeff_iter<F: Float>(degree: usize, t: F) -> impl Iterator<Item = F> {
-    let u = F::one() - t;
+    let u = F::ONE - t;
     let coeffs = BINOMIALS_U[degree];
     (0..=degree).map(move |i| {
         t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()

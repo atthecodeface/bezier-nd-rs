@@ -2,8 +2,8 @@
 use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
 
+use bezier_nd::Float;
 use bezier_nd::{Bezier, Num};
-use geo_nd::Float;
 use geo_nd::{matrix, vector};
 
 mod random;
@@ -305,7 +305,7 @@ pub fn generate_bernstein_matrix_br<N: geo_nd::Num + From<i64>>(
 /// to generate a new array of control points of the elevated Bezier
 #[track_caller]
 #[must_use]
-pub fn generate_elevate_by_n_matrix<N: geo_nd::Num>(degree: usize, by_n: usize) -> Vec<N> {
+pub fn generate_elevate_by_n_matrix<N: bezier_nd::Num>(degree: usize, by_n: usize) -> Vec<N> {
     use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
 
     assert!(by_n >= 1);

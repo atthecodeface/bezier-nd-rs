@@ -1,6 +1,7 @@
 mod utils;
 use bezier_nd::bignum::RationalN;
-use geo_nd::{matrix, Num};
+use bezier_nd::Num;
+use geo_nd::matrix;
 use utils::*;
 
 #[test]

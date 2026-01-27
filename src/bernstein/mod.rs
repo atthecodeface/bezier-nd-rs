@@ -123,7 +123,6 @@ mod metrics;
 
 pub mod bezier_fns;
 
-use std::cmp::max;
 
 pub use bezier::{Bezier, BezierReduceIter};
 

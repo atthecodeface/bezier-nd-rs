@@ -1,4 +1,5 @@
-use geo_nd::{vector, Float};
+use crate::Float;
+use geo_nd::vector;
 
 use super::{bezier_fns, Bezier};
 

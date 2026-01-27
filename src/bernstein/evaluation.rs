@@ -1,6 +1,7 @@
-use geo_nd::{vector, Float};
+use crate::Float;
+use geo_nd::vector;
 
-use super::{bezier_fns, Bezier};
+use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
@@ -36,16 +37,6 @@ where
             }
         }
         pts[0]
-    }
-
-    //mp point_at
-    /// Returns the point at parameter 't' along the Bezier
-    pub fn point_at(&self, t: F) -> [F; D] {
-        let mut r = [F::zero(); D];
-        for (c, pt) in bezier_fns::basis_coeff_iter(self.degree, t).zip(self.pts.iter()) {
-            r = vector::add(r, pt, c);
-        }
-        r
     }
 
     //mp nth_derivative_value_at

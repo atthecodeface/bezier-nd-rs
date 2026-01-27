@@ -50,19 +50,17 @@ impl<const N: usize> std::convert::From<(i64, u64)> for RationalN<N> {
     }
 }
 
-impl<const N: usize> std::convert::TryFrom<f64> for RationalN<N> {
-    type Error = &'static str;
+impl<const N: usize> std::convert::From<f32> for RationalN<N> {
     #[inline]
-    fn try_from(f: f64) -> Result<Self, &'static str> {
-        Self::of_f64_bits(f.to_bits()).ok_or("value out of range for conversion to Rational")
+    fn from(f: f32) -> Self {
+        Self::of_f32_bits(f.to_bits()).unwrap()
     }
 }
 
-impl<const N: usize> std::convert::TryFrom<f32> for RationalN<N> {
-    type Error = &'static str;
+impl<const N: usize> std::convert::From<f64> for RationalN<N> {
     #[inline]
-    fn try_from(f: f32) -> Result<Self, &'static str> {
-        Self::of_f32_bits(f.to_bits()).ok_or("value out of range for conversion to Rational")
+    fn from(f: f64) -> Self {
+        Self::of_f64_bits(f.to_bits()).unwrap()
     }
 }
 

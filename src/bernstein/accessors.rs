@@ -1,4 +1,4 @@
-use geo_nd::Float;
+use crate::Float;
 
 use super::Bezier;
 
