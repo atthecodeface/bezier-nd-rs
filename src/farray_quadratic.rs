@@ -19,7 +19,7 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     fn closeness_sq_to_line(&self) -> F {
         let m_half = (-0.5_f32).into();
         let dv = vector::sum_scaled(self, &[m_half, F::ONE, m_half]);
-        
+
         vector::length_sq(&dv)
     }
     fn closeness_sq_to_quadratic(&self) -> F {
@@ -217,10 +217,10 @@ impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 
 
 impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 3] {
     fn split(&self) -> (Self, Self) {
-        let c0 = vector::scale(vector::add(self[0], &self[1], F::ONE), (0.5_f32).into());
-        let c1 = vector::scale(vector::add(self[1], &self[2], F::ONE), (0.5_f32).into());
-        let pm = vector::scale(vector::add(c0, &c1, F::ONE), (0.5_f32).into());
-        ([self[0], c0, pm], [pm, c1, self[1]])
+        let c0 = vector::sum_scaled(self, &[0.5_f32.into(), 0.5_f32.into(), F::ZERO]);
+        let c1 = vector::sum_scaled(self, &[F::ZERO, 0.5_f32.into(), 0.5_f32.into()]);
+        let pm = vector::sum_scaled(self, &[0.25_f32.into(), 0.5_f32.into(), 0.25_f32.into()]);
+        ([self[0], c0, pm], [pm, c1, self[2]])
     }
 }
 

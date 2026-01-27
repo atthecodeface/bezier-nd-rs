@@ -2,13 +2,80 @@
 use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
 
-use bezier_nd::Bezier;
+use bezier_nd::{Bezier, Num};
 use geo_nd::Float;
-use geo_nd::{
-    matrix,
-    vector::{self},
-    Num,
-};
+use geo_nd::{matrix, vector};
+
+use rand::prelude::*;
+use rand_chacha::ChaCha8Rng;
+
+pub fn max<F: Num>(a: F, b: F) -> F {
+    if a > b {
+        a
+    } else {
+        b
+    }
+}
+pub fn min<F: Num>(a: F, b: F) -> F {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+pub fn make_random(seed_text: &str) -> impl Rng {
+    let mut seed = [0_u8; 32];
+    let seed_bytes = seed_text.as_bytes();
+    for (i, b) in seed_bytes.iter().enumerate() {
+        let j = i % 32;
+        seed[j] = seed[j] * 13 + (seed[j] >> 4) + *b;
+    }
+    ChaCha8Rng::from_seed(seed)
+}
+pub fn random_point_array<R: Rng, F: Copy + From<f32>, D: Distribution<f32>, const N: usize>(
+    rng: &mut R,
+    dist: &D,
+    pts: &mut [[F; N]],
+) {
+    for p in pts.iter_mut() {
+        *p = random_point(rng, dist);
+    }
+}
+
+pub fn random_point<R: Rng, F: Copy + From<f32>, D: Distribution<f32>, const N: usize>(
+    rng: &mut R,
+    dist: &D,
+) -> [F; N] {
+    let mut pt = [(0.0_f32).into(); N];
+    for p in pt.iter_mut() {
+        *p = dist.sample(rng).into();
+    }
+    pt
+}
+
+/// Find the maximum distance between the Bezier for 0<=t<=1 in 'steps' intervals
+pub fn max_distance_sq<
+    F: Num,
+    const D: usize,
+    B0: BezierEval<F, [F; D]>,
+    B1: BezierEval<F, [F; D]>,
+>(
+    b0: &B0,
+    b1: &B1,
+    steps: usize,
+) -> F {
+    let mut max_d_sq = F::ZERO;
+    for t in float_iter(F::ZERO, F::ONE, steps) {
+        let p0 = b0.point_at(t);
+        let p1 = b1.point_at(t);
+        let d_sq = vector::distance_sq(&p0, &p1);
+        eprintln!("t: {t} pts: {p0:?} {p1:?} d_sq:{d_sq}");
+        if d_sq > max_d_sq {
+            max_d_sq = d_sq;
+        }
+    }
+    max_d_sq
+}
 
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
@@ -23,7 +90,7 @@ pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
 
 /// Assert that a matrix is near the identity matrix
 #[track_caller]
-pub fn assert_near_identity<N: Num>(n: usize, m: &[N]) {
+pub fn assert_near_identity<N: geo_nd::Num>(n: usize, m: &[N]) {
     let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
     for i in 0..n * n {
         let exp = {
@@ -34,6 +101,125 @@ pub fn assert_near_identity<N: Num>(n: usize, m: &[N]) {
             }
         };
         assert!(m[i] - exp > -eps && m[i] - exp < eps);
+    }
+}
+
+/// Create NPTS points on the bezier, and store them in a Vec
+///
+/// Split the bezier into lines given the straightness
+///
+/// For each line segment find NSEG points along the line and store all of these in a Vec
+///
+/// Find the largest closest distance between points on the bezier to segmented points
+///
+/// Find the largest closest distance between segmented points to points on the bezier
+///
+/// Both of these should be less than 'straightness'
+pub struct BezierPtSet<F: Num, const D: usize> {
+    pts: Vec<[F; D]>,
+}
+
+impl<F: Num, const D: usize> BezierPtSet<F, D> {
+    pub fn is_empty(&self) -> bool {
+        self.pts.is_empty()
+    }
+    pub fn len(&self) -> usize {
+        self.pts.len()
+    }
+    pub fn of_point_at<B: BezierEval<F, [F; D]>>(bezier: &B, steps: usize) -> Self {
+        let pts = float_iter(F::ZERO, F::ONE, steps)
+            .map(|t| bezier.point_at(t))
+            .collect();
+        Self { pts }
+    }
+
+    pub fn of_point_iter<I: Iterator<Item = [F; D]>>(iter: I) -> Self {
+        let pts = iter.collect();
+        Self { pts }
+    }
+
+    pub fn of_line_iter<I: Iterator<Item = ([F; D], [F; D])>>(mut iter: I) -> Self {
+        let l0 = iter.next().unwrap();
+        let mut pts = vec![l0.0, l0.1];
+        for (_, p) in iter {
+            pts.push(p);
+        }
+        Self { pts }
+    }
+
+    pub fn of_line_iter_interpolated<I: Iterator<Item = ([F; D], [F; D])>>(
+        iter: I,
+        steps: usize,
+    ) -> Self {
+        let pts = iter
+            .map(|(p0, p1)| {
+                float_iter(F::ZERO, F::ONE, steps).map(move |t| vector::mix(&p0, &p1, t))
+            })
+            .flatten()
+            .collect();
+        Self { pts }
+    }
+
+    pub fn as_points(&self) -> impl Iterator<Item = [F; D]> + '_ {
+        self.pts.iter().copied()
+    }
+
+    pub fn as_lines(&self) -> impl Iterator<Item = ([F; D], [F; D])> + '_ {
+        self.pts
+            .iter()
+            .copied()
+            .zip(self.pts.iter().skip(1).copied())
+    }
+
+    /// Calculate the maximum distance between successive points
+    ///
+    /// This helps to provide an error bound for a point supposedly 'on' the same Bezier
+    pub fn max_pt_separation_sq(&self) -> F {
+        let p0_p1_iter = self.pts.iter().zip(self.pts.iter().skip(1));
+        p0_p1_iter.fold(F::ZERO, |max_d, (p0, p1)| {
+            max(max_d, vector::distance_sq(p0, p1))
+        })
+    }
+
+    #[track_caller]
+    pub fn min_distance_sq_to_pt(&self, pt: &[F; D]) -> F {
+        let mut min_d_sq = 1E10_f32.into();
+        for p in &self.pts {
+            let d_sq = vector::distance_sq(p, &pt);
+            min_d_sq = min(min_d_sq, d_sq);
+        }
+        min_d_sq
+    }
+
+    /// For BezierPtSet that are of the same length and corresponding points, find
+    /// the maximum distance between any of the two corresponding points
+    #[track_caller]
+    pub fn max_distance_sq_between(&self, other: &Self) -> F {
+        let mut max_d_sq = F::ZERO;
+        assert_eq!(self.pts.len(), other.pts.len());
+        for (p0, p1) in self.pts.iter().zip(other.pts.iter()) {
+            let d_sq = vector::distance_sq(&p0, &p1);
+            eprintln!("pts: {p0:?} {p1:?} d_sq:{d_sq}");
+            if d_sq > max_d_sq {
+                max_d_sq = d_sq;
+            }
+        }
+        max_d_sq
+    }
+
+    /// For BezierPtSet for what should be (approx) the same Bezier's but with
+    /// different t's for the points, find the max d_sq between *self*'s points and the closest of *other*'s points.
+    ///
+    /// This should be called only if other contains a full Bezier trace
+    pub fn max_distance_sq_of_all_pts(&self, other: &Self) -> F {
+        let mut max_excursion = F::zero();
+        for p in self.pts.iter() {
+            let min_d = other.pts.iter().fold(1.0E10_f32.into(), |md: F, q| {
+                min(md, vector::distance_sq(p, q))
+            });
+            max_excursion = max(max_excursion, min_d);
+        }
+        max_excursion
     }
 }
 
@@ -106,7 +292,7 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
 }
 
 /// Generate Bernstein matrices for a given degree and values of t
-pub fn bernstein_basis_coeff_br<N: Num + From<i64>>(degree: usize, i: usize, t: N) -> N {
+pub fn bernstein_basis_coeff_br<N: geo_nd::Num + From<i64>>(degree: usize, i: usize, t: N) -> N {
     let u = N::ONE - t;
     let mut result = N::ONE;
     for c in 0..degree {
@@ -139,7 +325,11 @@ pub fn bernstein_basis_coeff_br<N: Num + From<i64>>(degree: usize, i: usize, t: 
 /// to generate the positions on the Bezier (of that degree with those control points) at
 /// N specified values of 't' (given by ts)
 #[track_caller]
-pub fn generate_bernstein_matrix_br<N: Num + From<i64>>(matrix: &mut [N], degree: usize, ts: &[N]) {
+pub fn generate_bernstein_matrix_br<N: geo_nd::Num + From<i64>>(
+    matrix: &mut [N],
+    degree: usize,
+    ts: &[N],
+) {
     assert_eq!(
         matrix.len(),
         (degree + 1) * ts.len(),
@@ -160,7 +350,7 @@ pub fn generate_bernstein_matrix_br<N: Num + From<i64>>(matrix: &mut [N], degree
 /// to generate a new array of control points of the elevated Bezier
 #[track_caller]
 #[must_use]
-pub fn generate_elevate_by_n_matrix<N: Num>(degree: usize, by_n: usize) -> Vec<N> {
+pub fn generate_elevate_by_n_matrix<N: geo_nd::Num>(degree: usize, by_n: usize) -> Vec<N> {
     use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
 
     assert!(by_n >= 1);

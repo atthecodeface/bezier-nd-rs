@@ -400,9 +400,10 @@ pub mod bignum;
 
 /*a Exports
 */
+pub use approximation::Approximation;
 pub use bezier_iter::{
-    BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter, BezierQuadIter,
-    BezierSplitIter, BezierSplitTIter,
+    BezierIntoIterator, BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter,
+    BezierQuadIter, BezierSplitIter, BezierSplitTIter,
 };
 pub use traits::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
 

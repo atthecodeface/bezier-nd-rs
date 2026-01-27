@@ -95,7 +95,52 @@ impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4]
 
 impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 4] {
     fn split(&self) -> (Self, Self) {
-        todo!();
+        let pm = vector::sum_scaled(
+            self,
+            &[
+                (0.125_f32).into(),
+                (0.375_f32).into(),
+                (0.375_f32).into(),
+                (0.125_f32).into(),
+            ],
+        );
+        let c00 = vector::sum_scaled(
+            self,
+            &[
+                (0.5_f32).into(),
+                (0.5_f32).into(),
+                (0.0_f32).into(),
+                (0.0_f32).into(),
+            ],
+        );
+        let c01 = vector::sum_scaled(
+            self,
+            &[
+                (0.25_f32).into(),
+                (0.5_f32).into(),
+                (0.25_f32).into(),
+                (0.0_f32).into(),
+            ],
+        );
+        let c10 = vector::sum_scaled(
+            self,
+            &[
+                (0.0_f32).into(),
+                (0.25_f32).into(),
+                (0.5_f32).into(),
+                (0.25_f32).into(),
+            ],
+        );
+        let c11 = vector::sum_scaled(
+            self,
+            &[
+                (0.0_f32).into(),
+                (0.0_f32).into(),
+                (0.5_f32).into(),
+                (0.5_f32).into(),
+            ],
+        );
+        ([self[0], c00, c01, pm], [pm, c10, c11, self[3]])
     }
 }
 
