@@ -1,4 +1,4 @@
-use crate::Float;
+use crate::Num;
 use geo_nd::vector;
 
 use super::Bezier;
@@ -6,27 +6,30 @@ use crate::BezierEval;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //mp metric_dm_est
     /// The maximum difference between two beziers given a step dt
     ///
     /// This is an approximation meant for testing/analysis - do not use if
     /// performance is required!
-    pub fn metric_dm_est(&self, other: &Self, num_steps: usize) -> F {
-        let mut d2 = F::zero();
+    pub fn metric_dm_sq_est(&self, other: &Self, num_steps: usize) -> F {
+        let mut max_d2 = F::zero();
         let ns: F = (num_steps as f32).into();
         for i in 0..num_steps {
             let t: F = (i as f32).into();
             let t = t / ns;
-            d2 = d2.max(vector::distance_sq(&self.point_at(t), &other.point_at(t)));
+            let d2 = vector::distance_sq(&self.point_at(t), &other.point_at(t));
+            if max_d2 < d2 {
+                max_d2 = d2;
+            }
         }
-        d2.sqrt()
+        max_d2
     }
 
     //mp metric_df
     /// The square-root of the sum of the distance-squred between the control points of two Beziers
-    pub fn metric_df(&self, other: &Self) -> F {
+    pub fn metric_df_sq(&self, other: &Self) -> F {
         assert!(
             self.degree == other.degree,
             "Degrees of Beziers must match for a metric"
@@ -35,21 +38,24 @@ where
         for (s, o) in self.pts.iter().zip(other.pts.iter()).take(self.degree + 1) {
             d2 += vector::distance_sq(s, o);
         }
-        d2.sqrt()
+        d2
     }
 
     //mp metric_dc
     /// Maximum of the difference betwen the control points of two Beziers
-    pub fn metric_dc(&self, other: &Self) -> F {
+    pub fn metric_dc_sq(&self, other: &Self) -> F {
         assert!(
             self.degree == other.degree,
             "Degrees of Beziers must match for a metric"
         );
-        let mut d2 = F::zero();
+        let mut max_d2 = F::zero();
         for (s, o) in self.pts.iter().zip(other.pts.iter()).take(self.degree + 1) {
-            d2 = d2.max(vector::distance_sq(s, o));
+            let d2 = vector::distance_sq(s, o);
+            if max_d2 < d2 {
+                max_d2 = d2;
+            }
         }
-        d2.sqrt()
+        max_d2
     }
 
     //mp dc_of_ele_red
@@ -63,15 +69,18 @@ where
             self.degree,
             (self.degree + 1) * (self.degree + 1)
         );
-        let mut d2 = F::zero();
+        let mut max_d2 = F::zero();
         let nc = self.degree + 1;
         for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
             let mut sum = [F::zero(); D];
             for (coeff, p) in m.iter().zip(self.pts.iter()) {
                 sum = vector::add(sum, p, *coeff);
             }
-            d2 = d2.max(vector::distance_sq(s, &sum));
+            let d2 = vector::distance_sq(s, &sum);
+            if max_d2 < d2 {
+                max_d2 = d2;
+            }
         }
-        d2
+        max_d2
     }
 }

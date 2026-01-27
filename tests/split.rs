@@ -266,9 +266,9 @@ fn reduce_and_elevate_cubic_in_parts() {
             "Uniform reduction to quadratic has same point for t {t} in {ts:?}"
         );
     }
-    let dm = b.metric_dm_est(&nb, 1000);
-    let df = b.metric_df(&nb);
-    let dc = b.metric_dc(&nb);
+    let dm = b.metric_dm_sq_est(&nb, 1000).sqrt();
+    let df = b.metric_df_sq(&nb).sqrt();
+    let dc = b.metric_dc_sq(&nb).sqrt();
     eprintln!("Metrics for b/nb: dm {dm} < dc {dc} < df {df}");
     assert!(dm < dc);
     assert!(dc < df);
@@ -289,9 +289,9 @@ fn reduce_and_elevate_cubic_in_parts() {
     }
 
     let nb0 = b0.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
-    let dm0 = b0.metric_dm_est(&nb0, 1000);
-    let df0 = b0.metric_df(&nb0);
-    let dc0 = b0.metric_dc(&nb0);
+    let dm0 = b0.metric_dm_sq_est(&nb0, 1000).sqrt();
+    let df0 = b0.metric_df_sq(&nb0).sqrt();
+    let dc0 = b0.metric_dc_sq(&nb0).sqrt();
     eprintln!("Metrics for b0/nb0: dm {dm0} < dc {dc0} < df {df0}");
     assert!(dm0 < dc0);
     assert!(dc0 < df0);

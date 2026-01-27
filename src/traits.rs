@@ -24,6 +24,10 @@ pub trait Num:
     fn is_unreliable_divisor(self) -> bool;
 }
 
+/// Types that support 'Float' provide sqrt and cbrt; most Bezier operations
+/// do not require such functions, but for those that do...
+///
+/// This has a blanket implementation for all types that conform to the requirements.
 pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
 
 impl<T> Float for T where T: Num + num_traits::Float + num_traits::FloatConst {}

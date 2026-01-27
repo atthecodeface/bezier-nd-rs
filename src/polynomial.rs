@@ -390,7 +390,9 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
 
 //a PolyFindRoots
 //tt PolyFindRoots
-/// A simple trait for a polynomial calculation
+/// Types that provide PolyFindRoots will provide accurate calculation of
+/// polynomial roots if the polynomial they represent is linear, quadratic
+/// or cubic
 pub trait PolyFindRoots<F: Float> {
     /// Assume the polynomial is linear, and solve
     fn find_roots_linear(&self) -> Option<F>;
@@ -400,6 +402,9 @@ pub trait PolyFindRoots<F: Float> {
     fn find_roots_cubic(&self) -> (Option<F>, Option<F>, Option<F>);
 }
 
+/// A type that provide PolyNewtonRaphson allow for finding
+/// roots using Newton-Raphson; this does not require sqrt or cbrt,
+/// and so only requires 'Num' not 'Float'
 pub trait PolyNewtonRaphson<F: Num> {
     /// Improve a root using Newton-Raphson
     fn improve_root(&self, x: F, eps: F, max_dx: F) -> Option<(F, F)>;

@@ -1,11 +1,11 @@
-use crate::Float;
+use crate::Num;
 use geo_nd::vector;
 
 use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //mi vector_of
     /// Returns a vector of a combination of the vectors of the bezier

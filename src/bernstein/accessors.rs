@@ -1,10 +1,10 @@
-use crate::Float;
+use crate::Num;
 
 use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //ap degree
     /// Return degree of the Bezier (e.g. 3 for a cubic)

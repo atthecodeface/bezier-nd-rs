@@ -20,7 +20,7 @@ where
 //ti Default for Bezier
 impl<F, const N: usize, const D: usize> std::default::Default for Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     fn default() -> Self {
         let pts = [[F::ZERO; D]; N];
@@ -31,7 +31,7 @@ where
 //ti Display for Bezier
 impl<F, const N: usize, const D: usize> std::fmt::Display for Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //mp fmt - format a `Bezier` for display
     /// Display the `Bezier' as sets of points
@@ -121,7 +121,7 @@ where
 #[derive(Clone, PartialEq, Debug)]
 pub struct BezierReduceIter<'a, F, const N: usize, const D: usize>
 where
-    F: Float,
+    F: Num,
 {
     reduce_matrix: &'a [F],
     elev_reduce_matrix: &'a [F],

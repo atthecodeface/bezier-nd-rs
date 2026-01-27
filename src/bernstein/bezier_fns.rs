@@ -24,6 +24,27 @@ pub fn basis_coeff_iter<F: Float>(degree: usize, t: F) -> impl Iterator<Item = F
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
+pub fn basis_coeff_iter_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = F> {
+    let u = F::ONE - t;
+    let coeffs = BINOMIALS_U[degree];
+    (0..=degree).map(move |i| {
+        let mut x = F::from_usize(coeffs[1 + i]).unwrap();
+        for _ in 0..i {
+            x *= t;
+        }
+        for _ in i..degree {
+            x *= u;
+        }
+        x
+    })
+}
+
+/// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
+///
+/// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
+///
+/// This requires F:Float as it uses 'powi', which is not available if only F:Num
+#[inline]
 pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
     let u = F::one() - t;
     let coeffs = BINOMIALS_U[degree];
@@ -125,7 +146,7 @@ pub fn nth_derivative<F: Num, const D: usize>(pts: &[[F; D]], n: usize, d_pts: &
 /// The second Bezier returned has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
 ///
 /// This destroys the provided points
-pub fn split_at_de_cast<F: Float, const D: usize>(
+pub fn split_at_de_cast<F: Num, const D: usize>(
     pts: &mut [[F; D]],
     t: F,
     b0: &mut [[F; D]],
@@ -151,7 +172,7 @@ pub fn split_at_de_cast<F: Float, const D: usize>(
 /// Elevate a Bezier by one degree, that should be reduced by 'F'
 ///
 /// This generates and applies the elevate-by-one matrix
-pub fn elevate_by_one<F: Float, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F; D]]) -> F {
+pub fn elevate_by_one<F: Num, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F; D]]) -> F {
     assert!(
         ele.len() > pts.len(),
         "At least {} points required to elevate, but a slice with only {} was provided",

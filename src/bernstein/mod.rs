@@ -123,17 +123,16 @@ mod metrics;
 
 pub mod bezier_fns;
 
-
 pub use bezier::{Bezier, BezierReduceIter};
 
 use geo_nd::vector;
 impl<F, const N: usize, const D: usize> crate::BezierEval<F, [F; D]> for Bezier<F, N, D>
 where
-    F: geo_nd::Float + 'static,
+    F: crate::Num,
 {
     fn point_at(&self, t: F) -> [F; D] {
         let mut r = [F::zero(); D];
-        for (c, pt) in bezier_fns::basis_coeff_iter(self.degree, t).zip(self.pts.iter()) {
+        for (c, pt) in bezier_fns::basis_coeff_iter_num(self.degree, t).zip(self.pts.iter()) {
             r = vector::add(r, pt, c);
         }
         r
@@ -197,7 +196,7 @@ where
 
 impl<F, const N: usize, const D: usize> crate::BezierSplit for Bezier<F, N, D>
 where
-    F: geo_nd::Float + 'static,
+    F: crate::Num,
 {
     fn split(&self) -> (Self, Self) {
         self.bisect()

@@ -1,4 +1,4 @@
-use crate::Float;
+use crate::Num;
 use geo_nd::vector;
 
 use super::{bezier_fns, Bezier};
@@ -6,7 +6,7 @@ use super::{bezier_fns, Bezier};
 //ip Bezier constructors / splitters etc
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //fp new
     /// Create a new Bezier given all the control points

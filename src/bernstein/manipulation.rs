@@ -1,11 +1,11 @@
-use crate::Float;
+use crate::Num;
 use geo_nd::vector;
 
 use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //mp map_pts
     /// Apply a function to all of the points in the Bezier
