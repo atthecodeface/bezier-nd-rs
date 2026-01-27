@@ -49,7 +49,12 @@ where
     pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
         let mut s0 = self;
         let mut s1 = self;
-        bezier_fns::split_at_de_cast(&mut self.pts, t, &mut s0.pts, &mut s1.pts);
+        bezier_fns::split_at_de_cast(
+            &mut self.pts[0..self.degree + 1],
+            t,
+            &mut s0.pts,
+            &mut s1.pts,
+        );
         (s0, s1)
     }
 

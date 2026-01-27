@@ -123,4 +123,84 @@ mod metrics;
 
 pub mod bezier_fns;
 
+use std::cmp::max;
+
 pub use bezier::{Bezier, BezierReduceIter};
+
+use geo_nd::vector;
+impl<F, const N: usize, const D: usize> crate::BezierEval<F, [F; D]> for Bezier<F, N, D>
+where
+    F: geo_nd::Float + 'static,
+{
+    fn point_at(&self, t: F) -> [F; D] {
+        let mut r = [F::zero(); D];
+        for (c, pt) in bezier_fns::basis_coeff_iter(self.degree, t).zip(self.pts.iter()) {
+            r = vector::add(r, pt, c);
+        }
+        r
+    }
+    fn derivative_at(&self, t: F) -> (F, [F; D]) {
+        (F::ONE, self.nth_derivative_value_at(1, t))
+    }
+
+    /// Borrow the endpoints of the Bezier
+    fn endpoints(&self) -> (&[F; D], &[F; D]) {
+        (&self.pts[0], &self.pts[self.degree])
+    }
+
+    fn closeness_sq_to_line(&self) -> F {
+        if self.degree < 2 {
+            F::ZERO
+        } else {
+            let n = (self.degree + 1) as f32;
+            let mut max_dc_sq = F::ZERO;
+            let p01 = [self.pts[0], self.pts[self.degree]];
+            for (i, p) in self.pts.iter().take(self.degree).skip(1).enumerate() {
+                let t = ((i as f32) / n).into();
+                let pt = vector::sum_scaled(&p01, &[F::ONE - t, t]);
+                let dc_sq = vector::distance_sq(&pt, p);
+                if dc_sq > max_dc_sq {
+                    max_dc_sq = dc_sq;
+                }
+            }
+            max_dc_sq
+        }
+    }
+
+    fn closeness_sq_to_quadratic(&self) -> F {
+        if self.degree < 3 {
+            F::ZERO
+        } else {
+            todo!();
+        }
+    }
+
+    fn closeness_sq_to_cubic(&self) -> F {
+        if self.degree < 4 {
+            F::ZERO
+        } else {
+            todo!();
+        }
+    }
+
+    fn num_control_points(&self) -> usize {
+        self.degree + 1
+    }
+
+    fn control_point(&self, n: usize) -> &[F; D] {
+        &self.pts[n]
+    }
+
+    fn degree(&self) -> usize {
+        self.degree
+    }
+}
+
+impl<F, const N: usize, const D: usize> crate::BezierSplit for Bezier<F, N, D>
+where
+    F: geo_nd::Float + 'static,
+{
+    fn split(&self) -> (Self, Self) {
+        self.bisect()
+    }
+}

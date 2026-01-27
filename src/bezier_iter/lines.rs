@@ -1,5 +1,5 @@
 use crate::Num;
-use crate::{BezierEval, BezierReduce, BezierSplit, BezierSplitIter, BezierSplitTIter};
+use crate::{BezierEval, BezierSplit, BezierSplitIter, BezierSplitTIter};
 use std::marker::PhantomData;
 
 /// An iterator with Item = (P, P) of straight lines that form a single Bezier

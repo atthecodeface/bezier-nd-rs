@@ -1,3 +1,7 @@
+use geo_nd::vector;
+
+use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
+
 /// A trait that is required for most of the 'F' parameters
 ///
 /// This is a superset of geo_nd::Num as its requirements are needed
@@ -19,7 +23,6 @@ pub trait Num:
     fn recip_f32(f: f32) -> Self;
     fn is_unreliable_divisor(self) -> bool;
 }
-use geo_nd::vector;
 
 pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
 
@@ -368,5 +371,69 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
     /// A Bezier of degree 3 or lower (a cubic, quadratic or linear Bezier) should return None
     fn boxed_reduce_to_cubic(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
         None
+    }
+}
+
+/// Implementing BezierIntoIterator provides a Bezier with the ability
+/// to be iterated as a list of points or line segments, where all the points
+/// on the returned (potentially implied) lines are within a 'closeness_sq' of
+/// the Bezier
+///
+/// This trait is frequently used to, for example, render a Bezier as lines which
+/// can then be drawn on a canvas; if the closeness_sq is set to be half the width
+/// of a pixel then the Bezier is rendered to within a pixel (which is the best possible approximation).
+pub trait BezierIntoIterator<F, B, P>
+where
+    F: crate::Num,
+    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
+    P: Clone,
+{
+    /// Return an iterator of line segments represented by a pair of points,
+    /// where the line segments approximate the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)>;
+
+    /// Return an iterator of points,
+    /// where the points are the start/end points of line segments that approximate
+    ///  the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    fn as_points(&self, closeness_sq: F) -> impl Iterator<Item = P> {
+        BezierPointIter::new(self.as_lines(closeness_sq))
+    }
+
+    /// Return an iterator of line segments represented by a pair of points,
+    /// where the line segments approximate the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The line points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
+
+    /// Return an iterator of points,
+    /// where the points are the start/end points of line segments that approximate
+    ///  the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    fn as_t_points(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
+        BezierPointTIter::new(self.as_t_lines(closeness_sq))
+    }
+}
+impl<F, B, P> BezierIntoIterator<F, B, P> for B
+where
+    F: crate::Num,
+    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
+    P: Clone,
+{
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)> {
+        BezierLineIter::new(self, closeness_sq)
+    }
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
+        BezierLineTIter::new(self, closeness_sq)
     }
 }

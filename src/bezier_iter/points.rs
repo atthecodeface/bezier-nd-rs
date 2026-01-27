@@ -1,6 +1,3 @@
-use crate::Num;
-use crate::{BezierEval, BezierLineIter, BezierLineTIter, BezierReduce, BezierSplit};
-use std::marker::PhantomData;
 
 /// An iterator with Item = P of points that form a single Bezier curve where the
 /// steps between points would be lines that are 'straight enough'.

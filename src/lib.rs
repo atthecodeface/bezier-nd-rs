@@ -402,10 +402,12 @@ pub mod bignum;
 */
 pub use approximation::Approximation;
 pub use bezier_iter::{
-    BezierIntoIterator, BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter,
-    BezierQuadIter, BezierSplitIter, BezierSplitTIter,
+    BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter, BezierQuadIter,
+    BezierSplitIter, BezierSplitTIter,
 };
-pub use traits::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
+pub use traits::{
+    BezierDistance, BezierEval, BezierIntoIterator, BezierReduce, BezierSplit, BoxedBezier,
+};
 
 pub use builder::BezierBuilder;
 pub use constants::*;

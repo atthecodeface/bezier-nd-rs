@@ -1,6 +1,5 @@
+use crate::BezierSplit;
 use crate::Num;
-use crate::{BezierEval, BezierReduce, BezierSplit};
-use std::marker::PhantomData;
 
 /// An iterator with Item = Bezier, allowing for splitting dynamically during
 /// iteration
@@ -89,7 +88,6 @@ where
     B: BezierSplit + Clone,
     F: Num,
 {
-    //fp new
     /// Create a new Bezier line iterator for a given Bezier and
     /// straightness
     ///

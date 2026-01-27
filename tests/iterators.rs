@@ -69,8 +69,7 @@ where
 {
     let mut rng = utils::make_random(seed);
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
-    let mut bezier = [[0.0_f32; D]; N];
-    utils::random_point_array(&mut rng, &distribution, &mut bezier);
+    let bezier = utils::new_random_point_array(&mut rng, &distribution);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
         test_points(&bezier, closeness_sq);
     }

@@ -6,52 +6,8 @@ use bezier_nd::{Bezier, Num};
 use geo_nd::Float;
 use geo_nd::{matrix, vector};
 
-use rand::prelude::*;
-use rand_chacha::ChaCha8Rng;
-
-pub fn max<F: Num>(a: F, b: F) -> F {
-    if a > b {
-        a
-    } else {
-        b
-    }
-}
-pub fn min<F: Num>(a: F, b: F) -> F {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-pub fn make_random(seed_text: &str) -> impl Rng {
-    let mut seed = [0_u8; 32];
-    let seed_bytes = seed_text.as_bytes();
-    for (i, b) in seed_bytes.iter().enumerate() {
-        let j = i % 32;
-        seed[j] = seed[j] * 13 + (seed[j] >> 4) + *b;
-    }
-    ChaCha8Rng::from_seed(seed)
-}
-pub fn random_point_array<R: Rng, F: Copy + From<f32>, D: Distribution<f32>, const N: usize>(
-    rng: &mut R,
-    dist: &D,
-    pts: &mut [[F; N]],
-) {
-    for p in pts.iter_mut() {
-        *p = random_point(rng, dist);
-    }
-}
-
-pub fn random_point<R: Rng, F: Copy + From<f32>, D: Distribution<f32>, const N: usize>(
-    rng: &mut R,
-    dist: &D,
-) -> [F; N] {
-    let mut pt = [(0.0_f32).into(); N];
-    for p in pt.iter_mut() {
-        *p = dist.sample(rng).into();
-    }
-    pt
-}
+mod random;
+pub use random::*;
 
 /// Find the maximum distance between the Bezier for 0<=t<=1 in 'steps' intervals
 pub fn max_distance_sq<
@@ -152,10 +108,9 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         steps: usize,
     ) -> Self {
         let pts = iter
-            .map(|(p0, p1)| {
+            .flat_map(|(p0, p1)| {
                 float_iter(F::ZERO, F::ONE, steps).map(move |t| vector::mix(&p0, &p1, t))
             })
-            .flatten()
             .collect();
         Self { pts }
     }
@@ -185,7 +140,7 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
     pub fn min_distance_sq_to_pt(&self, pt: &[F; D]) -> F {
         let mut min_d_sq = 1E10_f32.into();
         for p in &self.pts {
-            let d_sq = vector::distance_sq(p, &pt);
+            let d_sq = vector::distance_sq(p, pt);
             min_d_sq = min(min_d_sq, d_sq);
         }
         min_d_sq
@@ -198,7 +153,7 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         let mut max_d_sq = F::ZERO;
         assert_eq!(self.pts.len(), other.pts.len());
         for (p0, p1) in self.pts.iter().zip(other.pts.iter()) {
-            let d_sq = vector::distance_sq(&p0, &p1);
+            let d_sq = vector::distance_sq(p0, p1);
             eprintln!("pts: {p0:?} {p1:?} d_sq:{d_sq}");
             if d_sq > max_d_sq {
                 max_d_sq = d_sq;
