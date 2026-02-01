@@ -48,8 +48,12 @@ where
     F: Num,
 {
     /// Create a new Approximation from a Bezier and a given closeness_sq
+    ///
+    /// This maintains the mapping of `t` on the original Bezier to the
+    /// approximation, and so may use more line segments than are required
+    /// just to approximate for simple straightness
     pub fn new(bezier: &B, closeness_sq: F) -> Self {
-        let points_and_ts = bezier.as_t_points(closeness_sq);
+        let points_and_ts = bezier.as_t_points_dc(closeness_sq);
         let mut points = vec![];
         let mut ts = vec![];
         for (t, p) in points_and_ts {
@@ -166,11 +170,8 @@ where
     fn closeness_sq_to_line(&self) -> F {
         self.bezier.closeness_sq_to_line() + self.closeness_sq
     }
-    fn closeness_sq_to_quadratic(&self) -> F {
-        self.bezier.closeness_sq_to_quadratic() + self.closeness_sq
-    }
-    fn closeness_sq_to_cubic(&self) -> F {
-        self.bezier.closeness_sq_to_cubic() + self.closeness_sq
+    fn dc_sq_from_line(&self) -> F {
+        self.bezier.dc_sq_from_line() + self.closeness_sq
     }
     fn num_control_points(&self) -> usize {
         self.bezier.num_control_points()

@@ -123,4 +123,11 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         }
         max_excursion
     }
+
+    pub fn bbox(&self) -> ([F; D], [F; D]) {
+        let mut min = [F::ZERO; D];
+        let mut max = [F::ZERO; D];
+        vector::set_bbox(&self.pts, &mut min, &mut max);
+        (min, max)
+    }
 }

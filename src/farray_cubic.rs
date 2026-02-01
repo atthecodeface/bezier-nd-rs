@@ -1,5 +1,8 @@
+use crate::utils;
 use crate::Num;
-use crate::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
+use crate::{
+    BezierDistance, BezierEval, BezierMinMax, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+};
 
 use geo_nd::vector;
 
@@ -24,6 +27,9 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         (&self[0], &self[3])
     }
     fn closeness_sq_to_line(&self) -> F {
+        self.dc_sq_from_line()
+    }
+    fn dc_sq_from_line(&self) -> F {
         let one_third: F = (0.33333333).into();
         let two_thirds: F = 0.666_666_7.into();
         let dv_0 = vector::sum_scaled(self, &[-two_thirds, F::ONE, F::ZERO, -one_third]);
@@ -36,21 +42,6 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
             dc2_0
         }
     }
-    fn closeness_sq_to_quadratic(&self) -> F {
-        let m_half = (-0.5_f32).into();
-        let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
-        let dc2_0 = vector::length_sq(&dv_0);
-        let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
-        let dc2_1 = vector::length_sq(&dv_1);
-        if dc2_0 < dc2_1 {
-            dc2_1
-        } else {
-            dc2_0
-        }
-    }
-    fn closeness_sq_to_cubic(&self) -> F {
-        F::ZERO
-    }
     fn num_control_points(&self) -> usize {
         4
     }
@@ -59,7 +50,75 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
+impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
+    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
+        // poly is u^3 P0 + 3u^2t P1 +  3ut^2 P2 + t^3 P3
+        //
+        // grad/3 is -u^2 P0 + u(1-3t)P1 + t(2-3t).P2 + t^2 P3 = 0
+        //
+        // i.e. (-1 + 2t - t^2)P0 + (1 + 3t^2 -4t)P1 + (2t - 3t^2)P2 + t^2P3 = 0
+        // (-P0 + 3P1 -3P2 + P3)t^2 + 2(P0 -2P1 + P2)t + P1-P0 = 0
+        //
+        // t = (-(P0 -2P1 + P2) +- sqrt((P0 -2P1 + P2)*(P0 -2P1 + P2)-(P1-P0)(-P0 + 3P1 -3P2 + P3))) / (-P0 + 3P1 -3P2 + P3)
+        //
+        // If this has real roots then find one with NR; then other is -b/a - first root
+        // t = -b/2a +- sqrt()/2a => t0+t1 = -b/a =>
+        let p0 = self[0][pt_index];
+        let p1 = self[1][pt_index];
+        let p2 = self[2][pt_index];
+        let p3 = self[3][pt_index];
+        let a = p3 - p0 + (p1 - p2) * (3.0_f32).into();
+        let p02_sel = utils::min_or_max(use_max, F::ZERO, p0, F::ONE, p3);
+        if a.is_unreliable_divisor() {
+            todo!();
+        }
+        let half_b = p0 + p2 - p1 - p1;
+        let c = p1 - p0;
+        if half_b * half_b < a * c {
+            Some(p02_sel)
+        } else {
+            let b = half_b + half_b;
+            let poly = [c, b, a];
+            use crate::PolyNewtonRaphson;
+            let Some(t0) = poly.find_root_nr(F::ZERO, (1E-6_f32).into()) else {
+                return Some(p02_sel);
+            };
+            let t1 = -(b / a + t0);
+            let p02_sel = {
+                if t0 > F::ZERO && t0 < F::ONE {
+                    let u0 = F::ONE - t0;
+                    utils::min_or_max(
+                        use_max,
+                        p02_sel.0,
+                        p02_sel.1,
+                        t0,
+                        u0 * u0 * u0 * p0
+                            + u0 * t0 * (3.0_f32).into() * (u0 * p1 + t0 * p2)
+                            + t0 * t0 * t0 * p3,
+                    )
+                } else {
+                    p02_sel
+                }
+            };
+            if t1 > F::ZERO && t1 < F::ONE {
+                let u1 = F::ONE - t1;
+                Some(utils::min_or_max(
+                    use_max,
+                    p02_sel.0,
+                    p02_sel.1,
+                    t1,
+                    u1 * u1 * u1 * p0
+                        + u1 * t1 * (3.0_f32).into() * (u1 * p1 + t1 * p2)
+                        + t1 * t1 * t1 * p3,
+                ))
+            } else {
+                Some(p02_sel)
+            }
+        }
+    }
+}
+
+impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
     /// The closest point on a cubic bezier to a point is not analytically determinable
     fn t_dsq_closest_to_pt(&self, _pt: &[F; D]) -> Option<(F, F)> {
         None
@@ -93,7 +152,7 @@ impl<F: 'static + Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4]
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 4] {
+impl<F: Num, const D: usize> BezierSplit for [[F; D]; 4] {
     fn split(&self) -> (Self, Self) {
         let pm = vector::sum_scaled(
             self,
@@ -144,7 +203,30 @@ impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 4] {
     }
 }
 
-impl<F: 'static + Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
+impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 4] {
+    /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
+    fn split_at(&self, t: F) -> (Self, Self) {
+        let mut to_split = *self;
+        let mut b0 = [[F::ZERO; D]; 4];
+        let mut b1 = [[F::ZERO; D]; 4];
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut to_split, t, &mut b0, &mut b1);
+        (b0, b1)
+    }
+
+    /// Generate the Bezier with parameter t' where 0<=t'<=1 provides the same points
+    /// as the original Bezier with t0<=t<=1
+    fn section(&self, t0: F, t1: F) -> Self {
+        let mut to_split = *self;
+        let mut b0 = [[F::ZERO; D]; 4];
+        let mut b1 = [[F::ZERO; D]; 4];
+        let t10 = t1 / (F::ONE - t0);
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut to_split, t0, &mut b0, &mut b1);
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut b1, t10, &mut to_split, &mut b0);
+        to_split
+    }
+}
+
+impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
     fn closeness_sq_to_reduction(&self) -> Option<F> {
         None
     }
@@ -169,11 +251,27 @@ impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     fn reduce(&self) -> Self::Reduced {
         todo!();
     }
-    fn can_reduce() -> bool {
+    fn can_reduce(&self) -> bool {
         true
     }
     fn closeness_sq_to_reduction(&self) -> Option<F> {
         None
+    }
+
+    fn closeness_sq_to_quadratic(&self) -> F {
+        let m_half = (-0.5_f32).into();
+        let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
+        let dc2_0 = vector::length_sq(&dv_0);
+        let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
+        let dc2_1 = vector::length_sq(&dv_1);
+        if dc2_0 < dc2_1 {
+            dc2_1
+        } else {
+            dc2_0
+        }
+    }
+    fn closeness_sq_to_cubic(&self) -> F {
+        F::ZERO
     }
 
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {

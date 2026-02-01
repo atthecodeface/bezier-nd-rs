@@ -1,8 +1,11 @@
-use crate::{BezierDistance, BezierEval, BezierReduce, BezierSplit, BoxedBezier};
+use crate::utils;
+use crate::{
+    BezierDistance, BezierEval, BezierMinMax, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+};
 use crate::{Float, Num};
 use geo_nd::vector;
 
-impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
+impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     fn point_at(&self, t: F) -> [F; D] {
         let two: F = (2.0_f32).into();
         let u = F::ONE - t;
@@ -17,17 +20,19 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
         (&self[0], &self[2])
     }
     fn closeness_sq_to_line(&self) -> F {
-        let m_half = (-0.5_f32).into();
-        let dv = vector::sum_scaled(self, &[m_half, F::ONE, m_half]);
+        vector::length_sq(&vector::sum_scaled(
+            self,
+            &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],
+        )) * F::ZERO
+            + utils::distance_sq_to_line_segment(&self[1], &self[0], &self[2])
+    }
+    fn dc_sq_from_line(&self) -> F {
+        vector::length_sq(&vector::sum_scaled(
+            self,
+            &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],
+        ))
+    }
 
-        vector::length_sq(&dv)
-    }
-    fn closeness_sq_to_quadratic(&self) -> F {
-        F::ZERO
-    }
-    fn closeness_sq_to_cubic(&self) -> F {
-        F::ZERO
-    }
     fn num_control_points(&self) -> usize {
         3
     }
@@ -36,7 +41,42 @@ impl<F: 'static + Num + From<f32>, const D: usize> BezierEval<F, [F; D]> for [[F
     }
 }
 
-impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 3] {
+impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 3] {
+    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
+        // poly is u^2 P0 + 2ut P1 + t^2 P2
+        //
+        // grad/2 is (t-1) P0 + (1-2t) P1 + t P2 = 0 if t(P0-2P1+P2) = P0-P1
+        //
+        // i.e. t = (P0-P1) / (P0-2P1+P2)
+        //
+        // Second differential is P0 -2P1 + P2
+        let p0 = self[0][pt_index];
+        let p1 = self[1][pt_index];
+        let p2 = self[2][pt_index];
+        let p02_sel = utils::min_or_max(use_max, F::ZERO, p0, F::ONE, p2);
+        let d_dt_denom = p0 + p2 - p1 * (2.0_f32).into();
+        let d_dt_numer = p0 - p1;
+        if d_dt_denom.is_unreliable_divisor() {
+            Some(p02_sel)
+        } else {
+            let t = d_dt_numer / d_dt_denom;
+            if t > F::ZERO && t < F::ONE {
+                let u = F::ONE - t;
+                Some(utils::min_or_max(
+                    use_max,
+                    p02_sel.0,
+                    p02_sel.1,
+                    t,
+                    u * u * p0 + u * t * p1 * (2.0_f32).into() + t * t * p2,
+                ))
+            } else {
+                Some(p02_sel)
+            }
+        }
+    }
+}
+
+impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 3] {
     /// A value of t and distance squared to it, 0<=t<=1, for which the distance between the point
     /// P and the quadratic Bezier between the two points is a minimum.
     ///
@@ -215,7 +255,7 @@ impl<F: 'static + Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 3] {
+impl<F: Num, const D: usize> BezierSplit for [[F; D]; 3] {
     fn split(&self) -> (Self, Self) {
         let c0 = vector::sum_scaled(self, &[0.5_f32.into(), 0.5_f32.into(), F::ZERO]);
         let c1 = vector::sum_scaled(self, &[F::ZERO, 0.5_f32.into(), 0.5_f32.into()]);
@@ -224,8 +264,31 @@ impl<F: 'static + Num, const D: usize> BezierSplit for [[F; D]; 3] {
     }
 }
 
+impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 3] {
+    /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
+    fn split_at(&self, t: F) -> (Self, Self) {
+        let mut to_split = *self;
+        let mut b0 = [[F::ZERO; D]; 3];
+        let mut b1 = [[F::ZERO; D]; 3];
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut to_split, t, &mut b0, &mut b1);
+        (b0, b1)
+    }
+
+    /// Generate the Bezier with parameter t' where 0<=t'<=1 provides the same points
+    /// as the original Bezier with t0<=t<=1
+    fn section(&self, t0: F, t1: F) -> Self {
+        let mut to_split = *self;
+        let mut b0 = [[F::ZERO; D]; 3];
+        let mut b1 = [[F::ZERO; D]; 3];
+        let t10 = t1 / (F::ONE - t0);
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut to_split, t0, &mut b0, &mut b1);
+        crate::bernstein::bezier_fns::split_at_de_cast(&mut b1, t10, &mut to_split, &mut b0);
+        to_split
+    }
+}
+
 // This requires Float as BezierDistance for [[F;D];3] requires Float for closest point to curve
-impl<F: 'static + Float, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
+impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
     fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
         Some(Box::new([self[0], self[1]]))
     }
@@ -243,20 +306,26 @@ impl<F: 'static + Float, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] 
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
+impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     type Reduced = [[F; D]; 2];
     type Quadratic = Self;
     type Cubic = Self;
     fn reduce(&self) -> Self::Reduced {
         [self[0], self[1]]
     }
-    fn can_reduce() -> bool {
+    fn can_reduce(&self) -> bool {
         true
     }
     fn closeness_sq_to_reduction(&self) -> Option<F> {
         todo!()
     }
 
+    fn closeness_sq_to_quadratic(&self) -> F {
+        F::ZERO
+    }
+    fn closeness_sq_to_cubic(&self) -> F {
+        F::ZERO
+    }
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
         None
     }

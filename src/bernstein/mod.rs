@@ -37,7 +37,7 @@
 //! property (for t<1) that 1 > t > t^2 > t^3 > 0.
 //!
 //! Another possible basis would be for the basis 1, (t-T), (t-T)^2, etc for a fixed T (effectively
-//! monomial is this with T=0). This is termed the Taylor basis vectors in https://arxiv.org/pdf/2201.07834
+//! monomial is this with T=0). This is termed the Taylor basis vectors in <https://arxiv.org/pdf/2201.07834>
 //! This has the property that it is locally (at t=0) approximatable (as one can ignore high powers of (t-T)).
 //!
 //! Metrics ('distance' between two Beziers)
@@ -147,6 +147,9 @@ where
     }
 
     fn closeness_sq_to_line(&self) -> F {
+        self.dc_sq_from_line()
+    }
+    fn dc_sq_from_line(&self) -> F {
         if self.degree < 2 {
             F::ZERO
         } else {
@@ -162,22 +165,6 @@ where
                 }
             }
             max_dc_sq
-        }
-    }
-
-    fn closeness_sq_to_quadratic(&self) -> F {
-        if self.degree < 3 {
-            F::ZERO
-        } else {
-            todo!();
-        }
-    }
-
-    fn closeness_sq_to_cubic(&self) -> F {
-        if self.degree < 4 {
-            F::ZERO
-        } else {
-            todo!();
         }
     }
 
@@ -200,5 +187,38 @@ where
 {
     fn split(&self) -> (Self, Self) {
         self.bisect()
+    }
+}
+
+impl<F, const N: usize, const D: usize> crate::BezierReduce<F, [F; D]> for Bezier<F, N, D>
+where
+    F: crate::Num,
+{
+    type Reduced = Self;
+    type Quadratic = Self;
+    type Cubic = Self;
+
+    fn reduce(&self) -> Self::Reduced {
+        todo!()
+    }
+    fn can_reduce(&self) -> bool {
+        self.degree > 1
+    }
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
+        None
+    }
+
+    fn closeness_sq_to_quadratic(&self) -> F {
+        todo!()
+    }
+
+    fn closeness_sq_to_cubic(&self) -> F {
+        todo!()
+    }
+    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
+        None
+    }
+    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
+        None
     }
 }

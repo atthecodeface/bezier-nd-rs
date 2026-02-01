@@ -4,7 +4,7 @@ use crate::BezierSplit;
 use crate::Float;
 use geo_nd::vector;
 
-use crate::{BezierLineIter, BezierPointIter};
+use crate::{BezierLineIter, BezierPointIter, BezierReduce};
 
 //a Bezier
 //tp Bezier
@@ -148,6 +148,51 @@ where
             _ => [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].closeness_sq_to_line(),
         }
     }
+    fn dc_sq_from_line(&self) -> F {
+        match self.num {
+            2 => F::ZERO,
+            3 => [self.pts[0], self.pts[2], self.pts[1]].dc_sq_from_line(),
+            _ => [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].dc_sq_from_line(),
+        }
+    }
+    fn num_control_points(&self) -> usize {
+        self.num
+    }
+    fn control_point(&self, n: usize) -> &[F; D] {
+        &self.pts[n]
+    }
+}
+
+impl<F, const D: usize> BezierReduce<F, [F; D]> for Bezier<F, D>
+where
+    F: Float,
+{
+    type Reduced = Self;
+    type Quadratic = Self;
+    type Cubic = Self;
+    fn reduce(&self) -> Self::Reduced {
+        match self.num {
+            3 => Self::line(&self.pts[0], &self.pts[2]),
+            4 => {
+                let [p0, c, p1] = [self.pts[0], self.pts[2], self.pts[3], self.pts[1]]
+                    .reduced_to_quadratic()
+                    .unwrap();
+                Self::quadratic(&p0, &c, &p1)
+            }
+            _ => self.clone(),
+        }
+    }
+    fn can_reduce(&self) -> bool {
+        self.num >= 3
+    }
+    fn closeness_sq_to_reduction(&self) -> Option<F> {
+        match self.num {
+            3 => Some(self.closeness_sq_to_line()),
+            4 => Some(self.closeness_sq_to_quadratic()),
+            _ => None,
+        }
+    }
+
     fn closeness_sq_to_quadratic(&self) -> F {
         if self.num <= 3 {
             F::ZERO
@@ -158,11 +203,15 @@ where
     fn closeness_sq_to_cubic(&self) -> F {
         F::ZERO
     }
-    fn num_control_points(&self) -> usize {
-        self.num
+    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
+        if self.num < 4 {
+            None
+        } else {
+            Some(self.reduce())
+        }
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self.pts[n]
+    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
+        None
     }
 }
 
@@ -361,7 +410,7 @@ where
     /// when the Bezier is broken down into 'straight' enough through
     /// bisection.
     pub fn as_lines(&self, straightness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::new(self, straightness_sq)
+        BezierLineIter::<_, _, _, true>::new(self, straightness_sq)
     }
 
     //mp as_points
@@ -369,7 +418,7 @@ where
     /// the curve when the Bezier is broken down into 'straight'
     /// enough through bisection.
     pub fn as_points(&self, straightness_sq: F) -> impl Iterator<Item = [F; D]> {
-        BezierPointIter::new(BezierLineIter::new(self, straightness_sq))
+        BezierPointIter::new(self.as_lines(straightness_sq))
     }
 
     //mp is_straight

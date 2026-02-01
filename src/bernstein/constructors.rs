@@ -1,14 +1,13 @@
+use crate::BezierBuilder;
 use crate::Num;
-use geo_nd::vector;
+use geo_nd::{matrix, vector};
 
 use super::{bezier_fns, Bezier};
 
-//ip Bezier constructors / splitters etc
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
     F: Num,
 {
-    //fp new
     /// Create a new Bezier given all the control points
     pub fn new(pts: &[[F; D]]) -> Self {
         let n = pts.len();
@@ -25,7 +24,6 @@ where
         s
     }
 
-    //mp nth_derivative
     /// Create a new Bezier that is the nth derivative of this
     /// subject to a scaling factor (i.e. the actual Bezier should be scaled up by F)
     ///
@@ -45,7 +43,6 @@ where
         (s, scale)
     }
 
-    //mp split_at_de_cast
     /// Use de Casteljau's algorithm to split
     pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
         let mut s0 = self;
@@ -59,7 +56,6 @@ where
         (s0, s1)
     }
 
-    //mp apply_matrix
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
     /// of a new degree
     pub fn apply_matrix(&self, matrix: &[F], new_degree: usize) -> Self {
@@ -141,5 +137,52 @@ where
             let (_, b) = self.split_at_de_cast(t0);
             b.split_at_de_cast(dt / (F::one() - t0)).0
         }
+    }
+
+    pub fn of_builder(builder: BezierBuilder<F, D>) -> Self {
+        let degree = builder.bezier_min_degree();
+        let n2 = (degree + 1) * (degree + 1);
+        let mut bern_n = [F::zero(); 100];
+
+        let mut basis = vec![];
+        let mut pts = vec![];
+        for c in builder.iter() {
+            let t = c.at();
+            let pt = c.posn();
+            pts.push(*pt);
+            bezier_fns::generate_bernstein_matrix(&mut bern_n[0..(degree + 1)], degree, &[t]);
+            basis.extend(bern_n.iter().take(degree + 1));
+        }
+
+        assert_eq!(
+            pts.len(),
+            degree + 1,
+            "Degree must match the number of constraints given"
+        );
+        let bezier = Self::new(&pts);
+
+        let mut basis_inverse = basis.clone();
+        let mut lu = basis.clone();
+        let mut pivot = vec![0; degree + 1];
+        assert_ne!(
+            matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot),
+            F::zero(),
+            "Matrix is invertible"
+        );
+
+        let mut tr0 = vec![F::zero(); degree + 1];
+        let mut tr1 = vec![F::zero(); degree + 1];
+        assert!(
+            matrix::lup_invert(
+                degree + 1,
+                &lu,
+                &pivot,
+                &mut basis_inverse,
+                &mut tr0,
+                &mut tr1
+            ),
+            "Matrix is invertible"
+        );
+        bezier.apply_matrix(&basis_inverse, degree)
     }
 }

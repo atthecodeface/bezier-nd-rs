@@ -439,7 +439,7 @@ impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
         find_real_roots_cubic(self.as_slice())
     }
 }
-impl<F: Float, const N: usize> PolyNewtonRaphson<F> for [F; N] {
+impl<F: Num, const N: usize> PolyNewtonRaphson<F> for [F; N] {
     fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
         improve_root(self, x, min_grad, max_dx)
     }

@@ -192,20 +192,3 @@ pub fn elevate_by_one<F: Num, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F;
     }
     (1.0 / ((n + 1) as f32)).into()
 }
-
-/// Generate Bernstein matrices for a given degree and values of t
-#[track_caller]
-pub fn generate_bernstein_matrix<F: Num>(matrix: &mut [F], degree: usize, ts: &[F]) {
-    assert_eq!(
-        matrix.len(),
-        (degree + 1) * ts.len(),
-        "Trying to generate an {} by {} matrix, so must be given a matrix of that size",
-        ts.len(),
-        degree + 1
-    );
-    for (r, t) in ts.iter().enumerate() {
-        for (c, bc) in basis_coeff_iter_num(degree, *t).enumerate() {
-            matrix[r * (degree + 1) + c] = bc;
-        }
-    }
-}

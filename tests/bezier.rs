@@ -2,7 +2,8 @@
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
-use bezier_nd::Float;
+use bezier_nd::{Float, Num};
+mod utils;
 use geo_nd::{vector, FArray, Vector};
 
 // type Point<F:Float> = FArray<F,2>;
@@ -13,10 +14,10 @@ use geo_nd::{vector, FArray, Vector};
 
 ///a 'equality' tests
 //fi vec_eq
-pub fn vec_eq<F: Float, const D: usize>(v0: &[F; D], v1: &[F; D]) {
+pub fn vec_eq<F: Num, const D: usize>(v0: &[F; D], v1: &[F; D]) {
     #[allow(non_snake_case)]
-    let EPSILON: F = (1E-5_f32).into();
-    let d = vector::distance(v0, v1);
+    let EPSILON: F = (1E-8_f32).into();
+    let d = vector::distance_sq(v0, v1);
     assert!(d < EPSILON, "mismatch in {:?} {:?}", v0, v1);
 }
 
@@ -41,8 +42,11 @@ pub fn pt_eq<F: Float, const D: usize>(v: &[F; D], x: F, y: F) {
 }
 
 //fi approx_eq
-pub fn approx_eq<F: Float>(a: F, b: F, tolerance: F, msg: &str) {
-    assert!((a - b).abs() < tolerance, "{} {:?} {:?}", msg, a, b);
+pub fn approx_eq<F: Num, I: Into<F>>(a: F, b: F, tolerance: I, msg: &str) {
+    let tolerance = tolerance.into();
+    let diff = a - b;
+    let diff = if diff < F::ZERO { -diff } else { diff };
+    assert!(diff < tolerance, "{} {:?} {:?}", msg, a, b);
 }
 
 //fi bezier_eq
@@ -85,7 +89,7 @@ where
         let half = 0.5_f32.into();
         let p0 = bezier.point_at(t * half);
         let p1 = bezier.point_at(t * half + half);
-        println!("t {} : {:?} : {:?}", t, p0, p1);
+        //println!("t {} : {:?} : {:?}", t, p0, p1);
         vec_eq(&b0.point_at(t), &p0);
         vec_eq(&b1.point_at(t), &p1);
     }
@@ -106,7 +110,7 @@ where
         let t = t0 + (t1 - t0) * bt;
         let p = bezier.point_at(t);
         let pb = b.point_at(bt);
-        println!("t {} : {:?} : {:?}", t, p, pb);
+        // println!("t {} : {:?} : {:?}", t, p, pb);
         let close_enough = EPSILON;
         approx_eq(
             p[0],
@@ -164,7 +168,7 @@ where
             .fold(1.0E10_f32.into(), |md: F, q| md.min(p.distance(q)));
         max_excursion = max_excursion.max(min_d);
     }
-    dbg!(straightness, max_excursion);
+    // dbg!(straightness, max_excursion);
     assert!(
         max_excursion < straightness.sqrt(),
         "Worst case Min dist from bezier to line segments {} should be less than straightness {}",
@@ -179,13 +183,36 @@ where
             .fold(1.0E10_f32.into(), |md: F, q| md.min(p.distance(q)));
         max_excursion = max_excursion.max(min_d);
     }
-    dbg!(straightness, max_excursion);
+    // dbg!(straightness, max_excursion);
     assert!(
         max_excursion < straightness.sqrt(),
         "Worst case Min dist from line segments to bezier {} should be less than straightness {}",
         max_excursion,
         straightness.sqrt()
     );
+}
+
+use bezier_nd::BezierMinMax;
+fn min_max_coords<
+    F: bezier_nd::Num,
+    const D: usize,
+    B: BezierMinMax<F> + BezierEval<F, [F; D]> + std::fmt::Debug,
+>(
+    bezier: &B,
+) {
+    eprintln!("Min/max of {bezier:?}");
+    let pts = utils::BezierPtSet::of_point_at(bezier, 1000);
+    let bbox = pts.bbox();
+    eprintln!("Bbox of pts set = {bbox:?}");
+    for d in 0..D {
+        let (t_min_d, f_min_d) = bezier.t_coord_at_min_max(false, d).unwrap();
+        let (t_max_d, f_max_d) = bezier.t_coord_at_min_max(true, d).unwrap();
+        eprintln!("BBox coord {d} min {f_min_d} <> max {f_max_d} at {t_min_d} {t_max_d}");
+        approx_eq(f_min_d, bezier.point_at(t_min_d)[d], 1E-6, "Pt at t_min_d");
+        approx_eq(f_max_d, bezier.point_at(t_max_d)[d], 1E-6, "Pt at t_min_d");
+        approx_eq(f_min_d, bbox.0[d], 1E-4, "Bbox min coord d");
+        approx_eq(f_max_d, bbox.1[d], 1E-4, "Bbox min coord d");
+    }
 }
 
 //a Test
@@ -255,6 +282,11 @@ fn test_line() {
         1,
         "We know that at any straightness there must be 1 line segments"
     );
+
+    min_max_coords(&[p0, p1]);
+    min_max_coords(&[p1, p0]);
+    min_max_coords(&[p0, p2]);
+    min_max_coords(&[p2, p0]);
 }
 
 //fi test_quadratic
@@ -350,6 +382,11 @@ fn test_quadratic() {
         32, // was 8 before traits
         "We know that at straightness 0.001  there must be 8 line segments"
     );
+
+    min_max_coords(&[p0, p1, p2]);
+    min_max_coords(&[p1, p0, p2]);
+    min_max_coords(&[p0, p2, p1]);
+    min_max_coords(&[p2, p0, p1]);
 }
 
 //fi test_cubic
@@ -429,6 +466,16 @@ fn test_cubic() {
         13,
         "We know that at straightness_sq of 0.01 there should be 13 line segments"
     );
+
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
+
+    min_max_coords(&[p0, p1, p2, p3]);
+    min_max_coords(&[p1, p0, p2, p3]);
+    min_max_coords(&[p0, p3, p2, p1]);
+    min_max_coords(&[p2, p3, p0, p1]);
 }
 
 //fi test_straight_as

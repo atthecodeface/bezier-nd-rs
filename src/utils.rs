@@ -1,7 +1,15 @@
 use crate::Num;
 use geo_nd::vector;
 
-/// Calculate the length squared of a line, the projection of the point onto the line
+pub fn min_or_max<F: Num>(use_max: bool, ta: F, a: F, tb: F, b: F) -> (F, F) {
+    if use_max == (a < b) {
+        (tb, b)
+    } else {
+        (ta, a)
+    }
+}
+
+/// Calculate the projection of the point onto the line, the length squared of a line,
 /// and if the line is approximately zero length
 pub fn relative_to_line<F: Num, const D: usize>(
     pt: &[F; D],
@@ -38,7 +46,9 @@ pub fn distance_sq_to_line_segment<F: Num, const D: usize>(
 ) -> F {
     let (t_times_len_sq, line_len_sq, valid) = crate::utils::relative_to_line(pt, l0, l1);
     if valid && t_times_len_sq >= F::ZERO && t_times_len_sq <= line_len_sq {
-        vector::length_sq(&vector::sub(*l0, pt, F::ONE)) - t_times_len_sq
+        let t = t_times_len_sq / line_len_sq;
+        let u = F::ONE - t;
+        vector::distance_sq(pt, &vector::sum_scaled(&[*l0, *l1], &[u, t]))
     } else if valid && t_times_len_sq > line_len_sq {
         vector::distance_sq(pt, l1)
     } else {

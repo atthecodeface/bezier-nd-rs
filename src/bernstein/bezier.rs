@@ -1,4 +1,4 @@
-use crate::{Float, Num};
+use crate::Num;
 use geo_nd::vector;
 
 /// This type stores a Bernstein Bezier of up to N control points each of dimension D
@@ -54,7 +54,7 @@ where
 //ip Bezier iterators
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     //mp Reduce-and-split iterator
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
@@ -133,7 +133,7 @@ where
 //ip Iterator for BezierReduceIter
 impl<'a, F, const N: usize, const D: usize> std::iter::Iterator for BezierReduceIter<'a, F, N, D>
 where
-    F: Float,
+    F: Num,
 {
     type Item = (usize, Bezier<F, N, D>);
     fn next(&mut self) -> Option<(usize, Bezier<F, N, D>)> {

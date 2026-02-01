@@ -7,20 +7,6 @@ impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
     F: Num,
 {
-    //mi vector_of
-    /// Returns a vector of a combination of the vectors of the bezier
-    #[inline]
-    pub fn vector_of(&self, sc: &[F], reduce: F) -> [F; D] {
-        let mut r = [F::zero(); D];
-        for (pt, sc) in self.pts.iter().zip(sc.iter()) {
-            for (j, rj) in r.iter_mut().enumerate() {
-                *rj += *sc * (*pt)[j];
-            }
-        }
-        vector::reduce(r, reduce)
-    }
-
-    //mp point_at_de_cast
     /// Returns the point at parameter 't' along the Bezier using de Casteljau's algorithm
     ///
     /// This does not require powi, but it is an O(n^2) operations and O(n) space operation
@@ -39,7 +25,6 @@ where
         pts[0]
     }
 
-    //mp nth_derivative_value_at
     /// Returns the value of the nth deriviative at parameter 't' along the Bezier
     ///
     /// This could be optimized to not store the points, but that seems ultimately to be
