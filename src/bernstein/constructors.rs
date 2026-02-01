@@ -30,9 +30,9 @@ where
     /// As this type uses Bernstein polynomials, this is the Bezier of degree N-n
     /// that has points control points:
     ///
-    /// Pn[i] = (N n) . Sum((-1)^j * P[i+n-j] * (n j))
+    /// `Pn[i] = (N n) . Sum((-1)^j * P[i+n-j] * (n j))`
     ///
-    /// (n j) is kept in BINOMIALS[n][j+1]
+    /// (n j) is kept in `bezier_nd::constants::BINOMIALS[n][j+1]`
     pub fn nth_derivative(&self, n: usize) -> (Self, F) {
         let mut s = Self {
             degree: self.degree - n,
@@ -139,8 +139,15 @@ where
         }
     }
 
-    pub fn of_builder(builder: BezierBuilder<F, D>) -> Self {
+    /// Construct a [Bezier] from a builder, of the minimum degree
+    ///
+    /// Return Err if the builder has a degree larger than this type
+    /// permits
+    pub fn of_builder(builder: BezierBuilder<F, D>) -> Result<Self, ()> {
         let degree = builder.bezier_min_degree();
+        if degree > Self::max_degree() {
+            return Err(());
+        }
         let n2 = (degree + 1) * (degree + 1);
         let mut bern_n = [F::zero(); 100];
 
@@ -154,21 +161,18 @@ where
             basis.extend(bern_n.iter().take(degree + 1));
         }
 
-        assert_eq!(
-            pts.len(),
-            degree + 1,
-            "Degree must match the number of constraints given"
-        );
+        if pts.len() != degree + 1 {
+            return Err(());
+        }
+
         let bezier = Self::new(&pts);
 
         let mut basis_inverse = basis.clone();
         let mut lu = basis.clone();
         let mut pivot = vec![0; degree + 1];
-        assert_ne!(
-            matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot),
-            F::zero(),
-            "Matrix is invertible"
-        );
+        if matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot) == F::ZERO {
+            return Err(());
+        }
 
         let mut tr0 = vec![F::zero(); degree + 1];
         let mut tr1 = vec![F::zero(); degree + 1];
@@ -183,6 +187,6 @@ where
             ),
             "Matrix is invertible"
         );
-        bezier.apply_matrix(&basis_inverse, degree)
+        Ok(bezier.apply_matrix(&basis_inverse, degree))
     }
 }

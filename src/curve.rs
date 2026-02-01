@@ -8,7 +8,9 @@ use crate::{BezierLineIter, BezierPointIter, BezierReduce};
 
 //a Bezier
 //tp Bezier
-/// A [Bezier] is an implementation of a linear, quadratic or cubic Bezier curve using a parameter which has the [Float] trait, and consists of points that have the [Vector] trait.
+/// A [Bezier] is an implementation of a linear, quadratic or cubic Bezier
+/// curve using a parameter which has the [Float] trait, and consists
+/// of points of `[F; D]`.
 ///
 /// To split a quadratic bezier at t is simple: the split point is p(t),
 /// and the two control points (cl, cr) are:
@@ -179,7 +181,7 @@ where
                     .unwrap();
                 Self::quadratic(&p0, &c, &p1)
             }
-            _ => self.clone(),
+            _ => *self,
         }
     }
     fn can_reduce(&self) -> bool {

@@ -1,8 +1,8 @@
-/// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value[0]
+/// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value\[0\]
 ///
-/// i.e. (n i) is in BINOMIALS[n][i+1]
+/// i.e. (n i) is in `BINOMIALS[n][i+1]`
 ///
-/// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS[6][2+1]
+/// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS\[6\]\[2+1\]
 pub const BINOMIALS_U: &[&[usize]] = &[
     &[1, 1],
     &[2, 1, 1],
@@ -16,11 +16,11 @@ pub const BINOMIALS_U: &[&[usize]] = &[
     &[512, 1, 9, 36, 84, 126, 126, 84, 36, 9, 1],
 ];
 
-/// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value[0]
+/// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value\[0\]
 ///
-/// i.e. (n i) is in BINOMIALS[n][i+1]
+/// i.e. (n i) is in `BINOMIALS[n][i+1]`
 ///
-/// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS[6][2+1]
+/// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS\[6\]\[2+1\]
 pub const BINOMIALS: &[&[f32]] = &[
     &[1., 1.],
     &[2., 1., 1.],
@@ -50,7 +50,7 @@ pub const BINOMIAL_DIFFS: &[&[f32]] = &[
 
 /// ELEVATE_BY_ONE_MATRICES_F32
 ///
-/// These are actually scaled by ELEVATE_BY_ONE_MATRICES_F32[0]; so they must be reduced by that
+/// These are actually scaled by `ELEVATE_BY_ONE_MATRICES_F32[_][0]`; so they must be reduced by that
 pub const ELEVATE_BY_ONE_MATRICES_F32: &[&[f32]] = &[
     &[1., 1.],
     &[2., 0., 1., 1., 0., 2.],
@@ -87,7 +87,7 @@ pub const ELEVATE_BY_ONE_MATRICES_F32: &[&[f32]] = &[
 
 /// ELEVATE_BY_ONE_MATRICES_F32
 ///
-/// These are actually scaled by ELEVATE_BY_ONE_MATRICES_F32[0]; so they must be reduced by that
+/// These are actually scaled by `ELEVATE_BY_ONE_MATRICES_F32[_][0]`; so they must be reduced by that
 pub const ELEVATE_BY_ONE_MATRICES_F64: &[&[f64]] = &[
     &[1., 1.],
     &[2., 0., 1., 1., 0., 2.],
@@ -127,10 +127,10 @@ pub const ELEVATE_BY_ONE_MATRICES_F64: &[&[f64]] = &[
 ///
 /// i.e. the elevated-reduced Bezier (of 'degree') will match at precisely *degree+1* equispaced (in t) points.
 ///
-/// ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0] is a 3x3 matrix to elevate+reduce a quadratic Bezier.
-/// ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1] is a 4x4 matrix to elevate+reduce a cubic Bezier.
+/// `ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0]` is a 3x3 matrix to elevate+reduce a quadratic Bezier.
+/// `ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1]` is a 4x4 matrix to elevate+reduce a cubic Bezier.
 ///
-/// i.e. REDUCE_BY_ONE_BS_UNIFORM_F64[n] reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
+/// i.e. `ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[n]` reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
 pub const ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     &[1.0, 0.0, 0.0, 0.5, 0.0, 0.5, 0.0, 0.0, 1.0],
     &[
@@ -303,15 +303,15 @@ pub const ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     ],
 ];
 
-/// Uniform reduction by degree one of Bernstein polymial Bezier (with degree+1)
+/// Point-to-point preserving reduction by degree one of Bernstein polymial Bezier (with degree+1)
 /// using points with t = i/(degree+1) for i in 0..degree+1
 ///
 /// i.e. the reduced Bezier (of 'degree') will match at precisely *degree+1* equispaced (in t) points.
 ///
-/// REDUCE_BY_ONE_BS_UNIFORM_F64[0] is a 2x3 matrix to reduce a quadratic to a linear (degree 1) Bezier.
-/// REDUCE_BY_ONE_BS_UNIFORM_F64[1] is a 3x4 matrix to reduce a cubic to a quadratic (degree 2) Bezier.
+/// `REDUCE_BY_ONE_BS_UNIFORM_F64[0]` is a 2x3 matrix to reduce a quadratic to a linear (degree 1) Bezier.
+/// `REDUCE_BY_ONE_BS_UNIFORM_F64[1]` is a 3x4 matrix to reduce a cubic to a quadratic (degree 2) Bezier.
 ///
-/// i.e. REDUCE_BY_ONE_BS_UNIFORM_F64[n] reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
+/// i.e. `REDUCE_BY_ONE_BS_UNIFORM_F64[n]` reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
 pub const REDUCE_BY_ONE_BS_UNIFORM_F64: &[&[f64]] = &[
     &[1., 0., 0., 0., 0., 1.],
     &[1., 0., 0., 0., -0.25, 0.75, 0.75, -0.25, 0., 0., 0., 1.0],

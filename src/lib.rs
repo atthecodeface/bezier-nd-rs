@@ -27,8 +27,8 @@ Two traits are used. Firstly there is Num, which is effectively a collection of 
 This trait has a blanket implementation for all types that support the required traits. This 'Num' trait is all that is required for the Bezier traits.
 
 Secondly there is Float, which is Num plus the
-addition of num_traits::Float - which provides sqrt() and cbrt(). These latter are required for some root finding, or minimum distance
-determination. Hence some Bezier *implementations*, such as for [[F;D];4] for cubic Bezier curves, require F to support not just Num but Float, as the
+addition of [num_traits::Float] - which provides sqrt() and cbrt(). These latter are required for some root finding, or minimum distance
+determination. Hence some Bezier *implementations*, such as for `[[F;D];4]` for cubic Bezier curves, require F to support not just Num but Float, as the
 mathematics for the analytical functions require sqrt() or cbrt().
 
 The fundamental types 'f32' and 'f64' implement Num and Float.
@@ -42,7 +42,7 @@ as a cubic Bezier.
 A legacy generic type Bezier is provided which can represent any one of linear, quadratic or cubic Bezier.
 
 A BezierN type is provided that has a generic usize 'N' indicating the *maximum* degree the individual curve can have, but the
-type also includes a degree that the curve actually has. The type stores its control points in an array [[F;D];N], and so
+type also includes a degree that the curve actually has. The type stores its control points in an array `[[F;D];N]`, and so
 every Bezier curve the type can describes requires the same memory size.
 
 # Bezier traits
@@ -203,19 +203,19 @@ but does support split then it can implement this trait; the methods all return 
 The simplest Bezier curve types supported by the library are arrays of points consisting of 'D' numbers (types that support Num, such as f32, f64,
 and even isize) of length 2 (linear Bezier) to 4 (cubic Bezier).
 
-## [[F;D]; 2] - linear Bezier using float arrays, with point [F;D]
+## `[[F;D]; 2]` - linear Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of twp points, using the two points as the endpoints of the Bezier.
 
 This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BoxedBezier].
 
-## [[F;D]; 3] - quadratic Bezier using float arrays, with point [F;D]
+## `[[F;D]; 3]` - quadratic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of three points for a quadratic Bezier, with the end points being `[0]` and `[2]`.
 
 This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BoxedBezier].
 
-## [[F;D]; 4] - cubic Bezier using float arrays, with point [F;D]
+## `[[F;D]; 4]` - cubic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of four points for a cubic Bezier, with the end points being `[0]` and `[3]`.
 
@@ -223,9 +223,9 @@ This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [Bo
 
 For [BezierDistance] this does not provide an accurate 'closest point' estimation - i.e. t_dsq_closest_to_pt returns None.
 
-## [BezierND<F, N, D>] - Bezier of maximum degree N with point [F;D]
+## [BezierND<F, N, D>] - Bezier of maximum degree N with point `[F;D]`
 
-A structure that contains an array of N points (of [F;D]), and a degree
+A structure that contains an array of N points (of `[F;D]`), and a degree
 
 This provides a single type that can support arbitrary (up to a maximum N) Bezier degree.
 

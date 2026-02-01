@@ -142,14 +142,6 @@ pub trait BezierEval<F: Num, P: Clone> {
     }
 }
 
-/// For Bezier's that have a parameter type that supports sqrt etc,
-/// the closeness methods can return non-squared values
-pub trait BezierFloatArray<F: Float, const D: usize> {
-    fn closeness_to_line(&self) -> F;
-    fn closeness_to_quadratic(&self) -> F;
-    fn closeness_to_cubic(&self) -> F;
-}
-
 /// A trait that provides for measurement of distance from a point to the Bezier, and closest
 /// point on a Bezier to an actual point.
 ///

@@ -132,7 +132,7 @@ impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
     /// not simple to determine for a cubic.
     ///
     /// The points on the Bezier are also within a distance max(dc_sq) of the line betwen the endpoints
-    /// of the Bezier where dc_sq[i] is the square of the distance between control point [i] and the
+    /// of the Bezier where `dc_sq[i]` is the square of the distance between control point `[i]` and the
     /// position of that control point on a linear Bezier elevated to the degree of this Bezier.
     ///
     /// Hence if the point is at a distance squared of d_sq from the linear Bezier, then it is potentially

@@ -54,8 +54,8 @@ pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
 /// Calculate the Mij element of the elevation matrix to elevate by one degree
 /// given the current degree. The elevation matrix is (degree+2)x(degree+1)
 ///
-/// This is given by P'[j] = Sum((n i).(1 j-i) / (n+1 j).P[i])
-/// hence Mij = (n i).(1 j-i) / (n+1 j)
+/// This is given by `P'[j] = Sum((n i).(1 j-i) / (n+1 j).P[i])`
+/// hence `Mij = (n i).(1 j-i) / (n+1 j)`
 ///
 /// * Mij = 1 for i=j=0 and for i=degree, j=degree+1
 /// * Mij = j/n+1 for i=j-1

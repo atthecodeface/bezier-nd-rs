@@ -57,8 +57,8 @@ fn l2_is_not_halo() {
     eprintln!("{b0:?}");
     eprintln!("{b1:?}");
 
-    let b0 = BezierND::<_, 10, _>::of_builder(b0);
-    let b1 = BezierND::<_, 10, _>::of_builder(b1);
+    let b0 = BezierND::<_, 10, _>::of_builder(b0).unwrap();
+    let b1 = BezierND::<_, 10, _>::of_builder(b1).unwrap();
 
     eprintln!("{b0}");
     eprintln!("{b1}");

@@ -6,9 +6,9 @@
 //! ``` ignore
 //!    b[i,n](t) = n!/(i!(n-i)!) . u^i . t^(n-i) where u=1-t, n=Bezier degree, 0<=i <=n
 //! ```
-//! A point at parameter t (0 <= t <= 1) is then Sum(b[i,n](t).pts[i])
+//! A point at parameter t (0 <= t <= 1) is then `Sum(b[i,n](t).pts[i])`
 //!
-//! If n were two then this is u^2.pts[0] + 2.u.t.pts[1] + t^2.pts[2], which can be rewritten as:
+//! If n were two then this is `u^2.pts[0] + 2.u.t.pts[1] + t^2.pts[2]`, which can be rewritten as:
 //! ``` ignore
 //!   (1-2t+t^2).pts[0] + 2.(1-t).t.pts[1] + t^2.pts[2]
 //!   = t^2.(pts[0] - 2.pts[1] + pts[2]) + 2t.(pts[1] - pts[0]) + pts[0]
@@ -32,7 +32,7 @@
 //! Note that this matrix is guaranteed to be invertible, hence all Bernstein representations are equivalent
 //! to monomial representations, and vice versa
 //!
-//! Note that P[N] is only used in conjunction with monomial t^N, and hence if this were to be used
+//! Note that `P[N]` is only used in conjunction with monomial t^N, and hence if this were to be used
 //! to derive points etc then it would be unstable near t=1. However, it has the potentially useful
 //! property (for t<1) that 1 > t > t^2 > t^3 > 0.
 //!
@@ -54,7 +54,7 @@
 //! * A metric between A and B, plus the metric between B and C, must be less than or equal to that between A and C
 //!
 //! One metric (maximum parameterwise distance, call it dM) would be the maximum distance between two Beziers
-//! for the same parameter t (i.e. max[t] |B(t)-C(t)|).
+//! for the same parameter t (i.e. `max[t] |B(t)-C(t)|`).
 //!
 //! One metric is the square-root of the sum of the distance-squred between the control points of two Beziers
 //! (this is termed here dF)
@@ -84,9 +84,9 @@
 //! That is, point(t) = BernsteinMatrix(t) * Polynomials
 //!
 //! If we select 'N' different values of t, ti, with (0<=ti<=1), then we find 'N' points pi
-//! where pi = Polynomials * B(ti)
-//! i.e. [pi] = Polynomials * [B(ti)]
-//! or Polynomials = [pi] * [B(ti]].inverse()
+//! where `pi = Polynomials * B(ti)`
+//! i.e. `[pi] = Polynomials * [B(ti)]`
+//! or `Polynomials = [pi] * [B(ti]].inverse()`
 //!
 //! So if we want to determine Polynomials we can do so from N points pi at N values ti. These are points on the
 //! Bezier.
@@ -99,18 +99,25 @@
 //!
 //! We will get
 //!
+//! ```text
 //!   Polynomials[N] = [pi] * [B[N](ti)].inverse()
 //!   Polynomials[N] = Polynomials[N+1] * [B[N+1](ti)] * B[N](ti)].inverse()
+//! ```
 //!
 //! i.e. we can use a reduction matrix
 //!
+//! ```text
 //!   R[t0..tN] = [B[N+1](ti)] * [B[N](ti)].inverse()
+//! ```
 //!
-//! Note that elevating-by-one of B[N](t) produces B[N+1](t), so
+//! Note that elevating-by-one of `B[N](t)` produces `B[N+1](t)`, so
+//!
+//! ```text
 //!   E[N] * R[t0..tN] = E[N] * [B[N+1](ti)] * [B[N](ti)].inverse()
 //!                    = [E[N] * B[N+1](ti)] * [B[N](ti)].inverse()
 //!                    = [B[N](ti)] * [B[N](ti)].inverse()
 //!                    = Identity
+//! ```
 //!
 //! i.e. the reduction chosen has the property that elevate(reduce) is the identity, which we need for a reduction
 

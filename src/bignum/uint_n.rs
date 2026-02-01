@@ -294,7 +294,7 @@ impl<const N: usize> UIntN<N> {
         (0..64).rev().find(|i| ((v >> i) & 1) != 0)
     }
 
-    /// Return n where self.value[n] is nonzero
+    /// Return n where `self.value[n]` is nonzero
     ///
     /// Returns None if self is zero
     pub fn most_significant_n(&self) -> Option<u32> {

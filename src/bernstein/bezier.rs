@@ -56,6 +56,11 @@ impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
     F: Num,
 {
+    /// Find the maximum degree this type can encode
+    pub fn max_degree() -> usize {
+        N - 1
+    }
+
     //mp Reduce-and-split iterator
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
     /// of a new degree
