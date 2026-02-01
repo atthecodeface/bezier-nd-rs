@@ -233,6 +233,12 @@ This supports [BezierEval], [BezierSplit]
 
 It SHOULD also support [BezierReduce], [BezierDistance], [BoxedBezier].
 
+## Note no implementation for `F` as a point
+
+An implementation of (e.g.) [BezierEval] for `F:Num` as the point is not possible, as we require
+this for `[F; D]` and yet in the future one might implement `Num` for arrays, and then there would be
+two implementations and Rust would error
+
 # Bezier building
 
 It can be useful to construct Bezier curves, but not simply from control points. For example,
@@ -720,6 +726,7 @@ mod distance;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
+
 mod farray_cubic;
 mod farray_line;
 mod farray_quadratic;
