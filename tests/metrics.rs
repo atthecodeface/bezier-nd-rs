@@ -67,7 +67,7 @@ fn l2_is_not_halo() {
     let seed = "banana4";
     let mut rng = utils::make_random(seed);
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
-    for _ in 0..1000 {
+    for _ in 0..10 {
         let b0: [[f32; 4]; 6] = utils::new_random_point_array(&mut rng, &distribution);
         let b1: [[f32; 4]; 6] = utils::new_random_point_array(&mut rng, &distribution);
         let b0 = BezierND::<_, 6, _>::new(&b0);

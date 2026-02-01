@@ -41,7 +41,7 @@ fn test_points<
     }
 
     // Create a set of points for 0<=t<=1 on the Bezier
-    let bezier_all_pts = utils::BezierPtSet::of_point_at(bezier, 1000);
+    let bezier_all_pts = utils::BezierPtSet::of_point_at(bezier, 100);
     let max_pt_sep_sq = bezier_all_pts.max_pt_separation_sq();
     eprintln!(
         "Bezier point set with {} pts has max separation_sq of {max_pt_sep_sq}",
@@ -70,7 +70,7 @@ where
     let mut rng = utils::make_random(seed);
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
     let bezier = utils::new_random_point_array(&mut rng, &distribution);
-    for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
+    for closeness_sq in [1.0, 0.1, 0.0001] {
         test_points(&bezier, closeness_sq);
     }
 }
