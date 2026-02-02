@@ -278,7 +278,7 @@ impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 3] {
         let mut to_split = *self;
         let mut b0 = [[F::ZERO; D]; 3];
         let mut b1 = [[F::ZERO; D]; 3];
-        let t10 = t1 / (F::ONE - t0);
+        let t10 = (t1 - t0) / (F::ONE - t0);
         crate::bernstein::bezier_fns::split_at_de_cast(&mut to_split, t0, &mut b0, &mut b1);
         crate::bernstein::bezier_fns::split_at_de_cast(&mut b1, t10, &mut to_split, &mut b0);
         to_split

@@ -36,8 +36,10 @@ where
     #[allow(non_snake_case)]
     let EPSILON: F = (1E-5_f32).into();
     let b = bezier.bezier_between(t0, t1);
-    for i in 0..21 {
-        let bt: F = ((i as f32) / 20.0).into();
+    eprintln!("Bezier {bezier:?} between {t0} and {t1} is {b:?}");
+    for bt in utils::float_iter(F::ZERO, F::ONE, 21) {
+        //for i in 0..21 {
+        //  let bt: F = ((i as f32) / 20.0).into();
         let t = t0 + (t1 - t0) * bt;
         let p = bezier.point_at(t);
         let pb = b.point_at(bt);

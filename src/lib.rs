@@ -295,10 +295,10 @@ for (a,b) in arc.as_lines(0.05) {
 let q = Bezier::quadratic( &[2.,6.].into(),
                            &[3.5,8.].into(),
                            &[4.,7.].into());
-assert_eq!( q.control_point(0)[0], 2., "Start point X of Bezier" );
-assert_eq!( q.control_point(0)[1], 6., "Start point Y of Bezier" );
-assert_eq!( q.control_point(1)[0], 4., "End point X of Bezier" );
-assert_eq!( q.control_point(1)[1], 7., "End point Y of Bezier" );
+assert_eq!( q.endpoints().0[0], 2., "Start point X of Bezier" );
+assert_eq!( q.endpoints().0[1], 6., "Start point Y of Bezier" );
+assert_eq!( q.endpoints().1[0], 4., "End point X of Bezier" );
+assert_eq!( q.endpoints().1[1], 7., "End point Y of Bezier" );
 ```
 
 An example using 3D vectors of f64

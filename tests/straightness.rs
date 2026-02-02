@@ -11,11 +11,11 @@ where
 {
     for i in 0..30 {
         let s: F = (1.4_f32).powi(i - 15).into();
-        println!("{} {} {}", s, straightness, bezier.is_straight(s));
+        eprintln!("{} {} {}", straightness, s, bezier.is_straight(s));
         assert_eq!(
             straightness < s,
             bezier.is_straight(s),
-            "Bezier {bezier} .is_straight({s}) failed for {straightness}",
+            "Bezier {bezier} .is_straight({s}) mismatched with straightness<s for {straightness}",
         );
     }
 }

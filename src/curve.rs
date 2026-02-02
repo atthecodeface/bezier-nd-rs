@@ -63,7 +63,7 @@ where
 {
     /// Number of valid control points (2-4)
     num: usize,
-    /// Control points - endpoints are always 0 and 1
+    /// Control points - endpoints are always 0 and [num-1]
     pts: [[F; D]; 4],
 }
 
@@ -79,17 +79,76 @@ where
         vector::fmt(f, &self.pts[0])?;
         write!(f, "<-")?;
         if self.num > 2 {
-            vector::fmt(f, &self.pts[2])?;
+            vector::fmt(f, &self.pts[1])?;
         }
         if self.num > 3 {
             write!(f, ":")?;
-            vector::fmt(f, &self.pts[3])?;
+            vector::fmt(f, &self.pts[2])?;
         }
         write!(f, "->")?;
-        vector::fmt(f, &self.pts[1])
+        vector::fmt(f, &self.pts[self.num - 1])
     }
 
     //zz All done
+}
+
+impl<F, const D: usize> std::convert::From<&[[F; D]]> for Bezier<F, D>
+where
+    F: Float,
+{
+    fn from(pts: &[[F; D]]) -> Self {
+        assert!(pts.len() <= 4);
+        let mut s = Self {
+            num: pts.len(),
+            pts: [[F::ZERO; D]; 4],
+        };
+        for (s, p) in s.pts.iter_mut().zip(pts.iter()) {
+            *s = *p;
+        }
+        s
+    }
+}
+
+impl<F, const D: usize> std::convert::TryFrom<&Bezier<F, D>> for [[F; D]; 2]
+where
+    F: Float,
+{
+    type Error = ();
+    fn try_from(b: &Bezier<F, D>) -> std::result::Result<[[F; D]; 2], ()> {
+        if b.num == 2 {
+            Ok([b.pts[0], b.pts[1]])
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<F, const D: usize> std::convert::TryFrom<&Bezier<F, D>> for [[F; D]; 3]
+where
+    F: Float,
+{
+    type Error = ();
+    fn try_from(b: &Bezier<F, D>) -> std::result::Result<[[F; D]; 3], ()> {
+        if b.num == 3 {
+            Ok([b.pts[0], b.pts[1], b.pts[2]])
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl<F, const D: usize> std::convert::TryFrom<&Bezier<F, D>> for [[F; D]; 4]
+where
+    F: Float,
+{
+    type Error = ();
+    fn try_from(b: &Bezier<F, D>) -> std::result::Result<[[F; D]; 4], ()> {
+        if b.num == 4 {
+            Ok([b.pts[0], b.pts[1], b.pts[2], b.pts[3]])
+        } else {
+            Err(())
+        }
+    }
 }
 
 impl<F, const D: usize> BezierEval<F, [F; D]> for Bezier<F, D>
@@ -97,65 +156,46 @@ where
     F: Float,
 {
     fn point_at(&self, t: F) -> [F; D] {
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let omt = F::one() - t;
         match self.num {
-            2 => self.vector_of(&[omt, t], F::one()),
-            3 => {
-                let p0_sc = omt * omt;
-                let c_sc = two * omt * t;
-                let p1_sc = t * t;
-                self.vector_of(&[p0_sc, p1_sc, c_sc], F::one())
-            }
-            _ => {
-                let p0_sc = omt * omt * omt;
-                let c0_sc = three * omt * omt * t;
-                let c1_sc = three * omt * t * t;
-                let p1_sc = t * t * t;
-                self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], F::one())
-            }
+            2 => TryInto::<[[F; D]; 2]>::try_into(self).unwrap().point_at(t),
+            3 => TryInto::<[[F; D]; 3]>::try_into(self).unwrap().point_at(t),
+            _ => TryInto::<[[F; D]; 4]>::try_into(self).unwrap().point_at(t),
         }
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        let one = F::one();
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
         match self.num {
-            2 => (one, self.vector_of(&[-one, one], one)),
-            3 => {
-                let p0_sc = t - one; // d/dt (1-t)^2
-                let c_sc = one - two * t; // d/dt 2t(1-t)
-                let p1_sc = t; // d/dt t^2
-                (one, self.vector_of(&[p0_sc, p1_sc, c_sc], one))
-            }
-            _ => {
-                let p0_sc = two * t - t * t - one; // d/dt (1-t)^3
-                let c0_sc = three * t * t - four * t + one; // d/dt 3t(1-t)^2
-                let c1_sc = two * t - three * t * t; // d/dt 3t^2(1-t)
-                let p1_sc = t * t; // d/dt t^3
-                (one, self.vector_of(&[p0_sc, p1_sc, c0_sc, c1_sc], one))
-            }
+            2 => TryInto::<[[F; D]; 2]>::try_into(self)
+                .unwrap()
+                .derivative_at(t),
+            3 => TryInto::<[[F; D]; 3]>::try_into(self)
+                .unwrap()
+                .derivative_at(t),
+            _ => TryInto::<[[F; D]; 4]>::try_into(self)
+                .unwrap()
+                .derivative_at(t),
         }
     }
 
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (&self.pts[0], &self.pts[1])
+        match self.num {
+            2 => (&self.pts[0], &self.pts[1]),
+            3 => (&self.pts[0], &self.pts[2]),
+            _ => (&self.pts[0], &self.pts[3]),
+        }
     }
 
     fn closeness_sq_to_line(&self) -> F {
         match self.num {
             2 => F::ZERO,
-            3 => [self.pts[0], self.pts[2], self.pts[1]].closeness_sq_to_line(),
-            _ => [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].closeness_sq_to_line(),
+            3 => [self.pts[0], self.pts[1], self.pts[2]].closeness_sq_to_line(),
+            _ => [self.pts[0], self.pts[1], self.pts[2], self.pts[3]].closeness_sq_to_line(),
         }
     }
     fn dc_sq_from_line(&self) -> F {
         match self.num {
             2 => F::ZERO,
-            3 => [self.pts[0], self.pts[2], self.pts[1]].dc_sq_from_line(),
-            _ => [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].dc_sq_from_line(),
+            3 => [self.pts[0], self.pts[1], self.pts[2]].dc_sq_from_line(),
+            _ => [self.pts[0], self.pts[1], self.pts[2], self.pts[3]].dc_sq_from_line(),
         }
     }
     fn num_control_points(&self) -> usize {
@@ -177,7 +217,7 @@ where
         match self.num {
             3 => Self::line(&self.pts[0], &self.pts[2]),
             4 => {
-                let [p0, c, p1] = [self.pts[0], self.pts[2], self.pts[3], self.pts[1]]
+                let [p0, c, p1] = [self.pts[0], self.pts[1], self.pts[2], self.pts[3]]
                     .reduced_to_quadratic()
                     .unwrap();
                 Self::quadratic(&p0, &c, &p1)
@@ -200,7 +240,7 @@ where
         if self.num <= 3 {
             F::ZERO
         } else {
-            [self.pts[0], self.pts[2], self.pts[3], self.pts[1]].closeness_sq_to_quadratic()
+            [self.pts[0], self.pts[1], self.pts[2], self.pts[3]].closeness_sq_to_quadratic()
         }
     }
     fn closeness_sq_to_cubic(&self) -> F {
@@ -222,42 +262,22 @@ impl<F, const D: usize> BezierSplit for Bezier<F, D>
 where
     F: Float,
 {
-    //mp bisect
     /// Returns two Bezier's that split the curve at parameter t=0.5
     ///
     /// For quadratics the midpoint is 1/4(p0 + 2*c + p1)
     fn split(&self) -> (Self, Self) {
-        let zero = F::zero();
-        let one = F::one();
-        let two = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
-        let eight: F = (8.0_f32).into();
         match self.num {
             2 => {
-                let pm = self.vector_of(&[one, one], two);
-                (Self::line(&self.pts[0], &pm), Self::line(&pm, &self.pts[1]))
+                let (b0, b1) = TryInto::<[[F; D]; 2]>::try_into(self).unwrap().split();
+                (b0.as_ref().into(), b1.as_ref().into())
             }
             3 => {
-                let c0 = self.vector_of(&[one, zero, one], two);
-                let c1 = self.vector_of(&[zero, one, one], two);
-                let pm = vector::add(c0, &c1, F::one());
-                let pm = vector::reduce(pm, 2.0_f32.into());
-                (
-                    Self::quadratic(&self.pts[0], &c0, &pm),
-                    Self::quadratic(&pm, &c1, &self.pts[1]),
-                )
+                let (b0, b1) = TryInto::<[[F; D]; 3]>::try_into(self).unwrap().split();
+                (b0.as_ref().into(), b1.as_ref().into())
             }
             _ => {
-                let pm = self.vector_of(&[one, one, three, three], eight);
-                let c00 = self.vector_of(&[one, zero, one], two);
-                let c01 = self.vector_of(&[one, zero, two, one], four);
-                let c10 = self.vector_of(&[zero, one, one, two], four);
-                let c11 = self.vector_of(&[zero, one, zero, one], two);
-                (
-                    Self::cubic(&self.pts[0], &c00, &c01, &pm),
-                    Self::cubic(&pm, &c10, &c11, &self.pts[1]),
-                )
+                let (b0, b1) = TryInto::<[[F; D]; 4]>::try_into(self).unwrap().split();
+                (b0.as_ref().into(), b1.as_ref().into())
             }
         }
     }
@@ -272,41 +292,21 @@ where
     }
     fn section(&self, t0: F, t1: F) -> Self {
         match self.num {
-            2 => {
-                let u0 = F::one() - t0;
-                let u1 = F::one() - t1;
-                let r0 = self.vector_of(&[u0, t0], F::one());
-                let r1 = self.vector_of(&[u1, t1], F::one());
-                Self::line(&r0, &r1)
-            }
-            3 => {
-                let two: F = (2.0_f32).into();
-                let u0 = F::one() - t0;
-                let u1 = F::one() - t1;
-                let rp0 = self.vector_of(&[u0 * u0, t0 * t0, two * u0 * t0], F::one());
-                let rp1 = self.vector_of(&[u1 * u1, t1 * t1, two * u1 * t1], F::one());
-                let rc0 = self.vector_of(&[u0 * u1, t1 * t0, u0 * t1 + u1 * t0], F::one());
-                Self::quadratic(&rp0, &rc0, &rp1)
-            }
-            _ => {
-                // simply: c0 = p0 + tangent(0)
-                // and if we scale the curve to t1-t0 in size, tangents scale the same
-                let rp0 = self.point_at(t0);
-                let rp1 = self.point_at(t1);
-                let (_sc0, rt0) = self.derivative_at(t0);
-                let (_sc1, rt1) = self.derivative_at(t1);
-
-                let t1_m_t0 = t1 - t0;
-
-                let mut rc0 = [F::zero(); D];
-                let mut rc1 = [F::zero(); D];
-                for i in 0..D {
-                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i]; // *sc0*sc1?
-                    rc1[i] = rp1[i] - t1_m_t0 * rt1[i];
-                }
-
-                Self::cubic(&rp0, &rc0, &rc1, &rp1)
-            }
+            2 => TryInto::<[[F; D]; 2]>::try_into(self)
+                .unwrap()
+                .section(t0, t1)
+                .as_ref()
+                .into(),
+            3 => TryInto::<[[F; D]; 3]>::try_into(self)
+                .unwrap()
+                .section(t0, t1)
+                .as_ref()
+                .into(),
+            _ => TryInto::<[[F; D]; 4]>::try_into(self)
+                .unwrap()
+                .section(t0, t1)
+                .as_ref()
+                .into(),
         }
     }
 }
@@ -330,7 +330,7 @@ where
     pub fn quadratic(p0: &[F; D], c: &[F; D], p1: &[F; D]) -> Self {
         Self {
             num: 3,
-            pts: [*p0, *p1, *c, [F::zero(); D]],
+            pts: [*p0, *c, *p1, [F::zero(); D]],
         }
     }
 
@@ -340,38 +340,33 @@ where
     pub fn cubic(p0: &[F; D], c0: &[F; D], c1: &[F; D], p1: &[F; D]) -> Self {
         Self {
             num: 4,
-            pts: [*p0, *p1, *c0, *c1],
+            pts: [*p0, *c0, *c1, *p1],
         }
     }
 
     //mp elevate
     /// Elevate a Bezier by one degree (cannot elevate a Cubic)
-    pub fn elevate(mut self) -> Self {
+    pub fn elevate(self) -> Self {
         match self.num {
             2 => {
-                self.num = 3;
-                self.pts[2] = vector::reduce(
-                    vector::add(self.pts[0], &self.pts[1], F::one()),
-                    (2.0_f32).into(),
-                );
+                let c = vector::sum_scaled(&self.pts[0..2], &[(0.5_f32).into(), (0.5_f32).into()]);
+                Self::quadratic(&self.pts[0], &c, &self.pts[1])
             }
             3 => {
-                // Set pts[3] using pts[0..2] before pts[2] is changed...
-                self.num = 4;
-                self.pts[3] = vector::reduce(
-                    vector::add(self.pts[1], &self.pts[2], (2.0_f32).into()),
-                    (3.0_f32).into(),
+                let c0 = vector::sum_scaled(
+                    &self.pts[0..2],
+                    &[(0.33333333_f32).into(), (0.66666667_f32).into()],
                 );
-                self.pts[2] = vector::reduce(
-                    vector::add(self.pts[0], &self.pts[2], (2.0_f32).into()),
-                    (3.0_f32).into(),
+                let c1 = vector::sum_scaled(
+                    &self.pts[1..3],
+                    &[(0.66666667_f32).into(), (0.33333333_f32).into()],
                 );
+                Self::cubic(&self.pts[0], &c0, &c1, &self.pts[2])
             }
             _ => {
                 panic!("Cannot elevate a cubic Bezier at this point");
             }
         }
-        self
     }
 
     //mp degree
@@ -398,19 +393,6 @@ where
         for p in self.pts.iter_mut() {
             *p = map(*p);
         }
-    }
-
-    //mi vector_of
-    /// Returns a vector of a combination of the vectors of the bezier
-    #[inline]
-    fn vector_of(&self, sc: &[F], reduce: F) -> [F; D] {
-        let mut r = [F::zero(); D];
-        for (i, sc) in sc.iter().enumerate() {
-            for (j, rj) in r.iter_mut().enumerate() {
-                *rj += *sc * self.pts[i][j];
-            }
-        }
-        vector::reduce(r, reduce)
     }
 
     //mp bezier_between
@@ -497,12 +479,12 @@ where
             2 => true,
             3 => {
                 // Now make everything relative to p0 and test perpendicular distance of c from the line
-                let c = vector::sub(self.pts[2], &self.pts[0], F::one());
-                let p = vector::sub(self.pts[1], &self.pts[0], F::one());
+                let c = vector::sub(self.pts[1], &self.pts[0], F::one());
+                let p = vector::sub(self.pts[2], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
 
                 // Need to test if (c-p0).(p1-p0) < -straightness.|p1-p0| or (c-p1).(p1-p0)>straightness.|p1-p0|
-                let c_p1 = vector::sub(self.pts[2], &self.pts[1], F::one());
+                let c_p1 = vector::sub(self.pts[1], &self.pts[2], F::one());
                 if vector::dot(&c, &p) < -straightness * lp2.sqrt() {
                     return false;
                 }
@@ -516,20 +498,20 @@ where
                 c_p_s_sq <= straightness * straightness * p_sq
             }
             _ => {
-                let p = vector::sub(self.pts[1], &self.pts[0], F::one());
-                let c0 = vector::sub(self.pts[2], &self.pts[0], F::one());
-                let c1 = vector::sub(self.pts[3], &self.pts[0], F::one());
+                let p = vector::sub(self.pts[3], &self.pts[0], F::one());
+                let c0 = vector::sub(self.pts[1], &self.pts[0], F::one());
+                let c1 = vector::sub(self.pts[2], &self.pts[0], F::one());
                 let lp2 = vector::length_sq(&p);
 
                 // Need to test if (c-p0).(p1-p0) < -straightness.|p1-p0| or (c-p1).(p1-p0)>straightness.|p1-p0|
-                let c0_p1 = vector::sub(self.pts[2], &self.pts[1], F::one());
+                let c0_p1 = vector::sub(self.pts[1], &self.pts[3], F::one());
                 if vector::dot(&c0, &p) < -straightness * lp2.sqrt() {
                     return false;
                 }
                 if vector::dot(&c0_p1, &p) > straightness * lp2.sqrt() {
                     return false;
                 }
-                let c1_p1 = vector::sub(self.pts[3], &self.pts[1], F::one());
+                let c1_p1 = vector::sub(self.pts[2], &self.pts[3], F::one());
                 if vector::dot(&c1, &p) < -straightness * lp2.sqrt() {
                     return false;
                 }

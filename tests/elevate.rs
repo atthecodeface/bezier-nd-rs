@@ -12,14 +12,17 @@ fn elevate() {
 
     let b = Bezier::quadratic(&p0, &p1, &p2);
     let b2 = b.clone().elevate();
+    eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
     let b = Bezier::quadratic(&p3, &p1, &p2);
     let b2 = b.clone().elevate();
+    eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
     let b = Bezier::line(&p3, &p1);
     let b2 = b.clone().elevate();
+    eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 }
 

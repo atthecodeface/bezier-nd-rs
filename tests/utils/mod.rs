@@ -41,15 +41,21 @@ pub fn pt_eq<F: Float, const D: usize>(v: &[F; D], x: F, y: F) {
     );
 }
 
-//fi approx_eq
+#[track_caller]
 pub fn approx_eq<F: Num, I: Into<F>>(a: F, b: F, tolerance: I, msg: &str) {
     let tolerance = tolerance.into();
     let diff = a - b;
     let diff = if diff < F::ZERO { -diff } else { diff };
-    assert!(diff < tolerance, "{} {:?} {:?}", msg, a, b);
+    assert!(
+        diff < tolerance,
+        "approx_eq mismatch: {} diff {diff} tolerance {tolerance} {:?}<>{:?}",
+        msg,
+        a,
+        b
+    );
 }
 
-//fi bezier_eq
+#[track_caller]
 pub fn bezier_eq<F: Float, const D: usize>(bez: &Bezier<F, D>, v: Vec<[F; D]>) {
     assert_eq!(bez.degree(), 4, "bezier_eq works only for cubics");
     vec_eq(bez.control_point(0), &v[0].into());
@@ -114,6 +120,7 @@ pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
 }
 
 /// Test that a subsection of a Bezier has the same points as another between t0 and t1
+#[track_caller]
 pub fn test_subsection(b: &Bezier<f64, 2>, sub: &Bezier<f64, 2>, t0: f64, t1: f64) {
     eprintln!("Testing subsections of beziers {b} {sub} {t0} {t1}");
     for sub_t in float_iter(0.0, 1.0, 100) {
