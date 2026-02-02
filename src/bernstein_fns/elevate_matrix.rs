@@ -39,7 +39,8 @@ pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) ->
 pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -> N {
     assert!(
         matrix.len() >= (degree + 1) * (degree + 2),
-        "Must have enough room in matrix for coeffs for degree -> degreee+1"
+        "Must have enough room in matrix for coeffs for degree -> degreee+1 (i.e. {})",
+        (degree + 1) * (degree + 2)
     );
     for ((i, j), m) in (0..(degree + 2))
         .flat_map(|j| (0..degree + 1).map(move |i| (i, j)))
