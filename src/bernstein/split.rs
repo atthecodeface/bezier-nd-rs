@@ -17,16 +17,14 @@ where
     F: crate::Num,
 {
     fn split_at(&self, t: F) -> (Self, Self) {
-        let mut temp = *self;
-        let mut s0 = *self;
-        let mut s1 = *self;
+        let mut first = *self;
+        let mut latter = *self;
         bernstein_fns::split::into_two_at_de_cast(
-            &mut temp.pts[0..self.degree + 1],
+            &mut latter.pts[0..self.degree + 1],
             t,
-            &mut s0.pts,
-            &mut s1.pts,
+            &mut first.pts,
         );
-        (s0, s1)
+        (first, latter)
     }
     fn section(&self, t0: F, t: F) -> Self {
         todo!();

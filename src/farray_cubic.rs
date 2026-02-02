@@ -207,22 +207,23 @@ impl<F: Num, const D: usize> BezierSplit for [[F; D]; 4] {
 impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 4] {
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self) {
-        let mut to_split = *self;
-        let mut b0 = [[F::ZERO; D]; 4];
-        let mut b1 = [[F::ZERO; D]; 4];
-        bernstein_fns::split::into_two_at_de_cast(&mut to_split, t, &mut b0, &mut b1);
-        (b0, b1)
+        let mut latter = *self;
+        let mut first = [[F::ZERO; D]; 4];
+        bernstein_fns::split::into_two_at_de_cast(&mut latter, t, &mut first);
+        (first, latter)
     }
 
     /// Generate the Bezier with parameter t' where 0<=t'<=1 provides the same points
     /// as the original Bezier with t0<=t<=1
     fn section(&self, t0: F, t1: F) -> Self {
         let mut to_split = *self;
-        let mut b0 = [[F::ZERO; D]; 4];
-        let mut b1 = [[F::ZERO; D]; 4];
-        let t10 = (t1 - t0) / (F::ONE - t0);
-        bernstein_fns::split::into_two_at_de_cast(&mut to_split, t0, &mut b0, &mut b1);
-        bernstein_fns::split::into_two_at_de_cast(&mut b1, t10, &mut to_split, &mut b0);
+        if t0 > F::ZERO {
+            bernstein_fns::split::bezier_from_de_cast(&mut to_split, t0);
+        }
+        if t1 < F::ONE {
+            let t10 = (t1 - t0) / (F::ONE - t0);
+            bernstein_fns::split::bezier_to_de_cast(&mut to_split, t10);
+        }
         to_split
     }
 }

@@ -45,15 +45,13 @@ where
 
     /// Use de Casteljau's algorithm to split
     pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
-        let mut s0 = self;
-        let mut s1 = self;
+        let mut first = self;
         bernstein_fns::split::into_two_at_de_cast(
             &mut self.pts[0..self.degree + 1],
             t,
-            &mut s0.pts,
-            &mut s1.pts,
+            &mut first.pts,
         );
-        (s0, s1)
+        (first, self)
     }
 
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
