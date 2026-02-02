@@ -1,6 +1,4 @@
-use crate::constants::BINOMIALS_U;
-use crate::{Float, Num};
-use geo_nd::vector;
+use crate::Num;
 
 /// Calculate the Mij element of the elevation matrix to elevate by one degree
 /// given the current degree. The elevation matrix is (degree+2)x(degree+1)

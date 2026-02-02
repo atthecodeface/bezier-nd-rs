@@ -732,6 +732,7 @@ mod farray_line;
 mod farray_quadratic;
 mod fvec;
 
+/// Useful functions for generating Bernstein coefficients and operating on Berstein Bezier curves
 pub mod bernstein_fns;
 
 pub mod bignum;

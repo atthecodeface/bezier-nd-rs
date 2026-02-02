@@ -1,8 +1,4 @@
-use crate::utils;
-use crate::{
-    bernstein_fns, BezierDistance, BezierEval, BezierMinMax, BezierReduce, BezierSection,
-    BezierSplit, BoxedBezier,
-};
+use crate::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
 use crate::{Float, Num};
 use geo_nd::vector;
 

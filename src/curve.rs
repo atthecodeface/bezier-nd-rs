@@ -2,10 +2,7 @@
 use crate::Float;
 use geo_nd::vector;
 
-use crate::{
-    BezierEval, BezierIntoIterator, BezierLineIter, BezierPointIter, BezierReduce, BezierSection,
-    BezierSplit,
-};
+use crate::{BezierEval, BezierIntoIterator, BezierReduce, BezierSection, BezierSplit};
 
 //a Bezier
 //tp Bezier

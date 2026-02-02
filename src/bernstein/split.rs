@@ -1,11 +1,10 @@
-use crate::{bernstein_fns, BezierEval, BezierSection, BezierSplit, Num};
-use geo_nd::vector;
+use crate::{bernstein_fns, BezierSection, BezierSplit, Num};
 
 use super::Bezier;
 
 impl<F, const N: usize, const D: usize> BezierSplit for Bezier<F, N, D>
 where
-    F: crate::Num,
+    F: Num,
 {
     fn split(&self) -> (Self, Self) {
         self.split_at_de_cast(0.5_f32.into())
@@ -14,7 +13,7 @@ where
 
 impl<F, const N: usize, const D: usize> BezierSection<F> for Bezier<F, N, D>
 where
-    F: crate::Num,
+    F: Num,
 {
     fn split_at(&self, t: F) -> (Self, Self) {
         let mut first = *self;
@@ -26,7 +25,15 @@ where
         );
         (first, latter)
     }
-    fn section(&self, t0: F, t: F) -> Self {
-        todo!();
+    fn section(&self, t0: F, t1: F) -> Self {
+        let mut to_split = *self;
+        if t0 > F::ZERO {
+            bernstein_fns::split::bezier_from_de_cast(&mut to_split.pts, t0);
+        }
+        if t1 < F::ONE {
+            let t10 = (t1 - t0) / (F::ONE - t0);
+            bernstein_fns::split::bezier_to_de_cast(&mut to_split.pts, t10);
+        }
+        to_split
     }
 }
