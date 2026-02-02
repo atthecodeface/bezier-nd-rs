@@ -1,6 +1,7 @@
 //a Imports
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
+use bezier_nd::{BezierIntoIterator, BezierSplit};
 use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::{vector, FArray, Vector};
@@ -31,19 +32,19 @@ where
 /// Find the largest closest distance between segmented points to points on the bezier
 ///
 /// Both of these should be less than 'straightness'
-fn bezier_lines_within_straightness<F: Float>(bezier: &Bezier<F, 2>, straightness_sq: F)
+fn bezier_lines_within_straightness<F: Float, const D: usize, B>(bezier: &B, straightness_sq: F)
 where
-    FArray<F, 2>: Vector<F, 2>,
+    B: BezierEval<F, [F; D]> + BezierSplit + Clone + BezierIntoIterator<F, B, [F; D]>,
 {
     const NPTS: isize = 1000;
     const NSEG_PTS: usize = 1000;
-    let bezier_pts: Vec<[F; 2]> = (0..NPTS)
+    let bezier_pts: Vec<[F; D]> = (0..NPTS)
         .map(|i: isize| {
             let t: F = ((i as f32) / (NPTS as f32)).into();
             bezier.point_at(t)
         })
         .collect();
-    let mut segment_pts = Vec::<[F; 2]>::new();
+    let mut segment_pts = Vec::<[F; D]>::new();
     for (p0, p1) in bezier.as_lines(straightness_sq) {
         for t in utils::float_iter(F::ZERO, F::ONE, NSEG_PTS) {
             segment_pts.push(vector::sum_scaled(&[p0, p1], &[F::ONE - t, t]));
@@ -122,30 +123,41 @@ fn test_straight_as() {
 
 //fi test_within_straightness
 fn test_within_straightness() {
-    let p0: FArray<f32, 2> = [0., 0.].into();
-    let p1: FArray<f32, 2> = [10., 0.].into();
-    let p2: FArray<f32, 2> = [10., 1.].into();
-    let p3: FArray<f32, 2> = [20., 0.].into();
-    // let p4: FArray<f32, 2> = [20., 1.].into();
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [10., 1.];
+    let p3 = [20., 0.];
 
     for straightness_sq in [0.1, 0.01, 0.001] {
+        let b = Bezier::line(&p0, &p2);
+        bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p0, p2], straightness_sq);
+        bezier_lines_within_straightness(&vec![p0, p2], straightness_sq);
+
         let b = Bezier::quadratic(&p0, &p3, &p1);
         bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p0, p1, p2], straightness_sq);
+        bezier_lines_within_straightness(&vec![p0, p1, p2], straightness_sq);
 
         let b = Bezier::cubic(&p0, &p1, &p2, &p3);
         bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p0, p1, p2, p3], straightness_sq);
+        bezier_lines_within_straightness(&vec![p0, p1, p2, p3], straightness_sq);
 
         let b = Bezier::cubic(&p0, &p2, &p1, &p3);
         bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p0, p2, p1, p3], straightness_sq);
+        bezier_lines_within_straightness(&vec![p0, p2, p1, p3], straightness_sq);
 
         let b = Bezier::cubic(&p3, &p2, &p1, &p0);
         bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p3, p2, p1, p0], straightness_sq);
+        bezier_lines_within_straightness(&vec![p3, p2, p1, p0], straightness_sq);
 
         let b = Bezier::cubic(&p2, &p3, &p0, &p1);
         bezier_lines_within_straightness(&b, straightness_sq);
-
-        let b = Bezier::cubic(&p0, &p3, &p3, &p1);
-        bezier_lines_within_straightness(&b, straightness_sq);
+        bezier_lines_within_straightness(&[p2, p3, p0, p1], straightness_sq);
+        bezier_lines_within_straightness(&vec![p2, p3, p0, p1], straightness_sq);
     }
 }
 

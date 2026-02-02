@@ -39,7 +39,7 @@ fn check_metrics_of_beziers<const N: usize, const D: usize>(
 }
 
 #[test]
-fn l2_is_not_halo() {
+fn metrics_are_ordered() {
     let mut b0 = BezierBuilder::default();
     b0.add_point_at(0.0_f32, [0.0_f32]);
     b0.add_point_at(0.25, [-0.8]);

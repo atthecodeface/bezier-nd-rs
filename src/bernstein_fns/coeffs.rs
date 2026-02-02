@@ -10,7 +10,13 @@ use geo_nd::vector;
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
+#[track_caller]
 pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
+    assert!(
+        degree < BINOMIALS_U.len(),
+        "Maximum degree of Bezier supported is {}",
+        BINOMIALS_U.len()
+    );
     let u = F::ONE - t;
     let coeffs = BINOMIALS_U[degree];
     (0..=degree).map(move |i| {
@@ -27,6 +33,7 @@ pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
+#[track_caller]
 pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<Item = (usize, F)>) {
     let n = degree + 1;
     let n_f = F::from_usize(n).unwrap();
@@ -51,8 +58,14 @@ pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<I
 /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
+#[track_caller]
 #[inline]
 pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
+    assert!(
+        degree < BINOMIALS_U.len(),
+        "Maximum degree of Bezier supported is {}",
+        BINOMIALS_U.len()
+    );
     let u = F::ONE - t;
     let coeffs = BINOMIALS_U[degree];
     (0..=degree).map(move |i| {
@@ -73,7 +86,14 @@ pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item =
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
+#[track_caller]
 pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
+    assert!(
+        degree < BINOMIALS_U.len(),
+        "Maximum degree of Bezier supported is {}",
+        BINOMIALS_U.len()
+    );
+
     let u = F::one() - t;
     let coeffs = BINOMIALS_U[degree];
     t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()

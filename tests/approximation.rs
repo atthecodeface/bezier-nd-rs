@@ -67,6 +67,20 @@ fn test_f_array() {
 }
 
 #[test]
+fn test_fvec() {
+    let mut rng = utils::make_random("banana_split");
+    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
+
+    for degree in 1..10 {
+        let mut bezier = vec![[0.0_f32; 2]; (degree + 1)];
+        utils::set_random_point_array(&mut rng, &distribution, &mut bezier);
+        for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
+            test_approximation(&bezier, closeness_sq);
+        }
+    }
+}
+
+#[test]
 fn test_bezier_nd() {
     let mut rng = utils::make_random("banana");
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
