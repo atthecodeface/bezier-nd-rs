@@ -1,7 +1,7 @@
 //a Imports
 mod utils;
 use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
-use bezier_nd::{Bezier, BezierEval, BezierND, Float};
+use bezier_nd::{Bezier, BezierEval, BezierND, BezierSplit, Float};
 use geo_nd::{
     matrix,
     vector::{self},
@@ -273,7 +273,7 @@ fn reduce_and_elevate_cubic_in_parts() {
     assert!(dm < dc);
     assert!(dc < df);
 
-    let (b0, b1) = b.bisect();
+    let (b0, b1) = b.split();
     for t in float_iter(-1.0, 1.0, 100) {
         let p = b.point_at(t);
         let p0 = b0.point_at(t * 2.0);

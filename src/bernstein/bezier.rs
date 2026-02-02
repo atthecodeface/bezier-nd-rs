@@ -1,4 +1,4 @@
-use crate::Num;
+use crate::{BezierSplit, Num};
 use geo_nd::vector;
 
 /// This type stores a Bernstein Bezier of up to N control points each of dimension D
@@ -145,7 +145,7 @@ where
         while let Some((n, b)) = self.stack.pop() {
             let dc2 = b.dc2_of_ele_red(self.elev_reduce_matrix);
             if dc2 > self.max_dc_sq {
-                let (b0, b1) = b.bisect();
+                let (b0, b1) = b.split();
                 self.stack.push((n + 1, b1));
                 self.stack.push((n + 1, b0));
             } else {

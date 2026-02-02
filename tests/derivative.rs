@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::BezierND;
+use bezier_nd::{BezierEval, BezierND};
 mod utils;
 use utils::assert_near_equal;
 

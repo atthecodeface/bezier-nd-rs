@@ -86,11 +86,6 @@ where
         s
     }
 
-    /// Returns two Bezier's that split the curve at parameter t=0.5
-    pub fn bisect(&self) -> (Self, Self) {
-        self.split_at_de_cast(0.5_f32.into())
-    }
-
     /// Elevate a Bezier by one degree
     ///
     /// This generates and applies the elevate-by-one matrix
