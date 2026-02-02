@@ -129,8 +129,6 @@ mod manipulation;
 mod metrics;
 mod split;
 
-pub mod bezier_fns;
-
 pub use bezier::{Bezier, BezierReduceIter};
 
 impl<F, const N: usize, const D: usize> crate::BezierReduce<F, [F; D]> for Bezier<F, N, D>

@@ -1,6 +1,6 @@
 //a Imports
 mod utils;
-use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
+use bezier_nd::bernstein_fns::generate_elevate_by_one_matrix;
 use bezier_nd::{Bezier, BezierEval, BezierND, BezierSplit, Float};
 use geo_nd::{
     matrix,

@@ -1,5 +1,5 @@
 mod utils;
-use bezier_nd::Bezier;
+use bezier_nd::{bernstein_fns, Bezier};
 use geo_nd::FArray;
 use utils::test_beziers_approx_eq;
 
@@ -32,21 +32,21 @@ fn elevate_matrix() {
 
     // Check point to linear matrix
     assert_eq!(
-        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 0),
+        bernstein_fns::generate_elevate_by_one_matrix(&mut m, 0),
         1.0
     );
     assert_eq!(&m[0..2], &[1., 1.]);
 
     // Check linear - quadratic matrix
     assert_eq!(
-        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 1),
+        bernstein_fns::generate_elevate_by_one_matrix(&mut m, 1),
         2.0
     );
     assert_eq!(&m[0..6], &[2., 0., 1.0, 1.0, 0., 2.]);
 
     // Check cubic to order 4 matrix
     assert_eq!(
-        bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix(&mut m, 3),
+        bernstein_fns::generate_elevate_by_one_matrix(&mut m, 3),
         4.0
     );
     assert_eq!(&m[0..4], &[4., 0., 0., 0.]);

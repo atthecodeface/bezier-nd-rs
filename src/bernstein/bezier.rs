@@ -79,45 +79,6 @@ where
             stack: vec![],
         }
     }
-
-    //mp is_straight
-    /// Returns true if the Bezier is straighter than a 'straightness' measure
-    ///
-    /// A linear bezier is always straight.
-    ///
-    /// A straightness measure for a quadratic bezier (one control
-    /// point) can be thought of as the ratio between the area of the
-    /// triangle formed by the two endpoints and the control point
-    /// (three points must form a triangle on a plane) in relation to
-    /// the distance between the endpoints (the curve will be entirely
-    /// within the triangle.
-    ///
-    /// A straightness measure for a cubic bezier (two control points)
-    /// can be though of similarly, except that the curve now must fit
-    /// within a volume given by the two control points and the
-    /// endpoints; hence the straightness is measured in some way by
-    /// the volume in relation to the distance between the endpoints,
-    /// but also should be no straighter than the area of any one
-    /// control point in relation to the disnance between the
-    /// endpoints (the Bezier may be a planar curve that is quite
-    /// unstraight but with a volume of zero).
-    ///
-    /// Hence the straightness here is defined as the sum of (the
-    /// ratio between (the distance of each control point from the
-    /// straight line between the two endpoints) and (the distance
-    /// between the two endpoints))
-    ///
-    /// `straightness` is thus independent of the length of the Bezier
-    pub fn is_straight(&self, straightness: F) -> bool {
-        let s2 = straightness * straightness;
-        self.pts
-            .iter()
-            .skip(1)
-            .take(self.degree)
-            .all(|m| vector::length_sq(m) <= s2)
-    }
-
-    //zz All done
 }
 
 //tp BezierReduceIter

@@ -1,8 +1,8 @@
-use crate::BezierBuilder;
 use crate::Num;
+use crate::{bernstein_fns, BezierBuilder};
 use geo_nd::{matrix, vector};
 
-use super::{bezier_fns, Bezier};
+use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
@@ -39,7 +39,7 @@ where
             ..Default::default()
         };
         s.degree = self.degree - n;
-        let scale = bezier_fns::nth_derivative(&self.pts[0..self.degree + 1], n, &mut s.pts);
+        let scale = bernstein_fns::nth_derivative(&self.pts[0..self.degree + 1], n, &mut s.pts);
         (s, scale)
     }
 
@@ -47,7 +47,7 @@ where
     pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
         let mut s0 = self;
         let mut s1 = self;
-        bezier_fns::split_at_de_cast(
+        bernstein_fns::split::into_two_at_de_cast(
             &mut self.pts[0..self.degree + 1],
             t,
             &mut s0.pts,
@@ -152,7 +152,7 @@ where
             let t = c.at();
             let pt = c.posn();
             pts.push(*pt);
-            bezier_fns::generate_bernstein_matrix(&mut bern_n[0..(degree + 1)], degree, &[t]);
+            bernstein_fns::generate_bernstein_matrix(&mut bern_n[0..(degree + 1)], degree, &[t]);
             basis.extend(bern_n.iter().take(degree + 1));
         }
 

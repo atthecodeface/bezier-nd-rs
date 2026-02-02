@@ -1,7 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
-use bezier_nd::BezierEval;
-use bezier_nd::BezierSplit;
+use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::{Bezier, Num};
@@ -154,8 +153,7 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
     );
     for (r, t) in ts.iter().enumerate() {
         for c in 0..(degree + 1) {
-            matrix[r * (degree + 1) + c] =
-                bezier_nd::bernstein::bezier_fns::basis_coeff(degree, c, *t);
+            matrix[r * (degree + 1) + c] = bernstein_fns::basis_coeff(degree, c, *t);
         }
     }
 }
@@ -220,7 +218,7 @@ pub fn generate_bernstein_matrix_br<N: geo_nd::Num + From<i64>>(
 #[track_caller]
 #[must_use]
 pub fn generate_elevate_by_n_matrix<N: bezier_nd::Num>(degree: usize, by_n: usize) -> Vec<N> {
-    use bezier_nd::bernstein::bezier_fns::generate_elevate_by_one_matrix;
+    use bernstein_fns::generate_elevate_by_one_matrix;
 
     assert!(by_n >= 1);
     let mut result = vec![N::ZERO; (degree + 1) * (degree + 1 + by_n)];

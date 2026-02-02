@@ -730,6 +730,9 @@ mod bezier_iter;
 mod farray_cubic;
 mod farray_line;
 mod farray_quadratic;
+mod fvec;
+
+pub mod bernstein_fns;
 
 pub mod bignum;
 

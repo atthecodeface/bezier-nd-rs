@@ -10,12 +10,40 @@ use geo_nd::vector;
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
-pub fn basis_coeff_iter<F: Float>(degree: usize, t: F) -> impl Iterator<Item = F> {
+pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
     let u = F::ONE - t;
     let coeffs = BINOMIALS_U[degree];
     (0..=degree).map(move |i| {
-        t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()
+        (
+            i,
+            t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap(),
+        )
     })
+}
+
+/// Calculate the coefficient for the first derivative of the ith Bernstein polynomial at 't' for a given degree.
+///
+/// This is (i^2)/n.B[i-1,n-1](t) - (n-i)^2/n.B[i,n-1](t)
+///
+/// This requires F:Float as it uses 'powi', which is not available if only F:Num
+#[inline]
+pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<Item = (usize, F)>) {
+    let n = degree + 1;
+    let n_f = F::from_usize(n).unwrap();
+    (
+        n_f,
+        std::iter::once((0, F::ZERO))
+            .chain(basis_coeff_enum(degree - 1, t))
+            .zip(basis_coeff_enum(degree - 1, t).chain(std::iter::once((0, F::ZERO))))
+            .enumerate()
+            .map(move |(i, ((_, c0), (i1, c1)))| {
+                (
+                    i,
+                    (F::from_usize(i * i).unwrap() * c0
+                        - F::from_usize((n - i1) * (n - i1)).unwrap() * c1),
+                )
+            }),
+    )
 }
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
@@ -24,7 +52,7 @@ pub fn basis_coeff_iter<F: Float>(degree: usize, t: F) -> impl Iterator<Item = F
 ///
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
-pub fn basis_coeff_iter_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = F> {
+pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
     let u = F::ONE - t;
     let coeffs = BINOMIALS_U[degree];
     (0..=degree).map(move |i| {
@@ -35,7 +63,7 @@ pub fn basis_coeff_iter_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item =
         for _ in i..degree {
             x *= u;
         }
-        x
+        (i, x)
     })
 }
 
@@ -49,57 +77,6 @@ pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
     let u = F::one() - t;
     let coeffs = BINOMIALS_U[degree];
     t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()
-}
-
-/// Calculate the Mij element of the elevation matrix to elevate by one degree
-/// given the current degree. The elevation matrix is (degree+2)x(degree+1)
-///
-/// This is given by `P'[j] = Sum((n i).(1 j-i) / (n+1 j).P[i])`
-/// hence `Mij = (n i).(1 j-i) / (n+1 j)`
-///
-/// * Mij = 1 for i=j=0 and for i=degree, j=degree+1
-/// * Mij = j/n+1 for i=j-1
-/// * Mij = (n+1-j)/n+1 for i=j
-/// * Mij = 0 otherwise
-///
-#[inline]
-pub fn elevation_by_one_matrix_ele<N: Num>(degree: usize, i: usize, j: usize) -> (N, N) {
-    let scale = N::from_usize(degree + 1).unwrap();
-    if (j == 0 && i == 0) || (j == degree + 1 && i == degree) {
-        (scale, scale)
-    } else if i + 1 == j {
-        // note j!=n+1 as if j == n+1 then i = n, and previous case is used
-        // note j != 0
-        (N::from_usize(j).unwrap(), scale)
-    } else if i == j {
-        // note j!=0 as if j == 0 then i=0 and previous case is used
-        // note j != n+1 as i<=n
-        (N::from_usize(degree + 1 - j).unwrap(), scale)
-    } else {
-        (N::zero(), scale)
-    }
-}
-
-/// Generate an 'elevate by one degree' matrix given a specific degree, subject to
-/// a scaling down by the result
-///
-/// This is a (degree+2)*(degree+1) matrix that should be applied to the control points
-/// to generate a new array of control points of the elevated Bezier
-#[track_caller]
-#[must_use]
-pub fn generate_elevate_by_one_matrix<N: Num>(matrix: &mut [N], degree: usize) -> N {
-    assert!(
-        matrix.len() >= (degree + 1) * (degree + 2),
-        "Must have enough room in matrix for coeffs for degree -> degreee+1"
-    );
-    for ((i, j), m) in (0..(degree + 2))
-        .flat_map(|j| (0..degree + 1).map(move |i| (i, j)))
-        .zip(matrix.iter_mut())
-    {
-        let (n, _) = elevation_by_one_matrix_ele::<N>(degree, i, j);
-        *m = n;
-    }
-    N::from_usize(degree + 1).unwrap()
 }
 
 /// Calculate the control points of the nth derivative of a Bernstein Bezier
@@ -134,45 +111,6 @@ pub fn nth_derivative<F: Num, const D: usize>(pts: &[[F; D]], n: usize, d_pts: &
         }
     }
     scale
-}
-
-//mp split_at_de_cast
-/// Use de Casteljau's algorithm to split a Bernstein Bezier control
-/// points set into two other Bernstein Bezier control point sets
-/// at a given parameter t
-///
-/// The first Bezier returned has parameter t0 where 0<=t0<=1 maps to 0<=t*t0<=t
-///
-/// The second Bezier returned has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
-///
-/// This destroys the provided points
-pub fn split_at_de_cast<F: Num, const D: usize>(
-    pts: &mut [[F; D]],
-    t: F,
-    b0: &mut [[F; D]],
-    b1: &mut [[F; D]],
-) {
-    // eprintln!("Split {pts:?} at {t}");
-    // Beta[0][i] = pts[i]
-    // for j = 1..=n
-    //  for i = 0..=n-j
-    //   Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
-    let n = pts.len();
-    assert!(b0.len()>= n, "Splitting Bezier with {n} control points requires target Bezier 0 to have the same number of control points");
-    assert!(b1.len()>= n, "Splitting Bezier with {n} control points requires target Bezier 1 to have the same number of control points");
-    b0[0] = pts[0];
-    b1[n - 1] = pts[n - 1];
-    let u = F::one() - t;
-    for j in 1..n {
-        // For j=1, p[0] = u*p[0]+t*p[1], p[1] = u*p[1]+t*p[2], ... p[n-2] = u*p[n-2]+t*p[n-1]
-        // For j=n-1, p[0] = u*p[0] + t*p[1]
-        for i in 0..(n - j) {
-            pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
-        }
-        b0[j] = pts[0];
-        b1[n - 1 - j] = pts[n - 1 - j];
-    }
-    // eprintln!("Split into {b0:?} {b1:?}");
 }
 
 /// Elevate a Bezier by one degree, that should be reduced by 'F'
@@ -210,7 +148,7 @@ pub fn generate_bernstein_matrix<F: Num>(matrix: &mut [F], degree: usize, ts: &[
         degree + 1
     );
     for (r, t) in ts.iter().enumerate() {
-        for (c, bc) in basis_coeff_iter_num(degree, *t).enumerate() {
+        for (c, bc) in basis_coeff_enum_num(degree, *t) {
             matrix[r * (degree + 1) + c] = bc;
         }
     }

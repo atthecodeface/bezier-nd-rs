@@ -1,4 +1,4 @@
-use crate::Num;
+use crate::{utils, Num};
 use geo_nd::vector;
 
 use super::Bezier;

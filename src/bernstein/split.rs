@@ -1,7 +1,7 @@
-use crate::{BezierEval, BezierSection, BezierSplit, Num};
+use crate::{bernstein_fns, BezierEval, BezierSection, BezierSplit, Num};
 use geo_nd::vector;
 
-use super::{bezier_fns, Bezier};
+use super::Bezier;
 
 impl<F, const N: usize, const D: usize> BezierSplit for Bezier<F, N, D>
 where
@@ -20,7 +20,7 @@ where
         let mut temp = *self;
         let mut s0 = *self;
         let mut s1 = *self;
-        bezier_fns::split_at_de_cast(
+        bernstein_fns::split::into_two_at_de_cast(
             &mut temp.pts[0..self.degree + 1],
             t,
             &mut s0.pts,

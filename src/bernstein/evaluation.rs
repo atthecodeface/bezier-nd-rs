@@ -1,7 +1,7 @@
-use crate::{BezierEval, Num};
+use crate::{bernstein_fns, BezierEval, Num};
 use geo_nd::vector;
 
-use super::{bezier_fns, Bezier};
+use super::Bezier;
 
 impl<F, const N: usize, const D: usize> Bezier<F, N, D>
 where
@@ -45,7 +45,9 @@ where
 {
     fn point_at(&self, t: F) -> [F; D] {
         let mut r = [F::zero(); D];
-        for (c, pt) in bezier_fns::basis_coeff_iter_num(self.degree, t).zip(self.pts.iter()) {
+        for ((_i, c), pt) in
+            bernstein_fns::basis_coeff_enum_num(self.degree, t).zip(self.pts.iter())
+        {
             r = vector::add(r, pt, c);
         }
         r
