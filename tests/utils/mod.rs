@@ -14,6 +14,50 @@ pub use random::*;
 mod measures;
 pub use measures::*;
 
+pub fn vec_eq<F: Num, const D: usize>(v0: &[F; D], v1: &[F; D]) {
+    #[allow(non_snake_case)]
+    let EPSILON: F = (1E-8_f32).into();
+    let d = vector::distance_sq(v0, v1);
+    assert!(d < EPSILON, "mismatch in {:?} {:?}", v0, v1);
+}
+
+//fi pt_eq
+pub fn pt_eq<F: Float, const D: usize>(v: &[F; D], x: F, y: F) {
+    #[allow(non_snake_case)]
+    let EPSILON: F = (1E-5_f32).into();
+    assert!(
+        (v[0] - x).abs() < EPSILON,
+        "mismatch in x {:?} {:?} {:?}",
+        v,
+        x,
+        y
+    );
+    assert!(
+        (v[1] - y).abs() < EPSILON,
+        "mismatch in y {:?} {:?} {:?}",
+        v,
+        x,
+        y
+    );
+}
+
+//fi approx_eq
+pub fn approx_eq<F: Num, I: Into<F>>(a: F, b: F, tolerance: I, msg: &str) {
+    let tolerance = tolerance.into();
+    let diff = a - b;
+    let diff = if diff < F::ZERO { -diff } else { diff };
+    assert!(diff < tolerance, "{} {:?} {:?}", msg, a, b);
+}
+
+//fi bezier_eq
+pub fn bezier_eq<F: Float, const D: usize>(bez: &Bezier<F, D>, v: Vec<[F; D]>) {
+    assert_eq!(bez.degree(), 4, "bezier_eq works only for cubics");
+    vec_eq(bez.control_point(0), &v[0].into());
+    vec_eq(bez.control_point(1), &v[1].into());
+    vec_eq(bez.control_point(2), &v[2].into());
+    vec_eq(bez.control_point(3), &v[3].into());
+}
+
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     assert!(

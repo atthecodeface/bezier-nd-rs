@@ -20,13 +20,11 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         (&self[0], &self[2])
     }
     fn closeness_sq_to_line(&self) -> F {
-        vector::length_sq(&vector::sum_scaled(
-            self,
-            &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],
-        )) * F::ZERO
-            + utils::distance_sq_to_line_segment(&self[1], &self[0], &self[2])
+        eprintln!("quad {self:?}");
+        utils::distance_sq_to_line_segment(&self[1], &self[0], &self[2])
     }
     fn dc_sq_from_line(&self) -> F {
+        eprintln!("dc {self:?}");
         vector::length_sq(&vector::sum_scaled(
             self,
             &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],

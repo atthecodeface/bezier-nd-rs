@@ -159,7 +159,12 @@ where
     /// and to leave the top of the stack starting with pb.
     fn next(&mut self) -> Option<Self::Item> {
         while let Some((t0, t1, bezier)) = self.split_iter.next() {
-            if bezier.closeness_sq_to_line() < self.straightness_sq {
+            let metric = if T {
+                bezier.dc_sq_from_line()
+            } else {
+                bezier.closeness_sq_to_line()
+            };
+            if metric < self.straightness_sq {
                 let (ep0, ep1) = bezier.endpoints();
                 return Some((t0, ep0.clone(), t1, ep1.clone()));
             } else {

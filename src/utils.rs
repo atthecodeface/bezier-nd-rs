@@ -35,7 +35,7 @@ pub fn relative_to_line<F: Num, const D: usize>(
 
     // pt_along_line = P . L = k|L|^2
     let pt_along_line = vector::dot(&pt_m_l0, &l1_m_l0);
-    (pt_along_line / len_l1_m_l0_sq, len_l1_m_l0_sq, true)
+    (pt_along_line, len_l1_m_l0_sq, true)
 }
 
 /// Calculate the distance squared to a line segment l0<>l1
@@ -49,7 +49,7 @@ pub fn distance_sq_to_line_segment<F: Num, const D: usize>(
         let t = t_times_len_sq / line_len_sq;
         let u = F::ONE - t;
         vector::distance_sq(pt, &vector::sum_scaled(&[*l0, *l1], &[u, t]))
-    } else if valid && t_times_len_sq > line_len_sq {
+    } else if valid && t_times_len_sq >= line_len_sq {
         vector::distance_sq(pt, l1)
     } else {
         vector::distance_sq(pt, l0)

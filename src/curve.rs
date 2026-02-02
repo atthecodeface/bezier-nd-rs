@@ -1,10 +1,11 @@
 //a Imports
-use crate::BezierEval;
-use crate::BezierSplit;
 use crate::Float;
 use geo_nd::vector;
 
-use crate::{BezierLineIter, BezierPointIter, BezierReduce};
+use crate::{
+    BezierEval, BezierIntoIterator, BezierLineIter, BezierPointIter, BezierReduce, BezierSection,
+    BezierSplit,
+};
 
 //a Bezier
 //tp Bezier
@@ -262,7 +263,54 @@ where
     }
 }
 
-//ip Bezier
+impl<F, const D: usize> BezierSection<F> for Bezier<F, D>
+where
+    F: Float,
+{
+    fn split_at(&self, t: F) -> (Self, Self) {
+        (self.section(F::ZERO, t), self.section(t, F::ONE))
+    }
+    fn section(&self, t0: F, t1: F) -> Self {
+        match self.num {
+            2 => {
+                let u0 = F::one() - t0;
+                let u1 = F::one() - t1;
+                let r0 = self.vector_of(&[u0, t0], F::one());
+                let r1 = self.vector_of(&[u1, t1], F::one());
+                Self::line(&r0, &r1)
+            }
+            3 => {
+                let two: F = (2.0_f32).into();
+                let u0 = F::one() - t0;
+                let u1 = F::one() - t1;
+                let rp0 = self.vector_of(&[u0 * u0, t0 * t0, two * u0 * t0], F::one());
+                let rp1 = self.vector_of(&[u1 * u1, t1 * t1, two * u1 * t1], F::one());
+                let rc0 = self.vector_of(&[u0 * u1, t1 * t0, u0 * t1 + u1 * t0], F::one());
+                Self::quadratic(&rp0, &rc0, &rp1)
+            }
+            _ => {
+                // simply: c0 = p0 + tangent(0)
+                // and if we scale the curve to t1-t0 in size, tangents scale the same
+                let rp0 = self.point_at(t0);
+                let rp1 = self.point_at(t1);
+                let (_sc0, rt0) = self.derivative_at(t0);
+                let (_sc1, rt1) = self.derivative_at(t1);
+
+                let t1_m_t0 = t1 - t0;
+
+                let mut rc0 = [F::zero(); D];
+                let mut rc1 = [F::zero(); D];
+                for i in 0..D {
+                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i]; // *sc0*sc1?
+                    rc1[i] = rp1[i] - t1_m_t0 * rt1[i];
+                }
+
+                Self::cubic(&rp0, &rc0, &rc1, &rp1)
+            }
+        }
+    }
+}
+
 impl<F, const D: usize> Bezier<F, D>
 where
     F: Float,
@@ -368,59 +416,23 @@ where
     //mp bezier_between
     /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
     pub fn bezier_between(&self, t0: F, t1: F) -> Self {
-        match self.num {
-            2 => {
-                let u0 = F::one() - t0;
-                let u1 = F::one() - t1;
-                let r0 = self.vector_of(&[u0, t0], F::one());
-                let r1 = self.vector_of(&[u1, t1], F::one());
-                Self::line(&r0, &r1)
-            }
-            3 => {
-                let two: F = (2.0_f32).into();
-                let u0 = F::one() - t0;
-                let u1 = F::one() - t1;
-                let rp0 = self.vector_of(&[u0 * u0, t0 * t0, two * u0 * t0], F::one());
-                let rp1 = self.vector_of(&[u1 * u1, t1 * t1, two * u1 * t1], F::one());
-                let rc0 = self.vector_of(&[u0 * u1, t1 * t0, u0 * t1 + u1 * t0], F::one());
-                Self::quadratic(&rp0, &rc0, &rp1)
-            }
-            _ => {
-                // simply: c0 = p0 + tangent(0)
-                // and if we scale the curve to t1-t0 in size, tangents scale the same
-                let rp0 = self.point_at(t0);
-                let rp1 = self.point_at(t1);
-                let (_sc0, rt0) = self.derivative_at(t0);
-                let (_sc1, rt1) = self.derivative_at(t1);
-
-                let t1_m_t0 = t1 - t0;
-
-                let mut rc0 = [F::zero(); D];
-                let mut rc1 = [F::zero(); D];
-                for i in 0..D {
-                    rc0[i] = rp0[i] + t1_m_t0 * rt0[i]; // *sc0*sc1?
-                    rc1[i] = rp1[i] - t1_m_t0 * rt1[i];
-                }
-
-                Self::cubic(&rp0, &rc0, &rc1, &rp1)
-            }
-        }
+        self.section(t0, t1)
     }
 
     //mp as_lines
     /// Return a [BezierLineIter] iterator that provides line segments
     /// when the Bezier is broken down into 'straight' enough through
     /// bisection.
-    pub fn as_lines(&self, straightness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, true>::new(self, straightness_sq)
+    pub fn as_lines(&self, straightness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> + '_ {
+        <Self as BezierIntoIterator<F, _, [F; D]>>::as_lines(self, straightness_sq)
     }
 
     //mp as_points
     /// Return a [BezierPointIter] iterator that provides points along
     /// the curve when the Bezier is broken down into 'straight'
     /// enough through bisection.
-    pub fn as_points(&self, straightness_sq: F) -> impl Iterator<Item = [F; D]> {
-        BezierPointIter::new(self.as_lines(straightness_sq))
+    pub fn as_points(&self, straightness_sq: F) -> impl Iterator<Item = [F; D]> + '_ {
+        <Self as BezierIntoIterator<F, _, [F; D]>>::as_points(self, straightness_sq)
     }
 
     //mp is_straight

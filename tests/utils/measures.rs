@@ -27,3 +27,46 @@ pub fn max_distance_sq<
     }
     max_d_sq
 }
+
+pub fn assert_pts_all_within_closeness_sq_of_pts<
+    'a,
+    F: Num,
+    I: Iterator<Item = &'a [F; D]> + 'a,
+    const D: usize,
+>(
+    good_pts: &[[F; D]],
+    test_pts: I,
+    closeness_sq: F,
+) {
+    let mut s = 0;
+    let ngood = good_pts.len();
+    for test_pt in test_pts {
+        let mut found = false;
+        for t in 0..(2 * ngood) {
+            let i = {
+                if (t & 1) != 0 {
+                    if s < 1 + t / 2 {
+                        continue;
+                    } else {
+                        s - 1 + t / 2
+                    }
+                } else {
+                    s + t / 2
+                }
+            };
+            if i >= ngood {
+                continue;
+            }
+            let d_sq = vector::distance_sq(&test_pt, &good_pts[i]);
+            if d_sq <= closeness_sq {
+                s = i;
+                found = true;
+                break;
+            }
+        }
+        assert!(
+            found,
+            "Failed to find a point in segment_pts within {closeness_sq} of test point {test_pt:?}"
+        );
+    }
+}
