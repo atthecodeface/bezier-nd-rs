@@ -1,6 +1,7 @@
 use crate::Num;
 use crate::{
-    BezierDistance, BezierEval, BezierMinMax, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax, BezierReduce,
+    BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -156,5 +157,22 @@ impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 2] {
     }
     fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
         None
+    }
+}
+
+impl<F: Num, const D: usize> BezierConstruct<F, D> for [[F; D]; 2] {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+        let mut matrix = [F::ZERO; 4];
+        let mut pts = [[F::ZERO; D]; 2];
+        builder.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
+        if geo_nd::matrix::determinant2(&matrix).is_unreliable_divisor() {
+            Err(())
+        } else {
+            let matrix = geo_nd::matrix::inverse2(&matrix);
+            let mut bezier = [[F::ZERO; D]; 2];
+            bezier[0] = geo_nd::vector::sum_scaled(&pts, &matrix[0..2]);
+            bezier[1] = geo_nd::vector::sum_scaled(&pts, &matrix[2..4]);
+            Ok(bezier)
+        }
     }
 }

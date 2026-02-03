@@ -1,3 +1,4 @@
+use crate::bernstein_fns;
 use crate::Num;
 
 /// BezierBuildConstraint is a constraint that can be specified when
@@ -36,6 +37,39 @@ impl<F: Num, const D: usize> BezierBuildConstraint<F, D> {
         match self {
             BezierBuildConstraint::PositionAtT(_, pt) => pt,
             BezierBuildConstraint::DerivativeAtT(_, _, pt) => pt,
+        }
+    }
+
+    pub fn fill_bernstein_coeffs_and_pt(
+        &self,
+        degree: usize,
+        coeffs: &mut [F],
+        pt: &mut [F; D],
+    ) -> bool {
+        if coeffs.len() < degree + 1 {
+            false
+        } else {
+            match self {
+                BezierBuildConstraint::PositionAtT(t, posn) => {
+                    for (c, (_, bc)) in coeffs
+                        .iter_mut()
+                        .zip(bernstein_fns::basis_coeff_enum_num(degree, *t))
+                    {
+                        *c = bc;
+                    }
+                    *pt = *posn;
+                    true
+                }
+                BezierBuildConstraint::DerivativeAtT(t, 1, dp) => {
+                    let (dc_reduce, dc_iter) = bernstein_fns::basis_dt_coeff_enum_num(degree, *t);
+                    for (c, (_, bc)) in coeffs.iter_mut().zip(dc_iter) {
+                        *c = bc / dc_reduce;
+                    }
+                    *pt = *dp;
+                    true
+                }
+                BezierBuildConstraint::DerivativeAtT(_t, _n, _dp) => false,
+            }
         }
     }
 }
@@ -95,5 +129,48 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
     /// Return an iterator of the build constraints
     pub fn iter(&self) -> impl Iterator<Item = &'_ BezierBuildConstraint<F, D>> {
         self.constraints.iter()
+    }
+
+    /// Fill a matrix and set of mapped control points `pts` from the constraints, such that if a
+    /// Bezier curve had Bernstein control points `p` then `matrix * p = pts`.
+    ///
+    /// If the matrix is invertible, then `p = matrix.inverse() * pts`, and the required Bezier curve
+    /// that meets the constraints can be built. If the matrix is not invertible then the Bezier curve
+    /// constraints are either tautological or contradictory.
+    pub fn fill_fwd_matrix_and_pts(&self, matrix: &mut [F], pts: &mut [[F; D]]) -> Result<(), ()> {
+        let degree = self.bezier_min_degree();
+        let n2 = (degree + 1) * (degree + 1);
+        if matrix.len() != n2 {
+            return Err(());
+        }
+        if pts.len() != degree + 1 {
+            return Err(());
+        }
+        for ((c, matrix_row), pt) in self
+            .constraints
+            .iter()
+            .zip(matrix.chunks_exact_mut(degree + 1))
+            .zip(pts.iter_mut())
+        {
+            if !c.fill_bernstein_coeffs_and_pt(degree, matrix_row, pt) {
+                return Err(());
+            }
+        }
+        Ok(())
+    }
+
+    /// Fill a matrix and set of mapped control points `pts` from the constraints, such that if a
+    /// Bezier curve had Bernstein control points `p` then `matrix * p = pts`.
+    ///
+    /// If the matrix is invertible, then `p = matrix.inverse() * pts`, and the required Bezier curve
+    /// that meets the constraints can be built. If the matrix is not invertible then the Bezier curve
+    /// constraints are either tautological or contradictory.
+    pub fn get_matrix_pts(&self) -> Result<(Vec<F>, Vec<[F; D]>), ()> {
+        let degree = self.bezier_min_degree();
+        let n2 = (degree + 1) * (degree + 1);
+        let mut matrix = vec![F::ZERO; n2];
+        let mut pts = vec![[F::ZERO; D]; (degree + 1)];
+        let _ok = self.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
+        Ok((matrix, pts))
     }
 }

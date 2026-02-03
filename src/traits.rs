@@ -1,3 +1,4 @@
+use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
 /// A trait that is the basic requirement for the 't' parameter for Beziers; it
@@ -495,4 +496,11 @@ where
     fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
         BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
+}
+
+pub trait BezierConstruct<F, const D: usize>: Sized
+where
+    F: Num,
+{
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()>;
 }

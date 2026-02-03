@@ -43,17 +43,6 @@ where
         (s, scale)
     }
 
-    /// Use de Casteljau's algorithm to split
-    pub fn split_at_de_cast(mut self, t: F) -> (Self, Self) {
-        let mut first = self;
-        bernstein_fns::split::into_two_at_de_cast(
-            &mut self.pts[0..self.degree + 1],
-            t,
-            &mut first.pts,
-        );
-        (first, self)
-    }
-
     /// Apply a (new_degree+1) by (degree+1) matrix to the points to generate a new Bezier
     /// of a new degree
     pub fn apply_matrix(&self, matrix: &[F], new_degree: usize) -> Self {
@@ -115,71 +104,31 @@ where
         s
     }
 
-    //mp bezier_between
-    /// Returns the Bezier that is a subset of this Bezier between two parameters 0 <= t0 < t1 <= 1
-    pub fn bezier_between(&self, t0: F, t1: F) -> Self {
-        let dt = t1 - t0;
-        assert!(t0 < F::one(), "Must select a t0 that is less than 1.0");
-        assert!(dt > F::zero(), "Must select a t range that is > 0");
-        if t0 == F::zero() {
-            self.split_at_de_cast(dt).0
-        } else if t1 == F::one() {
-            self.split_at_de_cast(dt).1
-        } else {
-            // b is the subset from t0 to 1.0
-            let (_, b) = self.split_at_de_cast(t0);
-            b.split_at_de_cast(dt / (F::one() - t0)).0
-        }
-    }
-
     /// Construct a [Bezier] from a builder, of the minimum degree
     ///
     /// Return Err if the builder has a degree larger than this type
     /// permits
     pub fn of_builder(builder: BezierBuilder<F, D>) -> Result<Self, ()> {
-        let degree = builder.bezier_min_degree();
-        if degree > Self::max_degree() {
+        let (mut matrix, pts) = builder.get_matrix_pts()?;
+        if pts.len() > N {
             return Err(());
         }
-        let n2 = (degree + 1) * (degree + 1);
-        let mut bern_n = [F::zero(); 100];
-
-        let mut basis = vec![];
-        let mut pts = vec![];
-        for c in builder.iter() {
-            let t = c.at();
-            let pt = c.posn();
-            pts.push(*pt);
-            bernstein_fns::generate_bernstein_matrix(&mut bern_n[0..(degree + 1)], degree, &[t]);
-            basis.extend(bern_n.iter().take(degree + 1));
-        }
-
-        if pts.len() != degree + 1 {
-            return Err(());
-        }
-
+        let degree = pts.len() - 1;
         let bezier = Self::new(&pts);
 
-        let mut basis_inverse = basis.clone();
-        let mut lu = basis.clone();
+        let mut lu = matrix.clone();
         let mut pivot = vec![0; degree + 1];
-        if matrix::lup_decompose(degree + 1, &basis[0..n2], &mut lu[0..n2], &mut pivot) == F::ZERO {
+        let mut tr0 = vec![F::zero(); degree + 1];
+        let mut tr1 = vec![F::zero(); degree + 1];
+
+        if matrix::lup_decompose(degree + 1, &matrix, &mut lu, &mut pivot) == F::ZERO {
             return Err(());
         }
 
-        let mut tr0 = vec![F::zero(); degree + 1];
-        let mut tr1 = vec![F::zero(); degree + 1];
         assert!(
-            matrix::lup_invert(
-                degree + 1,
-                &lu,
-                &pivot,
-                &mut basis_inverse,
-                &mut tr0,
-                &mut tr1
-            ),
-            "Matrix is invertible"
+            matrix::lup_invert(degree + 1, &lu, &pivot, &mut matrix, &mut tr0, &mut tr1),
+            "Matrix must be invertible"
         );
-        Ok(bezier.apply_matrix(&basis_inverse, degree))
+        Ok(bezier.apply_matrix(&matrix, degree))
     }
 }

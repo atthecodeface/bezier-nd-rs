@@ -53,6 +53,35 @@ pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<I
     )
 }
 
+/// Calculate the coefficient for the first derivative of the ith Bernstein polynomial at 't' for a given degree.
+///
+/// This is (i^2)/n.B[i-1,n-1](t) - (n-i)^2/n.B[i,n-1](t)
+///
+/// This requires F:Num
+#[inline]
+#[track_caller]
+pub fn basis_dt_coeff_enum_num<F: Num>(
+    degree: usize,
+    t: F,
+) -> (F, impl Iterator<Item = (usize, F)>) {
+    let n = degree + 1;
+    let n_f = F::from_usize(n).unwrap();
+    (
+        n_f,
+        std::iter::once((0, F::ZERO))
+            .chain(basis_coeff_enum_num(degree - 1, t))
+            .zip(basis_coeff_enum_num(degree - 1, t).chain(std::iter::once((0, F::ZERO))))
+            .enumerate()
+            .map(move |(i, ((_, c0), (i1, c1)))| {
+                (
+                    i,
+                    (F::from_usize(i * i).unwrap() * c0
+                        - F::from_usize((n - i1) * (n - i1)).unwrap() * c1),
+                )
+            }),
+    )
+}
+
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
 /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )

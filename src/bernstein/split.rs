@@ -7,7 +7,7 @@ where
     F: Num,
 {
     fn split(&self) -> (Self, Self) {
-        self.split_at_de_cast(0.5_f32.into())
+        self.split_at(0.5_f32.into())
     }
 }
 

@@ -1,7 +1,7 @@
 use crate::utils;
 use crate::{
-    bernstein_fns, BezierDistance, BezierEval, BezierMinMax, BezierReduce, BezierSection,
-    BezierSplit, BoxedBezier,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax,
+    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 use crate::{Float, Num};
 use geo_nd::vector;
@@ -331,5 +331,23 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     }
     fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
         None
+    }
+}
+
+impl<F: Num, const D: usize> BezierConstruct<F, D> for [[F; D]; 3] {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+        let mut matrix = [F::ZERO; 9];
+        let mut pts = [[F::ZERO; D]; 3];
+        builder.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
+        if geo_nd::matrix::determinant3(&matrix).is_unreliable_divisor() {
+            Err(())
+        } else {
+            let matrix = geo_nd::matrix::inverse3(&matrix);
+            let mut bezier = [[F::ZERO; D]; 3];
+            bezier[0] = geo_nd::vector::sum_scaled(&pts, &matrix[0..3]);
+            bezier[1] = geo_nd::vector::sum_scaled(&pts, &matrix[3..6]);
+            bezier[2] = geo_nd::vector::sum_scaled(&pts, &matrix[6..9]);
+            Ok(bezier)
+        }
     }
 }
