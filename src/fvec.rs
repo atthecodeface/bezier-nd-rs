@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierSection,
-    BezierSplit,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierMinMax,
+    BezierSection, BezierSplit,
 };
 use geo_nd::{matrix, vector};
 
@@ -46,6 +46,24 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     }
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
+    }
+}
+
+impl<F: Num, const D: usize> BezierMinMax<F> for Vec<[F; D]> {
+    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
+        match self.len() {
+            1 => Some((F::ZERO, self[0][pt_index])),
+            2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&self[0..2])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            _ => None,
+        }
     }
 }
 

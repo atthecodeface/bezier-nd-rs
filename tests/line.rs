@@ -1,17 +1,16 @@
 //a Imports
-use bezier_nd::BezierEval;
-use bezier_nd::BezierSplit;
-use bezier_nd::Num;
 use bezier_nd::{BasicBezier, Bezier};
+use bezier_nd::{Float, Num};
 mod utils;
-use bezier_nd::BezierMinMax;
+use rand::prelude::*;
 
 /// Test a Bezier that is a line between two points
 fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
     bezier: &B,
-    p0: &[F; 2],
-    p1: &[F; 2],
+    pts: [[F; 2]; 2],
 ) {
+    let p0 = &pts[0];
+    let p1 = &pts[1];
     let pm = [
         (p0[0] + p1[0]) / 2.0_f32.into(),
         (p0[1] + p1[1]) / 2.0_f32.into(),
@@ -20,6 +19,12 @@ fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 
     assert_eq!(bezier.degree(), 1);
     assert_eq!(bezier.num_control_points(), 2);
+    for i in 0..bezier.num_control_points() {
+        assert_eq!(bezier.control_point(i), &pts[i]);
+    }
+
+    assert_eq!(bezier.closeness_sq_to_line(), F::ZERO);
+    assert_eq!(bezier.dc_sq_from_line(), F::ZERO);
 
     utils::vec_eq(&bezier.endpoints().0, p0);
     utils::vec_eq(&bezier.endpoints().1, p1);
@@ -61,23 +66,41 @@ fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
     utils::assert_min_max_coords(bezier);
 }
 
-fn test_line() {
-    let p0 = [0., 0.];
-    let p1 = [10., 0.];
-    let p2 = [10., 1.];
-    let b01: Bezier<_, _> = [p0, p1].as_ref().try_into().unwrap();
-    let b02: Bezier<_, _> = [p0, p2].into();
+fn test_line<
+    F: Float,
+    R: Rng,
+    D: Distribution<f32>,
+    B: BasicBezier<F, [F; 2]> + std::fmt::Debug,
+    M: Fn([[F; 2]; 2]) -> B,
+>(
+    rng: &mut R,
+    distribution: &D,
 
-    test_line_between(&b01, &p0, &p1);
-    test_line_between(&[p0, p1], &p0, &p1);
-    //    test_line_between(&vec![p0, p1], &p0, &p1);
-
-    test_line_between(&b02, &p0, &p2);
-    test_line_between(&[p0, p2], &p0, &p2);
-    //    test_line_between(&vec![p0, p2], &p0, &p2);
+    create_bezier: M,
+) {
+    for _ in 0..10 {
+        let pts: [[F; 2]; 2] = utils::new_random_point_array(rng, distribution);
+        let bezier = create_bezier(pts);
+        test_line_between(&bezier, pts);
+    }
 }
 
 #[test]
-fn test_f32_line() {
-    test_line();
+fn test_lines() {
+    let mut rng = utils::make_random("test_lines_seed");
+    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
+
+    test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
+        b
+    });
+    test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.into();
+        b
+    });
+    test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
+        let b: Vec<_> = pts.into();
+        b
+    });
+    test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| pts);
 }
