@@ -1,20 +1,23 @@
-use crate::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
-use crate::{Float, Num};
-use geo_nd::vector;
+use crate::Num;
+use crate::{
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierSection,
+    BezierSplit,
+};
+use geo_nd::{matrix, vector};
 
-impl<F: Float, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
+impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     fn point_at(&self, t: F) -> [F; D] {
         let degree = self.len() - 1;
 
         self.iter()
-            .zip(bernstein_fns::basis_coeff_enum(degree, t))
+            .zip(bernstein_fns::basis_coeff_enum_num(degree, t))
             .fold([F::ZERO; D], |acc, (pt, (_i, coeff))| {
                 vector::add(acc, pt, coeff)
             })
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
         let degree = self.len() - 1;
-        let (reduce, coeffs) = bernstein_fns::basis_dt_coeff_enum(degree, t);
+        let (reduce, coeffs) = bernstein_fns::basis_dt_coeff_enum_num(degree, t);
         (
             reduce,
             self.iter()
@@ -73,5 +76,66 @@ impl<F: Num, const D: usize> BezierSection<F> for Vec<[F; D]> {
             bernstein_fns::split::bezier_to_de_cast(&mut to_split, t10);
         }
         to_split
+    }
+}
+
+impl<F: 'static + Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
+    type ElevatedByOne = Self;
+    type Elevated = Self;
+    fn elevate_by_one(&self) -> Option<Self> {
+        let mut s = Vec::with_capacity(self.len() + 1);
+        s.push(*self.first().unwrap());
+        let n = self.len();
+        let n_f: F = (n as f32).into();
+        for (i, (p0, p1)) in self.iter().zip(self.iter().skip(1)).enumerate() {
+            let s0: F = ((i + 1) as f32).into();
+            let s1: F = ((n - (i + 1)) as f32).into();
+            s.push(vector::sum_scaled(&[*p0, *p1], &[s0 / n_f, s1 / n_f]));
+        }
+        s.push(*self.last().unwrap());
+        Some(s)
+    }
+    fn elevate_by(&self, degree: usize) -> Option<Self> {
+        if degree == 0 {
+            Some(self.clone())
+        } else {
+            let mut bezier = self.elevate_by_one();
+            for _ in 1..degree {
+                bezier = bezier.unwrap().elevate_by_one();
+            }
+            bezier
+        }
+    }
+}
+
+impl<F: Num, const D: usize> BezierConstruct<F, D> for Vec<[F; D]> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+        let (mut matrix, pts) = builder.get_matrix_pts()?;
+        let degree = pts.len() - 1;
+
+        let mut lu = matrix.clone();
+        let mut pivot = vec![0; degree + 1];
+        let mut tr0 = vec![F::zero(); degree + 1];
+        let mut tr1 = vec![F::zero(); degree + 1];
+
+        if matrix::lup_decompose(degree + 1, &matrix, &mut lu, &mut pivot) == F::ZERO {
+            return Err(());
+        }
+
+        assert!(
+            matrix::lup_invert(degree + 1, &lu, &pivot, &mut matrix, &mut tr0, &mut tr1),
+            "Matrix must be invertible"
+        );
+        let bezier: Vec<_> = matrix
+            .chunks_exact(degree + 1)
+            .map(|m| {
+                m.iter()
+                    .zip(pts.iter())
+                    .fold([F::zero(); D], |acc, (coeff, p)| {
+                        vector::add(acc, p, *coeff)
+                    })
+            })
+            .collect();
+        Ok(bezier)
     }
 }

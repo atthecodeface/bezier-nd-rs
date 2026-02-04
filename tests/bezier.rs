@@ -88,8 +88,13 @@ fn test_line() {
     let p0 = [0., 0.];
     let p1 = [10., 0.];
     let p2 = [10., 1.];
-    let b01 = Bezier::line(&p0, &p1);
-    let b02 = Bezier::line(&p0, &p2);
+    let b01: Bezier<_, _> = [p0, p1].as_ref().try_into().unwrap();
+    let b02: Bezier<_, _> = [p0, p2].into();
+
+    assert_eq!(b01.degree(), 1);
+    assert_eq!(b02.degree(), 1);
+    assert_eq!(b01.num_control_points(), 2);
+    assert_eq!(b02.num_control_points(), 2);
 
     utils::pt_eq(&b01.point_at(0.), p0[0], p0[1]);
     utils::pt_eq(
@@ -164,7 +169,10 @@ fn test_quadratic() {
     let p3 = [20., 0.];
 
     // b is a quad with endpoints (0,0).and (10,1), with the middle control point of (10.0)
-    let b = Bezier::quadratic(&p0, &p1, &p2);
+    let b: Bezier<_, _> = [p0, p1, p2].as_ref().try_into().unwrap();
+
+    assert_eq!(b.degree(), 2);
+    assert_eq!(b.num_control_points(), 3);
 
     // These are generically true...
     utils::pt_eq(&b.point_at(0.), p0[0], p0[1]);
@@ -259,11 +267,15 @@ fn test_quadratic() {
 
 //fi test_cubic
 fn test_cubic() {
-    let p0: FArray<f32, 2> = [0., 0.].into();
-    let p1: FArray<f32, 2> = [10., 0.].into();
-    let p2: FArray<f32, 2> = [6., 1.].into();
-    let p3: FArray<f32, 2> = [20., 5.].into();
-    let b = Bezier::cubic(&p0, &p1, &p2, &p3);
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
+
+    let b: Bezier<_, _> = [p0, p1, p2, p3].as_ref().try_into().unwrap();
+
+    assert_eq!(b.degree(), 3);
+    assert_eq!(b.num_control_points(), 4);
 
     utils::pt_eq(&b.point_at(0.), p0[0], p0[1]);
     utils::pt_eq(&b.point_at(1.), p3[0], p3[1]);

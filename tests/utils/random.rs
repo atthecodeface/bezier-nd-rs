@@ -5,7 +5,6 @@ use bezier_nd::Num;
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
 
-
 pub fn max<F: Num>(a: F, b: F) -> F {
     if a > b {
         a
@@ -67,6 +66,17 @@ pub fn new_random_point_array<
     distribution: &D,
 ) -> [[F; N]; M] {
     let mut pts = [[(0.0_f32).into(); N]; M];
+    set_random_point_array(rng, distribution, &mut pts);
+    pts
+}
+
+/// Make an array of random points
+pub fn new_random_point_vec<R: Rng, F: Copy + From<f32>, D: Distribution<f32>, const N: usize>(
+    rng: &mut R,
+    distribution: &D,
+    num_pts: usize,
+) -> Vec<[F; N]> {
+    let mut pts = vec![[(0.0_f32).into(); N]; num_pts];
     set_random_point_array(rng, distribution, &mut pts);
     pts
 }

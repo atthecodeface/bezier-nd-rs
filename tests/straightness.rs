@@ -2,7 +2,7 @@
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
 use bezier_nd::{BezierIntoIterator, BezierSplit};
-use bezier_nd::{Float, Num};
+use bezier_nd::Float;
 mod utils;
 use geo_nd::{vector, FArray, Vector};
 

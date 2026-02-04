@@ -1,4 +1,5 @@
 use crate::bernstein_fns;
+use crate::BezierConstruct;
 use crate::Num;
 
 /// BezierBuildConstraint is a constraint that can be specified when
@@ -62,8 +63,10 @@ impl<F: Num, const D: usize> BezierBuildConstraint<F, D> {
                 }
                 BezierBuildConstraint::DerivativeAtT(t, 1, dp) => {
                     let (dc_reduce, dc_iter) = bernstein_fns::basis_dt_coeff_enum_num(degree, *t);
-                    for (c, (_, bc)) in coeffs.iter_mut().zip(dc_iter) {
+                    eprintln!("{dc_reduce}");
+                    for (c, (_i, bc)) in coeffs.iter_mut().zip(dc_iter) {
                         *c = bc / dc_reduce;
+                        eprintln!("{c} {bc} {dc_reduce} {degree} {_i}");
                     }
                     *pt = *dp;
                     true
@@ -169,8 +172,13 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
         let degree = self.bezier_min_degree();
         let n2 = (degree + 1) * (degree + 1);
         let mut matrix = vec![F::ZERO; n2];
-        let mut pts = vec![[F::ZERO; D]; (degree + 1)];
+        let mut pts = vec![[F::ZERO; D]; degree + 1];
         let _ok = self.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
         Ok((matrix, pts))
+    }
+
+    /// Construct a Bezier curve using this builder
+    pub fn construct<B: BezierConstruct<F, D>>(&self) -> Result<B, ()> {
+        B::of_builder(self)
     }
 }

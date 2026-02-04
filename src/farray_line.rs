@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax, BezierReduce,
-    BezierSection, BezierSplit, BoxedBezier,
+    BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval, BezierMinMax,
+    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -128,6 +128,19 @@ impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 2] {
     /// This returns the *actual* minimum distance to the line segmenr from the point
     fn est_min_distance_sq_to(&self, p: &[F; D]) -> F {
         crate::utils::distance_sq_to_line_segment(p, &self[0], &self[1])
+    }
+}
+
+impl<F: 'static + Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 2] {
+    type ElevatedByOne = [[F; D]; 3];
+    // Full elevation is not supported
+    type Elevated = Self;
+    fn elevate_by_one(&self) -> Option<[[F; D]; 3]> {
+        Some([
+            self[0],
+            vector::sum_scaled(self, &[0.5_f32.into(), 0.5_f32.into()]),
+            self[1],
+        ])
     }
 }
 

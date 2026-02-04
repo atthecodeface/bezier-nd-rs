@@ -2,10 +2,9 @@
 #![warn(missing_docs)]
 /*!
 
-TO DO:
+# TODO
 
-* New building of Bezier
-* Reduce to quadratics, reduce to straight lines, ele_red matrix minus identity creation and use for dc metrics
+Adder BuilderError to BezierBuilder, to provide feedback on why a build fails
 
 # Bezier curve library
 
@@ -13,7 +12,7 @@ This library provides traits for implementing Bezier curves, such as
 evaluation at parameter values, derivatives, splitting into lines, and
 reduction/elevation of degree.
 
-Implementations are provided for arrays of vectors, where a vector is an array of D dimensions of floats (such as f32 or f64).
+Implementations are provided for arrays of points], where a point is an array of D dimensions of floats (such as f32 or f64), and `Vec` of points.
 
 The Beziers are stored using standard control points, and hence use Bernstein polynomials of a parameter 't' to find trace the locus of the Bezier.
 
@@ -23,10 +22,10 @@ Traits are used throughout that define the numeric types that Bezier curves use 
 This is fundamentally to provide support for 'f32' and 'f64' as generic floats, but it (in general) also allows for
 rational number types - provided they are Copy.
 
-Two traits are used. Firstly there is Num, which is effectively a collection of num_traits, with From<32>, PartialOrd, Copy and Display.
-This trait has a blanket implementation for all types that support the required traits. This 'Num' trait is all that is required for the Bezier traits.
+Two traits are used. Firstly there is [Num], which is effectively a collection of num_traits, with From<32>, PartialOrd, Copy and Display.
+This trait has a blanket implementation for all types that support the required traits. This [Num] trait is all that is required for the Bezier traits.
 
-Secondly there is Float, which is Num plus the
+Secondly there is [Float], which is Num plus the
 addition of [num_traits::Float] - which provides sqrt() and cbrt(). These latter are required for some root finding, or minimum distance
 determination. Hence some Bezier *implementations*, such as for `[[F;D];4]` for cubic Bezier curves, require F to support not just Num but Float, as the
 mathematics for the analytical functions require sqrt() or cbrt().
@@ -86,6 +85,7 @@ This is implemented for:
 * `[[F; D]; 3]` as a quadratic Bezier, with parameter of type F and points of type `[F;D]`
 * `[[F; D]; 4]` as a cubic Bezier, with parameter of type F and points of type `[F;D]`
 * `BezierND<F, N, D>` for a Bezier up to degree N with parameter of type F and points of type `[F;D]`
+* `Vec<[F;D]>` as an aribtrary degree Bezier with parameter of type F and points of type `[F;D]`
 
 ## [BezierSplit]
 
@@ -95,7 +95,7 @@ to be [Sized], and is not dyn compatible as the split method must return two Bez
 Splitting a Bezier curve into two (curves A and B, at the point with t=0.5) yields two Beziers that provide precisely the
 same points; the first for `P(t)=Pa(2*t)` (0<=t<=0.5), and the second for `P(t)=Pb(2*t-0.5)` (0.5<=t<=1).
 
-If a type provides this trait (and Clone) then a BezierSplitIter can be created, which is an iterator that can provide
+If a type provides this trait (and Clone) then a [BezierSplitIter] can be created, which is an iterator that can provide
 for recursive splitting of the Bezier; in a loop such as
 
 ```ignore
@@ -114,18 +114,24 @@ while let Some(b) = split.next() {
 }
 ```
 
-An example of this provides for splitting a Bezier curve into an iterator of connected line segments, if the
-Bezier supports Clone, BezierSplit and BezierEval, such as:
+The [BezierIntoIterator] trait enhances types that implement [BezierSplit], to provide methods for iterating over points
+or lines to within a degree of accuracy. For example, a Bezier curve can be drawn with a desired accuracy with:
 
 ```ignore
-fn draw_bezier<B:BezierEval<F,P> + BezierSplit + Clone>(bezier:&B, tolerance_sq:f32) {
-  for (p0, p1) in BezierLineIter::new(bezier, tolerance_sq) {
+fn draw_bezier<B:BezierEval<f32, [f32; 2]> + BezierSplit + Clone>(bezier:&B, tolerance_sq:f32) {
+  for (p0, p1) in bezier.as_points(tolerance_sq) {
     // Next line in approximation of bezier, connected to the previous line (if any)
     // is p0 -> p1
     draw_line(p0, p1);
   }
 }
 ```
+
+## [BezierElevate]
+
+This trait allows a Bezier curve to be elevated by either one degree, or many.
+
+An elevated Bezier curve is a curve of a higher degree that provides precisely the same points.
 
 ## [BezierReduce] (requres [BezierEval])
 
@@ -192,13 +198,25 @@ then a precise determination used).
 The estimation method must therefore always provide a result that is less than or equal to the *actual* distance from
 the point to the Bezier.
 
+## [BezierConstruct] (requires Sized)
+
+The [BezierBuilder] provides a means to describe key points and derivatives of Bezier curves, from which
+an actual curve can be derived. Implementing this trait permits the construction of a Bezier from a builder.
+
+## [BasicBezier] (requires BezierEval, BezierSplit, BezierSection, BezierOps)
+
+## [BezierOps]
+
+Affine operations on Bezier curves - addition and subtraction of one curve to/from another, scaling of a curve, and
+mapping of the control points of the curve through a function
+
 ## [BoxedBezier] (requires BezierEval and alloc)
 
 This trait is explicitly dyn-compatible, and it provides for a mechanism for splitting and reducing Beziers
 (akin to BezierSplit and/or BezierReduce) - into Boxed dyn BoxedBezier. If a type does not support reduce
 but does support split then it can implement this trait; the methods all return Option of a Boxed object.
 
-# Bezier types
+# Types that support Bezier traits
 
 The simplest Bezier curve types supported by the library are arrays of points consisting of 'D' numbers (types that support Num, such as f32, f64,
 and even isize) of length 2 (linear Bezier) to 4 (cubic Bezier).
@@ -207,23 +225,23 @@ and even isize) of length 2 (linear Bezier) to 4 (cubic Bezier).
 
 Simple arrays of twp points, using the two points as the endpoints of the Bezier.
 
-This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
 
 ## `[[F;D]; 3]` - quadratic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of three points for a quadratic Bezier, with the end points being `[0]` and `[2]`.
 
-This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
 
 ## `[[F;D]; 4]` - cubic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of four points for a cubic Bezier, with the end points being `[0]` and `[3]`.
 
-This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
 
 For [BezierDistance] this does not provide an accurate 'closest point' estimation - i.e. t_dsq_closest_to_pt returns None.
 
-## [BezierND<F, N, D>] - Bezier of maximum degree N with point `[F;D]`
+## [BezierND<F, N, D>] - 'Copy' Bezier type of maximum degree N with point `[F;D]`
 
 A structure that contains an array of N points (of `[F;D]`), and a degree
 
@@ -232,6 +250,17 @@ This provides a single type that can support arbitrary (up to a maximum N) Bezie
 This supports [BezierEval], [BezierSplit]
 
 It SHOULD also support [BezierReduce], [BezierDistance], [BoxedBezier].
+
+## `Vec<[F;D]>` - arbitrary Bezier with point `[F;D]`
+
+The Bezier traits are provided for `Vec<[F;D]>` to provide for arbitrary degree Bezier curves,
+when memory allocation is supported and when the application only requires `Clone` not copy.
+
+This supports [BezierEval], [BezierSplit]
+
+It should support [BezierReduce], [BezierDistance], [BoxedBezier].
+
+For [BezierDistance] this does not provide an accurate 'closest point' estimation - i.e. t_dsq_closest_to_pt returns None.
 
 ## Note no implementation for `F` as a point
 
@@ -697,6 +726,20 @@ Of course, the points used do not have to be equispaced; they could be chosen to
 The reduction of a Bezier curve (`B[N](t)`) of degree `N` to degree `M` (`B[N](t)`) (M<N) is lossy; that is, the two
 curves do not nescessarily describe the same set of points.
 
+# Testing
+
+There is a significant test suite for this library; code coverage is analyzed using `cargo tarpaulin --out Html`
+
+## Polynomials
+
+## Beziers
+
+## Metrics
+
+## Approxmiation
+
+## Building
+
 # References
 
 A Primer on Bézier Curves ("Pomax")
@@ -745,8 +788,8 @@ pub use bezier_iter::{
     BezierSplitIter, BezierSplitTIter,
 };
 pub use traits::{
-    BezierConstruct, BezierDistance, BezierEval, BezierIntoIterator, BezierMinMax, BezierReduce,
-    BezierSection, BezierSplit, BoxedBezier,
+    BasicBezier, BezierConstruct, BezierDistance, BezierElevate, BezierEval, BezierIntoIterator,
+    BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 pub use builder::BezierBuilder;

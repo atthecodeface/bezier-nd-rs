@@ -1,7 +1,7 @@
 use crate::utils;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax,
-    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
+    BezierMinMax, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 use crate::{Float, Num};
 use geo_nd::vector;
@@ -303,6 +303,20 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
     )> {
         let (b0, b1) = <Self as BezierSplit>::split(self);
         Some((Box::new(b0), Box::new(b1)))
+    }
+}
+
+impl<F: 'static + Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
+    type ElevatedByOne = [[F; D]; 4];
+    // Full elevation is not supported
+    type Elevated = Self;
+    fn elevate_by_one(&self) -> Option<[[F; D]; 4]> {
+        Some([
+            self[0],
+            vector::sum_scaled(&self[0..2], &[0.3333333_f32.into(), 0.66666667_f32.into()]),
+            vector::sum_scaled(&self[1..3], &[0.66666667_f32.into(), 0.3333333_f32.into()]),
+            self[2],
+        ])
     }
 }
 

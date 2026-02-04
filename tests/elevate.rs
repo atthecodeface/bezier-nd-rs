@@ -1,29 +1,70 @@
 mod utils;
-use bezier_nd::{bernstein_fns, Bezier};
-use geo_nd::FArray;
+use bezier_nd::{bernstein_fns, Bezier, BezierElevate};
 use utils::test_beziers_approx_eq;
 
 #[test]
-fn elevate() {
-    let p0: FArray<f64, 2> = [0., 0.].into();
-    let p1: FArray<f64, 2> = [10., 0.].into();
-    let p2: FArray<f64, 2> = [6., 1.].into();
-    let p3: FArray<f64, 2> = [20., 5.].into();
+fn elevate_bezier() {
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
 
-    let b = Bezier::quadratic(&p0, &p1, &p2);
-    let b2 = b.clone().elevate();
+    let b: Bezier<_, _> = [p0, p1, p2].into();
+    let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
-    let b = Bezier::quadratic(&p3, &p1, &p2);
-    let b2 = b.clone().elevate();
+    let b: Bezier<_, _> = [p3, p1, p2].into();
+    let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
-    let b = Bezier::line(&p3, &p1);
-    let b2 = b.clone().elevate();
+    let b: Bezier<_, _> = [p3, p1].into();
+    let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
+}
+
+#[test]
+fn elevate_farray() {
+    let p0 = [0.0_f32, 0.];
+    let p1 = [10., 0.];
+    let p2 = [6., 1.];
+    let p3 = [20., 5.];
+
+    let b = [p0, p1, p2];
+    let b2 = b.elevate_by_one().unwrap();
+    eprintln!("Elevated {b:?} to {b2:?}");
+    test_beziers_approx_eq(&b, &b2);
+
+    let b = [p3, p1, p2];
+    let b2 = b.elevate_by_one().unwrap();
+    eprintln!("Elevated {b:?} to {b2:?}");
+    test_beziers_approx_eq(&b, &b2);
+
+    let b = [p3, p1];
+    let b2 = b.elevate_by_one().unwrap();
+    eprintln!("Elevated {b:?} to {b2:?}");
+    test_beziers_approx_eq(&b, &b2);
+}
+
+#[test]
+fn elevate_fvec() {
+    let seed = "banana4";
+    let mut rng = utils::make_random(seed);
+    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
+
+    let b = utils::new_random_point_vec::<_, f32, _, 1>(&mut rng, &distribution, 2);
+    let b1 = b.elevate_by_one().unwrap();
+    let b2 = b1.elevate_by_one().unwrap();
+    let b2_v2 = b.elevate_by(2).unwrap();
+
+    eprintln!("Compare first elevate-by-1");
+    test_beziers_approx_eq(&b, &b1);
+    eprintln!("Compare second elevate-by-1");
+    test_beziers_approx_eq(&b, &b2);
+    eprintln!("Compare elevate-by-2 with two elevate-by-1");
+    test_beziers_approx_eq(&b, &b2_v2);
 }
 
 #[test]

@@ -57,8 +57,8 @@ fn metrics_are_ordered() {
     eprintln!("{b0:?}");
     eprintln!("{b1:?}");
 
-    let b0 = BezierND::<_, 10, _>::of_builder(b0).unwrap();
-    let b1 = BezierND::<_, 10, _>::of_builder(b1).unwrap();
+    let b0 = b0.construct::<BezierND<_, 10, _>>().unwrap();
+    let b1: BezierND<_, 10, _> = b1.construct().unwrap();
 
     eprintln!("{b0}");
     eprintln!("{b1}");

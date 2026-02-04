@@ -1,5 +1,5 @@
 use crate::Num;
-use crate::{bernstein_fns, BezierBuilder};
+use crate::{bernstein_fns, BezierBuilder, BezierConstruct};
 use geo_nd::{matrix, vector};
 
 use super::Bezier;
@@ -103,12 +103,10 @@ where
         }
         s
     }
+}
 
-    /// Construct a [Bezier] from a builder, of the minimum degree
-    ///
-    /// Return Err if the builder has a degree larger than this type
-    /// permits
-    pub fn of_builder(builder: BezierBuilder<F, D>) -> Result<Self, ()> {
+impl<F: Num, const N: usize, const D: usize> BezierConstruct<F, D> for Bezier<F, N, D> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
         let (mut matrix, pts) = builder.get_matrix_pts()?;
         if pts.len() > N {
             return Err(());

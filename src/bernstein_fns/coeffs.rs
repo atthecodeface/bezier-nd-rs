@@ -36,18 +36,18 @@ pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (
 #[track_caller]
 pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<Item = (usize, F)>) {
     let n = degree + 1;
-    let n_f = F::from_usize(n).unwrap();
+    let _n_f = F::from_usize(n).unwrap();
     (
-        n_f,
+        F::from_usize(n - 1).unwrap(),
         std::iter::once((0, F::ZERO))
             .chain(basis_coeff_enum(degree - 1, t))
             .zip(basis_coeff_enum(degree - 1, t).chain(std::iter::once((0, F::ZERO))))
             .enumerate()
-            .map(move |(i, ((_, c0), (i1, c1)))| {
+            .map(move |(i, ((_, c0), (_i1, c1)))| {
                 (
                     i,
                     (F::from_usize(i * i).unwrap() * c0
-                        - F::from_usize((n - i1) * (n - i1)).unwrap() * c1),
+                        - F::from_usize((n - i - 1) * (n - i - 1)).unwrap() * c1),
                 )
             }),
     )
@@ -65,18 +65,18 @@ pub fn basis_dt_coeff_enum_num<F: Num>(
     t: F,
 ) -> (F, impl Iterator<Item = (usize, F)>) {
     let n = degree + 1;
-    let n_f = F::from_usize(n).unwrap();
+    let _n_f = F::from_usize(n).unwrap();
     (
-        n_f,
+        F::from_usize(n - 1).unwrap(),
         std::iter::once((0, F::ZERO))
             .chain(basis_coeff_enum_num(degree - 1, t))
             .zip(basis_coeff_enum_num(degree - 1, t).chain(std::iter::once((0, F::ZERO))))
             .enumerate()
-            .map(move |(i, ((_, c0), (i1, c1)))| {
+            .map(move |(i, ((_, c0), (_i1, c1)))| {
                 (
                     i,
                     (F::from_usize(i * i).unwrap() * c0
-                        - F::from_usize((n - i1) * (n - i1)).unwrap() * c1),
+                        - F::from_usize((n - i - 1) * (n - i - 1)).unwrap() * c1),
                 )
             }),
     )

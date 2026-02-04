@@ -1,3 +1,5 @@
+use num::traits;
+
 use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
@@ -56,6 +58,46 @@ where
     fn is_unreliable_divisor(self) -> bool {
         self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
     }
+}
+
+pub trait BezierOps<F: Num, P: Clone> {
+    fn add(&mut self, other: &Self) -> bool;
+    fn sub(&mut self, other: &Self) -> bool;
+    fn scale(&mut self, scale: F);
+    fn map_pts(&mut self, map: &dyn Fn(P) -> P);
+}
+
+impl<F: Num, P: Clone, T: BezierEval<F, P>> BezierOps<F, P> for T {
+    fn add(&mut self, other: &Self) -> bool {
+        false
+    }
+    fn sub(&mut self, other: &Self) -> bool {
+        false
+    }
+    fn scale(&mut self, scale: F) {}
+    fn map_pts(&mut self, map: &dyn Fn(P) -> P) {}
+}
+
+pub trait BasicBezier<F: Num, P: Clone>:
+    BezierEval<F, P>
+    + BezierOps<F, P>
+    + BezierSplit
+    + BezierSection<F>
+    + BezierIntoIterator<F, Self, P>
+    + BezierMinMax<F>
+    + Clone
+{
+}
+
+impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
+    T: BezierEval<F, P>
+        + BezierOps<F, P>
+        + BezierSplit
+        + BezierSection<F>
+        + BezierIntoIterator<F, Self, P>
+        + BezierMinMax<F>
+        + Clone
+{
 }
 
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
@@ -236,6 +278,10 @@ pub trait BezierMinMax<F: Num> {
 /// type that just uses split-in-half would need F:Num, which is onerous
 ///
 /// Hence BezierSplitAt is a separate trait
+///
+/// The [BezierIntoIterator] trait provides methods to iterate over a Bezier
+/// curve as points or lines; it is implemented for any type that provides
+/// *this* trait [BezierSplit] and [BezierEval] (plus [Clone])
 pub trait BezierSplit: Sized {
     /// Bisect the Bezier into two of the same degree
     fn split(&self) -> (Self, Self);
@@ -255,15 +301,36 @@ pub trait BezierSection<F: Num>: Sized {
     fn section(&self, t0: F, t1: F) -> Self;
 }
 
+/// A trait provided by a Bezier to allow it to be elevated with unchanged locus
+///
+/// This provides methods to generate elevated Beziers by one degree, or by many;
+/// the types returned for each may be different.
+///
+/// If an implementor of this trait does not support elevation by many degrees then
+/// the associated type should be 'Self', and the elevate_by method should return None
+///
+/// Implementing this trait *ought* to imply support for single degree elevation, but this it not an absolute requirement.
+pub trait BezierElevate<F: Num, P: Clone>: BezierEval<F, P> {
+    /// Type of Bezier returned when elevated by one, or Self if that always fails
+    type ElevatedByOne: BezierEval<F, P>;
+
+    /// Type of Bezier returned when elevated by arbitrary degree, or Self if that always fails
+    type Elevated: BezierEval<F, P>;
+
+    /// Elevate the Bezier by one degree; return None only if this is *never* supported
+    fn elevate_by_one(&self) -> Option<Self::ElevatedByOne>;
+
+    /// Elevate the Bezier by arbitrary degree, returning None if this cannot be performed.
+    fn elevate_by(&self, _degrees: usize) -> Option<Self::Elevated> {
+        None
+    }
+}
+
 /// A trait provided by a Bezier to allow it to be reduced
 ///
 /// This provides methods to generate reduced Beziers; at a
 /// minimum the type must provide a way to produce a Bezier
 /// reduced by at least one degree.
-///
-///
-///
-///  by one degree
 pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// The Bezier that this reduces to
     ///
@@ -398,6 +465,9 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
 /// This trait is frequently used to, for example, render a Bezier as lines which
 /// can then be drawn on a canvas; if the closeness_sq is set to be half the width
 /// of a pixel then the Bezier is rendered to within a pixel (which is the best possible approximation).
+///
+/// There is a *blanket* implementation of this trait for any Bezier that supports
+/// the required traits of [BezierSplit], [BezierEval] and [Clone]
 pub trait BezierIntoIterator<F, B, P>
 where
     F: crate::Num,
@@ -481,6 +551,7 @@ where
         BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
     }
 }
+
 impl<F, B, P> BezierIntoIterator<F, B, P> for B
 where
     F: crate::Num,
@@ -498,9 +569,28 @@ where
     }
 }
 
+/// A trait that allows a type to provide building from a [BezierBuilder]
+///
+/// Implementing this permits a [BezierBuilder] to have its `construct` method
+/// used to attempt to create a Bezier from its constraints.
 pub trait BezierConstruct<F, const D: usize>: Sized
 where
     F: Num,
 {
+    /// Create the curve with the required control points if possible
+    ///
+    /// The builder may be overconstrained for the type - for example, a type that permits
+    /// at most a cubic Bezier cannot be built from a Builder that has five constraints
+    ///
+    /// The builder may be underconstrained for the type - for example a type that only
+    /// provides Cubic Beziers may not permit building from a builder that defines only
+    /// the endpoints of a line.
+    ///
+    /// A builder *can* be inconsistent - it might specify two different points for
+    /// the Bezier to pass through for the same value of parameter `t`
+    ///
+    /// In all such cases the type can return an error; it might be that an underconstrained
+    /// Bezier is built to its required degree, and then elevated to the degree of the
+    /// actual type (if that is fixed), but this is not required.
     fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()>;
 }
