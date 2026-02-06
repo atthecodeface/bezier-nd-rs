@@ -45,16 +45,6 @@ where
         }
     }
 
-    //mp restart
-    /// Clear the Bezier line iterator and restart with a new Bezier and
-    /// straightness
-    ///
-    /// This clones the Bezier.
-    pub fn restart(&mut self, bezier: &B, straightness_sq: F) {
-        self.straightness_sq = straightness_sq;
-        self.split_iter.restart(bezier);
-    }
-
     //zz All done
 }
 

@@ -145,3 +145,32 @@ fn test_roots() {
     test_polynomial(&[1, 2, 3, 4]);
     test_polynomial(&[4, 3, 2, 1]);
 }
+
+fn test_specific_quad(poly: &[f32; 3]) {
+    eprintln!("Test specific quad {poly:?}");
+    let disc: f32 = poly[1] * poly[1] - 4.0 * poly[0] * poly[2];
+    let x0 = (-poly[1] + disc.sqrt()) / 2.0 / poly[2];
+    let x1 = (-poly[1] - disc.sqrt()) / 2.0 / poly[2];
+    assert!(
+        poly.calc(x0).abs() < 1E-4,
+        "Expected roots to be x0 {x0} & x1 {x1} but poly[x0] = {}",
+        poly.calc(x0)
+    );
+    assert!(
+        poly.calc(x1).abs() < 1E-4,
+        "Expected roots to be x0 {x0} & x1 {x1} but poly[x1] = {}",
+        poly.calc(x1)
+    );
+
+    let root0 = poly.find_root_nr(0.0, 1E-6).unwrap();
+    assert!(
+        (root0 - x1).abs() < 1E-6,
+        "Newton-Raphson should have found root x1 {x1} but found {root0}"
+    );
+}
+
+#[test]
+fn specific_tests() {
+    test_specific_quad(&[12.0_f32, -25.0, 4.0]);
+    test_specific_quad(&[11.903965, -25.258091, 3.5866723]);
+}

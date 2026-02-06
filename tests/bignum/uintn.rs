@@ -7,9 +7,9 @@ fn prime_25519<N: Num + From<u64>>() -> N {
     let a2_4 = a * a * a * a;
     let a2_16 = a2_4 * a2_4 * a2_4 * a2_4;
     let a2_64 = a2_16 * a2_16 * a2_16 * a2_16;
-    let a = a2_64;
-    let a = a * a;
-    let a = a * a;
+    let mut a = a2_64;
+    a *= a;
+    a *= a;
     // a = 2^256
     let a = a / 2.into();
     let a = a - 19.into();
@@ -38,9 +38,9 @@ fn test_add_subtract_n<N: Num + From<u64>>(a: N) {
 
 fn test_multiply_small_n<N: Num + From<u64>>(a: N) {
     let zero: N = N::zero();
-    let one: N = N::one();
-    let two: N = 2.into();
-    let three: N = 3.into();
+    let one: N = N::from_i64(1).unwrap();
+    let two: N = N::one() + 1.into();
+    let three: N = N::from_u64(3).unwrap();
     assert_eq!(a + a, a * two);
     assert_eq!(a + a + a, a * three);
     assert_eq!(a + a, two * a);
@@ -88,6 +88,12 @@ fn test_uint_tiny() {
 
     let v: UIntN<1> = u64::MAX.into();
     assert_eq!(v.to_string(), "18446744073709551615");
+    assert_eq!((*v.as_ref())[0], u64::MAX);
+
+    let v: UIntN<1> = (5_i64).try_into().unwrap();
+    assert_eq!(v.to_string(), "5");
+    let v: Result<UIntN<1>, _> = (-5_i64).try_into();
+    assert!(v.is_err());
 }
 
 #[test]

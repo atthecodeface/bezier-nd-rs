@@ -30,9 +30,7 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         self.pts.len()
     }
     pub fn of_point_at<B: BezierEval<F, [F; D]>>(bezier: &B, steps: usize) -> Self {
-        let pts = float_iter(F::ZERO, F::ONE, steps)
-            .map(|t| bezier.point_at(t))
-            .collect();
+        let pts = float_iter(steps).map(|t| bezier.point_at(t)).collect();
         Self { pts }
     }
 
@@ -55,9 +53,7 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         steps: usize,
     ) -> Self {
         let pts = iter
-            .flat_map(|(p0, p1)| {
-                float_iter(F::ZERO, F::ONE, steps).map(move |t| vector::mix(&p0, &p1, t))
-            })
+            .flat_map(|(p0, p1)| float_iter(steps).map(move |t| vector::mix(&p0, &p1, t)))
             .collect();
         Self { pts }
     }

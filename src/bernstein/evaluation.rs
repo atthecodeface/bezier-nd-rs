@@ -94,4 +94,7 @@ where
     fn degree(&self) -> usize {
         self.degree
     }
+    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
+        self.pts.iter().take(self.degree + 1).for_each(map)
+    }
 }

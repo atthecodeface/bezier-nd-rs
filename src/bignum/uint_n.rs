@@ -194,12 +194,6 @@ impl<const N: usize> std::ops::MulAssign for UIntN<N> {
     }
 }
 
-impl<const N: usize> std::ops::MulAssign<&UIntN<N>> for UIntN<N> {
-    fn mul_assign(&mut self, other: &Self) {
-        *self = self.do_multiply(other);
-    }
-}
-
 impl<const N: usize> std::ops::Div for UIntN<N> {
     type Output = Self;
 

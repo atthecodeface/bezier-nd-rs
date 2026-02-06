@@ -6,6 +6,13 @@
 
 Adder BuilderError to BezierBuilder, to provide feedback on why a build fails
 
+Add tests for:
+* t_closest
+* reduce
+* elevate_by(>1)
++ add 'BezierCubic' trait? - support arc
++ add 'BezierQuadratic' trait?
+
 # Bezier curve library
 
 This library provides traits for implementing Bezier curves, such as

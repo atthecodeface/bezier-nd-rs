@@ -1,7 +1,7 @@
 use crate::utils;
 use crate::{
     bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
-    BezierMinMax, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 use crate::{Float, Num};
 use geo_nd::vector;
@@ -37,6 +37,34 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     }
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
+    }
+    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
+        self.iter().for_each(map)
+    }
+}
+
+impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 3] {
+    fn add(&mut self, other: &Self) -> bool {
+        for (s, o) in self.iter_mut().zip(other.iter()) {
+            *s = vector::add(*s, o, F::ONE)
+        }
+        true
+    }
+    fn sub(&mut self, other: &Self) -> bool {
+        for (s, o) in self.iter_mut().zip(other.iter()) {
+            *s = vector::sub(*s, o, F::ONE)
+        }
+        true
+    }
+    fn scale(&mut self, scale: F) {
+        for s in self.iter_mut() {
+            *s = vector::scale(*s, scale);
+        }
+    }
+    fn map_pts(&mut self, map: &dyn Fn(&[F; D]) -> [F; D]) {
+        for s in self.iter_mut() {
+            *s = map(s);
+        }
     }
 }
 

@@ -1,6 +1,9 @@
 mod coeffs;
 mod elevate_matrix;
 
+/// Functions to permit creation of cubic Bezier curves of circular arcs
+pub mod arc;
+
 /// Functions to evaluate various metrics for Bernstein polynomial Bezier curves
 pub mod metrics;
 

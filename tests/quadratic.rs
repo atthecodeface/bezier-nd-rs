@@ -55,17 +55,18 @@ fn test_quadratic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
         &vector::sum_scaled(&pts, &[F::ZERO, (-2.0_f32).into(), (2.0_f32).into()]),
         scale,
     );
-    for t in utils::float_iter(F::ZERO, F::ONE, 10) {
-        utils::assert_near_equal(
-            &vector::reduce(
-                vector::scale(bezier.derivative_at(t).1, bezier.derivative_at(t).0),
-                2.0_f32.into(),
+    for t in utils::float_iter(10) {
+        utils::assert_near_equal_scale(
+            &bezier.derivative_at(t).1,
+            &vector::scale(
+                [
+                    vector::sub(pts[1], &pts[0], F::ONE),
+                    vector::sub(pts[2], &pts[1], F::ONE),
+                ]
+                .point_at(t),
+                (2.0_f32).into(),
             ),
-            &([
-                vector::sub(pts[1], &pts[0], F::ONE),
-                vector::sub(pts[2], &pts[1], F::ONE),
-            ]
-            .point_at(t)),
+            bezier.derivative_at(t).0,
         );
     }
     utils::assert_min_max_coords(bezier)

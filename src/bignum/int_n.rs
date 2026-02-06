@@ -127,10 +127,10 @@ impl<const N: usize> std::ops::Mul for IntN<N> {
     }
 }
 
-impl<const N: usize> std::ops::Mul for &IntN<N> {
-    type Output = IntN<N>;
+impl<const N: usize> std::ops::Mul<&IntN<N>> for IntN<N> {
+    type Output = Self;
 
-    fn mul(self, other: &IntN<N>) -> IntN<N> {
+    fn mul(self, other: &IntN<N>) -> Self {
         self.do_multiply(other)
     }
 }
@@ -166,7 +166,7 @@ impl<const N: usize> std::ops::Mul<&UIntN<N>> for IntN<N> {
     type Output = Self;
 
     fn mul(mut self, other: &UIntN<N>) -> Self {
-        self.value *= other;
+        self.value *= *other;
         self
     }
 }

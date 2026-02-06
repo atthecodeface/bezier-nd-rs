@@ -407,23 +407,18 @@ pub trait PolyFindRoots<F: Float> {
 /// and so only requires 'Num' not 'Float'
 pub trait PolyNewtonRaphson<F: Num> {
     /// Improve a root using Newton-Raphson
-    fn improve_root(&self, x: F, eps: F, max_dx: F) -> Option<(F, F)>;
+    fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)>;
     /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
-    fn find_root_nr(&self, mut x: F, min: F) -> Option<F>
+    fn find_root_nr(&self, mut x: F, min_grad: F) -> Option<F>
     where
         Self: Polynomial<F>,
     {
         let mut max_dx = f32::MAX.into();
-        while let Some((improved_x, improved_dx)) = self.improve_root(x, min, max_dx) {
+        while let Some((improved_x, improved_dx)) = self.improve_root(x, min_grad, max_dx) {
             x = improved_x;
             max_dx = improved_dx;
         }
-        let c = self.calc(x);
-        if -min < c && c < min {
-            Some(x)
-        } else {
-            None
-        }
+        Some(x)
     }
 }
 

@@ -1,8 +1,8 @@
 //a Imports
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
-use bezier_nd::{BezierIntoIterator, BezierSplit};
 use bezier_nd::Float;
+use bezier_nd::{BezierIntoIterator, BezierSplit};
 mod utils;
 use geo_nd::{vector, FArray, Vector};
 
@@ -34,7 +34,7 @@ where
 /// Both of these should be less than 'straightness'
 fn bezier_lines_within_straightness<F: Float, const D: usize, B>(bezier: &B, straightness_sq: F)
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone + BezierIntoIterator<F, B, [F; D]>,
+    B: BezierEval<F, [F; D]> + BezierSplit + Clone + BezierIntoIterator<F, [F; D]>,
 {
     const NPTS: isize = 1000;
     const NSEG_PTS: usize = 1000;
@@ -46,7 +46,7 @@ where
         .collect();
     let mut segment_pts = Vec::<[F; D]>::new();
     for (p0, p1) in bezier.as_lines(straightness_sq) {
-        for t in utils::float_iter(F::ZERO, F::ONE, NSEG_PTS) {
+        for t in utils::float_iter(NSEG_PTS) {
             segment_pts.push(vector::sum_scaled(&[p0, p1], &[F::ONE - t, t]));
         }
     }

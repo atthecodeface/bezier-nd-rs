@@ -8,7 +8,10 @@ use geo_nd::{
     FArray,
 };
 use utils::test_beziers_approx_eq;
-use utils::{assert_near_equal, assert_near_identity, float_iter, generate_bernstein_matrix};
+use utils::{
+    assert_near_equal, assert_near_identity, float_iter, float_iter_between,
+    generate_bernstein_matrix,
+};
 
 #[test]
 fn bisect() {
@@ -274,7 +277,7 @@ fn reduce_and_elevate_cubic_in_parts() {
     assert!(dc < df);
 
     let (b0, b1) = b.split();
-    for t in float_iter(-1.0, 1.0, 100) {
+    for t in float_iter_between(-1.0, 1.0, 100) {
         let p = b.point_at(t);
         let p0 = b0.point_at(t * 2.0);
         let p1 = b1.point_at(t * 2.0 - 1.0);
@@ -334,7 +337,7 @@ fn reduce_and_elevate_cubic() {
             vector::distance_sq(&p1, &ps1) < 1E-4,
             "Split should match at pt1 {t1} {p1:?} {ps1:?}"
         );
-        for tp in float_iter(0., 1., 100) {
+        for tp in float_iter(100) {
             let p = b.point_at(t0 + tp * dt);
             let ps = bs.point_at(tp);
             assert!(

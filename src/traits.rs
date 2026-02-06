@@ -1,5 +1,3 @@
-use num::traits;
-
 use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
@@ -60,22 +58,19 @@ where
     }
 }
 
+/// A set of traits that modify the control points of a Bezier
 pub trait BezierOps<F: Num, P: Clone> {
+    /// Add this Bezier to another
     fn add(&mut self, other: &Self) -> bool;
-    fn sub(&mut self, other: &Self) -> bool;
-    fn scale(&mut self, scale: F);
-    fn map_pts(&mut self, map: &dyn Fn(P) -> P);
-}
 
-impl<F: Num, P: Clone, T: BezierEval<F, P>> BezierOps<F, P> for T {
-    fn add(&mut self, other: &Self) -> bool {
-        false
-    }
-    fn sub(&mut self, other: &Self) -> bool {
-        false
-    }
-    fn scale(&mut self, scale: F) {}
-    fn map_pts(&mut self, map: &dyn Fn(P) -> P) {}
+    /// Subtract another Bezier from this
+    fn sub(&mut self, other: &Self) -> bool;
+
+    /// Scale the points
+    fn scale(&mut self, scale: F);
+
+    /// Map the points
+    fn map_pts(&mut self, map: &dyn Fn(&P) -> P);
 }
 
 pub trait BasicBezier<F: Num, P: Clone>:
@@ -83,7 +78,7 @@ pub trait BasicBezier<F: Num, P: Clone>:
     + BezierOps<F, P>
     + BezierSplit
     + BezierSection<F>
-    + BezierIntoIterator<F, Self, P>
+    + BezierIntoIterator<F, P>
     + BezierMinMax<F>
     + Clone
 {
@@ -94,7 +89,7 @@ impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
         + BezierOps<F, P>
         + BezierSplit
         + BezierSection<F>
-        + BezierIntoIterator<F, Self, P>
+        + BezierIntoIterator<F, P>
         + BezierMinMax<F>
         + Clone
 {
@@ -183,6 +178,9 @@ pub trait BezierEval<F: Num, P: Clone> {
     fn degree(&self) -> usize {
         self.num_control_points() - 1
     }
+
+    /// Apply a mutable closure to the control points
+    fn for_each_control_points(&self, map: &mut dyn FnMut(&P));
 }
 
 /// A trait that provides for measurement of distance from a point to the Bezier, and closest
@@ -468,10 +466,9 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
 ///
 /// There is a *blanket* implementation of this trait for any Bezier that supports
 /// the required traits of [BezierSplit], [BezierEval] and [Clone]
-pub trait BezierIntoIterator<F, B, P>
+pub trait BezierIntoIterator<F, P>
 where
     F: crate::Num,
-    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
     P: Clone,
 {
     /// Return an iterator of line segments represented by a pair of points,
@@ -552,7 +549,7 @@ where
     }
 }
 
-impl<F, B, P> BezierIntoIterator<F, B, P> for B
+impl<F, B, P> BezierIntoIterator<F, P> for B
 where
     F: crate::Num,
     B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,

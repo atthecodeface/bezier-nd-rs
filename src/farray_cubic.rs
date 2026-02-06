@@ -2,7 +2,7 @@ use crate::utils;
 use crate::Num;
 use crate::{
     bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax,
-    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -49,6 +49,34 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
     }
+    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
+        self.iter().for_each(map)
+    }
+}
+
+impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 4] {
+    fn add(&mut self, other: &Self) -> bool {
+        for (s, o) in self.iter_mut().zip(other.iter()) {
+            *s = vector::add(*s, o, F::ONE)
+        }
+        true
+    }
+    fn sub(&mut self, other: &Self) -> bool {
+        for (s, o) in self.iter_mut().zip(other.iter()) {
+            *s = vector::sub(*s, o, F::ONE)
+        }
+        true
+    }
+    fn scale(&mut self, scale: F) {
+        for s in self.iter_mut() {
+            *s = vector::scale(*s, scale);
+        }
+    }
+    fn map_pts(&mut self, map: &dyn Fn(&[F; D]) -> [F; D]) {
+        for s in self.iter_mut() {
+            *s = map(s);
+        }
+    }
 }
 
 impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
@@ -75,6 +103,7 @@ impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
         }
         let half_b = p0 + p2 - p1 - p1;
         let c = p1 - p0;
+        eprintln!("t_coord_min_max for cubic: a.t^2 + 2b.t + c = 0 for a:{a} b:{half_b} c:{c} discriminant {}", half_b*half_b -a*c);
         if half_b * half_b < a * c {
             Some(p02_sel)
         } else {
@@ -82,9 +111,11 @@ impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
             let poly = [c, b, a];
             use crate::PolyNewtonRaphson;
             let Some(t0) = poly.find_root_nr(F::ZERO, (1E-6_f32).into()) else {
+                eprintln!("t_coord_min_max for cubic: failed to find root of {poly:?}...!");
                 return Some(p02_sel);
             };
             let t1 = -(b / a + t0);
+            eprintln!("t_coord_min_max for cubic: t = {t0} or {t1}");
             let p02_sel = {
                 if t0 > F::ZERO && t0 < F::ONE {
                     let u0 = F::ONE - t0;

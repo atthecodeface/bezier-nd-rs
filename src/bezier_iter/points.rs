@@ -1,4 +1,3 @@
-
 /// An iterator with Item = P of points that form a single Bezier curve where the
 /// steps between points would be lines that are 'straight enough'.
 ///
@@ -27,7 +26,6 @@ where
     last_point: Option<P>,
 }
 
-//ip BezierPointIter
 impl<P, I> BezierPointIter<P, I>
 where
     P: Clone,
@@ -45,17 +43,6 @@ where
     //zz All done
 }
 
-impl<P, I> std::convert::From<I> for BezierPointIter<P, I>
-where
-    P: Clone,
-    I: Iterator<Item = (P, P)>,
-{
-    fn from(lines: I) -> Self {
-        Self::new(lines)
-    }
-}
-
-//ii BezierPointIter
 impl<P, I> std::iter::Iterator for BezierPointIter<P, I>
 where
     P: Clone,
@@ -108,7 +95,6 @@ where
     last_point: Option<(F, P)>,
 }
 
-//ip BezierPointIter
 impl<F, P, I> BezierPointTIter<F, P, I>
 where
     P: Clone,
@@ -124,17 +110,6 @@ where
     }
 }
 
-impl<F, P, I> std::convert::From<I> for BezierPointTIter<F, P, I>
-where
-    P: Clone,
-    I: Iterator<Item = (F, P, F, P)>,
-{
-    fn from(lines: I) -> Self {
-        Self::new(lines)
-    }
-}
-
-//ii BezierPointIter
 impl<F, P, I> std::iter::Iterator for BezierPointTIter<F, P, I>
 where
     P: Clone,

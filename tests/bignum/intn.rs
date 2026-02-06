@@ -30,6 +30,14 @@ fn test_add_subtract_n<N: Num + From<u64>>(a: N) {
     assert_eq!(a - c, -b);
     assert_eq!(a - b, -a);
 
+    let mut c = b;
+    c += a;
+    assert_eq!(b - c, -a);
+    assert_eq!(a - c, -b);
+    c -= b;
+    assert_eq!(c, a);
+    c += b;
+
     let m_a = -a;
     let m_b = -b;
     let m_c = m_a - b;
@@ -103,6 +111,18 @@ fn test_int_tiny() {
 
     test_number_n::<IntN<8>>(1_u64.into());
     test_number_n::<IntN<8>>((u64::MAX >> 2).into());
+
+    let v: IntN<1> = (5_i64).into();
+    let vn: IntN<1> = (-1_i64).into();
+    let v = v + vn;
+    let v = v - vn;
+    assert_eq!(v.to_string(), "5");
+    assert_eq!(vn.to_string(), "-1");
+    let v = v * &v;
+    let mut v = v * v;
+    v *= v;
+    assert_eq!(v.to_string(), "390625");
+    test_number_n::<IntN<1>>(v);
 
     let v: IntN<1> = u64::MAX.into();
     assert_eq!(v.to_string(), "18446744073709551615");

@@ -2,7 +2,7 @@ use bezier_nd::BezierEval;
 use bezier_nd::Num;
 use geo_nd::vector;
 
-use super::float_iter;
+use super::{float_iter, float_iter_between};
 
 /// Find the maximum distance between the Bezier for 0<=t<=1 in 'steps' intervals
 #[must_use]
@@ -17,7 +17,7 @@ pub fn max_distance_sq<
     steps: usize,
 ) -> F {
     let mut max_d_sq = F::ZERO;
-    for t in float_iter(F::ZERO, F::ONE, steps) {
+    for t in float_iter(steps) {
         let p0 = b0.point_at(t);
         let p1 = b1.point_at(t);
         let d_sq = vector::distance_sq(&p0, &p1);
@@ -44,7 +44,7 @@ pub fn max_distance_sq_subsection<
     steps: usize,
 ) -> F {
     let mut max_d_sq = F::ZERO;
-    for (b0_t, b1_t) in float_iter(t0, t1, steps).zip(float_iter(F::ZERO, F::ONE, steps)) {
+    for (b0_t, b1_t) in float_iter_between(t0, t1, steps).zip(float_iter(steps)) {
         let p0 = b0.point_at(b0_t);
         let p1 = b1.point_at(b1_t);
         let d_sq = vector::distance_sq(&p0, &p1);

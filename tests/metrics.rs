@@ -8,7 +8,7 @@ fn check_metrics_of_beziers<const N: usize, const D: usize>(
 ) {
     let mut max_d = 0.0;
     let mut max_t = 0.0;
-    for t in utils::float_iter(0., 1., 101) {
+    for t in utils::float_iter(101) {
         let p0 = b0.point_at(t);
         let p1 = b1.point_at(t);
         let dp = (p1[0] - p0[0]).abs();

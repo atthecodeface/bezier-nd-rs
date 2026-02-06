@@ -26,15 +26,6 @@ where
         Self { stack }
     }
 
-    /// Clear the Bezier line iterator and restart with a new Bezier and
-    /// straightness
-    ///
-    /// This clones the Bezier.
-    pub fn restart(&mut self, bezier: &B) {
-        self.stack.clear();
-        self.stack.push(bezier.clone());
-    }
-
     /// Add a Bezier to the iterator
     ///
     /// This clones the Bezier.
@@ -95,15 +86,6 @@ where
     pub fn new(bezier: &B) -> Self {
         let stack = vec![(F::ZERO, F::ONE, bezier.clone())];
         Self { stack }
-    }
-
-    /// Clear the Bezier line iterator and restart with a new Bezier and
-    /// straightness
-    ///
-    /// This clones the Bezier.
-    pub fn restart(&mut self, bezier: &B) {
-        self.stack.clear();
-        self.stack.push((F::ZERO, F::ONE, bezier.clone()));
     }
 
     /// Add a Bezier to the iterator

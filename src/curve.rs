@@ -1,10 +1,10 @@
 //a Imports
-use crate::Float;
+use crate::{bernstein_fns, Float};
 use geo_nd::vector;
 
 use crate::{
-    BezierElevate, BezierEval, BezierIntoIterator, BezierMinMax, BezierReduce, BezierSection,
-    BezierSplit,
+    BezierElevate, BezierEval, BezierIntoIterator, BezierMinMax, BezierOps, BezierReduce,
+    BezierSection, BezierSplit,
 };
 
 //a Bezier
@@ -220,6 +220,9 @@ where
     fn control_point(&self, n: usize) -> &[F; D] {
         &self.pts[n]
     }
+    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
+        self.pts.iter().take(self.num).for_each(map)
+    }
 }
 
 impl<F, const D: usize> BezierElevate<F, [F; D]> for Bezier<F, D>
@@ -346,6 +349,31 @@ where
     }
 }
 
+impl<F: Float, const D: usize> BezierOps<F, [F; D]> for Bezier<F, D> {
+    fn add(&mut self, other: &Self) -> bool {
+        for (s, o) in self.pts.iter_mut().zip(other.pts.iter()) {
+            *s = vector::add(*s, o, F::ONE)
+        }
+        true
+    }
+    fn sub(&mut self, other: &Self) -> bool {
+        for (s, o) in self.pts.iter_mut().zip(other.pts.iter()) {
+            *s = vector::sub(*s, o, F::ONE)
+        }
+        true
+    }
+    fn scale(&mut self, scale: F) {
+        for s in self.pts.iter_mut() {
+            *s = vector::scale(*s, scale);
+        }
+    }
+    fn map_pts(&mut self, map: &dyn Fn(&[F; D]) -> [F; D]) {
+        for s in self.pts.iter_mut() {
+            *s = map(s);
+        }
+    }
+}
+
 impl<F: Float, const D: usize> BezierMinMax<F> for Bezier<F, D> {
     fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
         match self.num {
@@ -397,13 +425,10 @@ where
     ///
     /// `straightness` is independent of the length of the Bezier
     pub fn length(&self, straightness: F) -> F {
-        if self.is_straight(straightness) {
-            let (ep0, ep1) = self.endpoints();
-            vector::distance(ep0, ep1)
-        } else {
-            let (b0, b1) = self.split();
-            b0.length(straightness) + b1.length(straightness)
-        }
+        self.as_lines(straightness * straightness)
+            .fold(F::ZERO, |acc, (p0, p1)| {
+                acc + geo_nd::vector::distance(&p0, &p1)
+            })
     }
 
     //fi t_of_distance_rec
@@ -470,104 +495,6 @@ where
         }
     }
 
-    //fi lambda_of_k_d
-    fn lambda_of_k_d(k: F, d: F) -> F {
-        // There are numerous versions of calculating
-        // the lambda for the arc from the angle of the arc
-        //
-        // For a 90 degree arc the *best* values is 0.2652165 apparently
-        //
-        // One equation that provides this  is
-        //   lambda = four_thirds * radius * (d/k - one);
-        //
-        // Another is:
-        //   theta = (k/d).asin() / F::int(4);
-        //   lambda = four_thirds * theta.tan();
-        //
-        // This table is captures the values for this second
-        //
-        // Actually attempting a better approximation leads to the following for (k/d)^2 -> lambda
-        //
-        // 0.0011099165 0.009397572
-        // 0.004424813 0.04415609
-        // 0.008196682 0.06044403
-        // 0.012195113 0.07385845
-        // 0.019999988 0.09472578
-        // 0.038461603 0.13201918
-        // 0.100000046 0.21637033
-        // 0.100000046 0.21637033
-        // 0.137931 0.2567711
-        // 0.20000009 0.314736
-        // 0.3076923 0.40363038
-        // 0.5 0.5519717
-        // 0.6923078 0.71254206
-        // 0.8000001 0.822074
-        // 0.862069 0.89976513
-        // 0.8999999 0.9571549
-        // 0.9615385 1.0864261
-        // 0.98 1.1479391
-        // 0.99180335 1.2072284
-        // 0.9955752 1.2359663
-        // 0.9988901 1.2764238
-        //
-        // With a quintic polynomial of coeffs (x^0 + x^1 +... + x^5):
-        // 3.1603235091816735e-002
-        // 2.7950542994656820e+000
-        // -1.1486743224812313e+001
-        // 2.8975368657401102e+001
-        // -3.2845222512637491e+001
-        // 1.3779429574112177e+001
-        //
-        // Or for r^2/d^2 -> lambda
-        // 0.9988901 0.009397572
-        // 0.9955752 0.04415609
-        // 0.99180335 0.06044403
-        // 0.9878049 0.07385845
-        // 0.98 0.09472578
-        // 0.9615384 0.13201918
-        // 0.9 0.21637033
-        // 0.9 0.21637033
-        // 0.862069 0.2567711
-        // 0.79999995 0.314736
-        // 0.6923077 0.40363038
-        // 0.5 0.5519717
-        // 0.3076923 0.71254206
-        // 0.20000002 0.822074
-        // 0.13793105 0.89976513
-        // 0.10000005 0.9571549
-        // 0.038461536 1.0864261
-        // 0.02000001 1.1479391
-        // 0.008196682 1.2072284
-        // 0.0044247806 1.2359663
-        // 0.0011098981 1.2764238
-        //
-        // 1.2494900596889080e+000
-        // -4.2639321404424191e+000
-        // 1.6162330324360198e+001
-        // -3.5388797293367219e+001
-        // 3.6051953254575963e+001
-        // -1.3779440945693199e+001
-
-        let k_d = k / d;
-        // let four_thirds  = F::frac(4,3);
-        // let  theta = (k/d).asin() / F::int(4);
-        // let  lambda = four_thirds * theta.tan();
-        // lambda
-        let k_d = k_d * k_d;
-        let a0: F = 3.160_323_6e-2_f32.into();
-        let a1: F = 2.795_054_2_f32.into();
-        let a2: F = (-1.148_674_3e1_f32).into();
-        let a3: F = 2.897_536_8e1_f32.into();
-        let a4: F = (-3.284_522_2e1_f32).into();
-        let a5: F = 1.377_942_9e1_f32.into();
-        a0 + a1 * k_d
-            + a2 * k_d * k_d
-            + a3 * k_d * k_d * k_d
-            + a4 * k_d * k_d * k_d * k_d
-            + a5 * k_d * k_d * k_d * k_d * k_d
-    }
-
-    //fp arc
     /// Create a Cubic Bezier that approximates closely a circular arc
     ///
     /// The arc has a center C, a radius R, and is of an angle (should be <= PI/2).
@@ -586,29 +513,7 @@ where
         normal: &[F; D],
         rotate: F,
     ) -> Self {
-        let two = (2.0_f32).into();
-        let half_angle = angle / two;
-        let s = half_angle.sin();
-        let lambda = radius * Self::lambda_of_k_d(s, F::one());
-
-        let d0a = rotate;
-        let (d0s, d0c) = d0a.sin_cos();
-        let d1a = rotate + angle;
-        let (d1s, d1c) = d1a.sin_cos();
-
-        let mut p0 = [F::zero(); D];
-        let mut p1 = [F::zero(); D];
-        let mut c0 = [F::zero(); D];
-        let mut c1 = [F::zero(); D];
-        for i in 0..D {
-            p0[i] = center[i] + unit[i] * (d0c * radius) + normal[i] * (d0s * radius);
-            p1[i] = center[i] + unit[i] * (d1c * radius) + normal[i] * (d1s * radius);
-
-            c0[i] = p0[i] - unit[i] * (d0s * lambda) + normal[i] * (d0c * lambda);
-            c1[i] = p1[i] + unit[i] * (d1s * lambda) - normal[i] * (d1c * lambda);
-        }
-
-        Self::cubic(&p0, &c0, &c1, &p1)
+        bernstein_fns::arc::arc(angle, radius, center, unit, normal, rotate).into()
     }
 
     //fp of_round_corner
@@ -649,42 +554,7 @@ where
     ///
     /// Then we require an arc given the angle of the arc is 2*theta
     pub fn of_round_corner(corner: &[F; D], v0: &[F; D], v1: &[F; D], radius: F) -> Self {
-        let nearly_one = (0.999_999_f32).into();
-        let one = F::one();
-        let two: F = (2.0_f32).into();
-        let v0 = vector::normalize(*v0);
-        let v1 = vector::normalize(*v1);
-        let cos_alpha = vector::dot(&v0, &v1);
-        if cos_alpha.abs() >= nearly_one {
-            // v0 and v1 point in the same direction
-            let mut p0 = [F::zero(); D];
-            let mut p1 = [F::zero(); D];
-            for i in 0..D {
-                p0[i] = corner[i] - radius * v0[i];
-                p1[i] = corner[i] - radius * v1[i];
-            }
-            Self::quadratic(&p0, corner, &p1)
-        } else {
-            let r2 = radius * radius;
-            let d2 = two * r2 / (one - cos_alpha);
-            let k2 = d2 - r2;
-            let d = d2.sqrt();
-            let k = k2.sqrt();
-
-            let lambda = radius * Self::lambda_of_k_d(k, d);
-
-            let mut p0 = [F::zero(); D];
-            let mut p1 = [F::zero(); D];
-            let mut c0 = [F::zero(); D];
-            let mut c1 = [F::zero(); D];
-            for i in 0..D {
-                p0[i] = corner[i] - k * v0[i];
-                p1[i] = corner[i] - k * v1[i];
-                c0[i] = p0[i] + lambda * v0[i];
-                c1[i] = p1[i] + lambda * v1[i];
-            }
-            Self::cubic(&p0, &c0, &c1, &p1)
-        }
+        bernstein_fns::arc::of_round_corner(corner, v0, v1, radius).into()
     }
 
     //mp center_radius_of_bezier_arc
@@ -722,27 +592,7 @@ where
     ///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
     /// ```
     pub fn center_radius_of_bezier_arc(&self) -> ([F; D], F) {
-        let zero = F::zero();
-        let one = F::one();
-        let p0 = self.point_at(zero);
-        let p1 = self.point_at(one);
-        let (_sc0, t0) = self.derivative_at(zero);
-        let (_sc1, t1) = self.derivative_at(one);
-        let t0 = vector::normalize(t0);
-        let t1 = vector::normalize(t1);
-        let t1_d_t0 = vector::dot(&t1, &t0);
-        let p0_d_t0 = vector::dot(&p0, &t0);
-        let p1_d_t1 = vector::dot(&p1, &t1);
-        let k0 = (p0_d_t0 - p1_d_t1 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
-        let k1 = (p1_d_t1 - p0_d_t0 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
-
-        let mut c = [F::zero(); D];
-        for i in 0..D {
-            c[i] = t0[i] * k0 + t1[i] * k1;
-        }
-
-        let r = (vector::distance(&c, &p0) + vector::distance(&c, &p1)) / (2.0_f32).into();
-        (c, r)
+        bernstein_fns::arc::center_radius_of_bezier_arc(self)
     }
 
     //mp pt_distance_sq_from
@@ -836,7 +686,7 @@ where
     /// bisection.
     ///
     pub fn as_lines(&self, straightness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> + '_ {
-        <Self as BezierIntoIterator<F, _, [F; D]>>::as_lines(self, straightness_sq)
+        <Self as BezierIntoIterator<F, [F; D]>>::as_lines(self, straightness_sq)
     }
 
     //mp as_points
@@ -847,7 +697,7 @@ where
     /// enough through bisection.
     ///
     pub fn as_points(&self, straightness_sq: F) -> impl Iterator<Item = [F; D]> + '_ {
-        <Self as BezierIntoIterator<F, _, [F; D]>>::as_points(self, straightness_sq)
+        <Self as BezierIntoIterator<F, [F; D]>>::as_points(self, straightness_sq)
     }
 
     //mp is_straight
