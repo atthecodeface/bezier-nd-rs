@@ -82,9 +82,9 @@ pub fn assert_near_equal<N: Num>(m0: &[N], m1: &[N]) {
 
 /// Assert that a scaled matrix is nearly equal to another unscaled matrix
 #[track_caller]
-pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
+pub fn assert_near_equal_scale<N: Num, I: Into<N> + Copy>(m0: &[N], m1: &[N], scale: I) {
     let eps = N::from_usize(1).unwrap() / N::from_usize(10000).unwrap();
-
+    let scale = scale.into();
     for (i, (v0, v1)) in m0.iter().zip(m1.iter()).enumerate() {
         let dv = (*v0) * scale - *v1;
         assert!(
@@ -92,4 +92,18 @@ pub fn assert_near_equal_scale<N: Num>(m0: &[N], m1: &[N], scale: N) {
             "Data {i} is mismatch in {m0:?} * {scale} <> {m1:?}"
         );
     }
+}
+
+/// Assert that a scaled matrix is nearly equal to another unscaled matrix
+#[track_caller]
+pub fn assert_near_equal_sorted_scale<N: Num, const D: usize, I: Into<N> + Copy>(
+    m0: &[N; D],
+    m1: &[N; D],
+    scale: I,
+) {
+    let mut m0 = *m0;
+    let mut m1 = *m1;
+    m0.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    m1.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    assert_near_equal_scale(&m0, &m1, scale);
 }

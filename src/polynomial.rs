@@ -67,6 +67,16 @@ fn poly_gradient<F: Num + From<f32>>(poly: &[F], x: F) -> F {
     r
 }
 
+fn poly_d2f<F: Num + From<f32>>(poly: &[F], x: F) -> F {
+    let mut r = F::ZERO;
+    let mut xn = F::ONE;
+    for (i, p) in poly.iter().enumerate().skip(2) {
+        r += (*p) * xn * (((i - 1) * i) as f32).into();
+        xn *= x;
+    }
+    r
+}
+
 fn poly_differentiate<F: Num + From<f32>>(poly: &mut [F]) {
     let n = poly.len();
     if n < 1 {
@@ -113,14 +123,8 @@ fn poly_multiply<F: Num>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
         result.len() > mul_deg + poly_deg,
         "Result of multiplication must be large enough to store result"
     );
-    for (m_i, m) in multiplicand.iter().enumerate() {
-        if m_i > mul_deg {
-            break;
-        }
-        for (p_i, p) in poly.iter().enumerate() {
-            if p_i > poly_deg {
-                break;
-            }
+    for (m_i, m) in multiplicand.iter().take(mul_deg + 1).enumerate() {
+        for (p_i, p) in poly.iter().take(poly_deg + 1).enumerate() {
             result[m_i + p_i] += (*m) * (*p);
         }
     }
@@ -167,6 +171,8 @@ pub trait Polynomial<F: Num> {
     fn calc(&self, x: F) -> F;
     /// Calculate the gradient at x
     fn gradient(&self, x: F) -> F;
+    /// Calculate the second derivative at x
+    fn d2f(&self, x: F) -> F;
     /// Multiply by a polynomial
     fn set_multiply(&mut self, poly: &[F], multiplicand: &[F]);
     /// Set to result of polynomial divided by divisor, leaving the remainder in poly
@@ -189,6 +195,9 @@ impl<F: Num, const N: usize> Polynomial<F> for [F; N] {
     }
     fn gradient(&self, x: F) -> F {
         poly_gradient(self, x)
+    }
+    fn d2f(&self, x: F) -> F {
+        poly_d2f(self, x)
     }
     fn differentiate(&mut self) {
         poly_differentiate(self);
@@ -219,6 +228,9 @@ impl<F: Num> Polynomial<F> for [F] {
     fn gradient(&self, x: F) -> F {
         poly_gradient(self, x)
     }
+    fn d2f(&self, x: F) -> F {
+        poly_d2f(self, x)
+    }
     fn differentiate(&mut self) {
         poly_differentiate(self);
     }
@@ -235,18 +247,17 @@ impl<F: Num> Polynomial<F> for [F] {
 /// Improve an estimate for a root; as we get closer the dx should get smaller
 ///
 /// If the dx is *larger* than the last dx then stop
-fn improve_root<F: Num + From<f32>>(poly: &[F], x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
+fn improve_root<F: Num + From<f32>>(poly: &[F], x: F, min_grad: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
+    let d2f = poly.d2f(x);
+    eprintln!("f:{f} df:{df} df2:{d2f}");
     if abs(df) < min_grad {
         None
     } else {
-        let new_x = x - f / df;
-        if abs(new_x - x) < max_dx {
-            Some((new_x, abs(new_x - x)))
-        } else {
-            None
-        }
+        let new_x = x - f * df / (df * df - f * d2f / (2.0_f32.into()));
+        eprintln!("x:{x} f:{f} df:{df} d2f:{d2f} new_x:{new_x}");
+        Some((new_x, abs(new_x - x)))
     }
 }
 
@@ -255,7 +266,7 @@ pub fn find_real_roots_linear<F: Float>(poly: &[F]) -> Option<F> {
         poly.len() >= 2,
         "Root of a linear polynomial requires at least two coefficients (and [2..] should be zero)"
     );
-    if abs(poly[1]) <= F::epsilon() {
+    if poly[1].is_unreliable_divisor() {
         None
     } else {
         Some(-poly[0] / poly[1])
@@ -279,7 +290,10 @@ pub fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
             (None, None)
         } else {
             let disc_sq = disc.sqrt();
-            (Some((-b + disc_sq) / two), Some((-b - disc_sq) / two))
+            (
+                Some((-b + disc_sq) / two / a),
+                Some((-b - disc_sq) / two / a),
+            )
         }
     }
 }
@@ -407,16 +421,23 @@ pub trait PolyFindRoots<F: Float> {
 /// and so only requires 'Num' not 'Float'
 pub trait PolyNewtonRaphson<F: Num> {
     /// Improve a root using Newton-Raphson
-    fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)>;
+    fn improve_root(&self, x: F, min_grad: F) -> Option<(F, F)>;
     /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
     fn find_root_nr(&self, mut x: F, min_grad: F) -> Option<F>
     where
         Self: Polynomial<F>,
     {
-        let mut max_dx = f32::MAX.into();
-        while let Some((improved_x, improved_dx)) = self.improve_root(x, min_grad, max_dx) {
+        let mut iters = 100;
+        while let Some((improved_x, improved_dx)) = self.improve_root(x, min_grad) {
+            eprintln!("x:{x}, {improved_x} {improved_dx}");
             x = improved_x;
-            max_dx = improved_dx;
+            if improved_dx < min_grad {
+                break;
+            }
+            if iters == 0 {
+                return None;
+            }
+            iters -= 1;
         }
         Some(x)
     }
@@ -435,7 +456,7 @@ impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
     }
 }
 impl<F: Num, const N: usize> PolyNewtonRaphson<F> for [F; N] {
-    fn improve_root(&self, x: F, min_grad: F, max_dx: F) -> Option<(F, F)> {
-        improve_root(self, x, min_grad, max_dx)
+    fn improve_root(&self, x: F, min_grad: F) -> Option<(F, F)> {
+        improve_root(self, x, min_grad)
     }
 }

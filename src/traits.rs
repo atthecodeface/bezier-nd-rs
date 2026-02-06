@@ -70,7 +70,7 @@ pub trait BezierOps<F: Num, P: Clone> {
     fn scale(&mut self, scale: F);
 
     /// Map the points
-    fn map_pts(&mut self, map: &dyn Fn(&P) -> P);
+    fn map_pts(&mut self, map: &dyn Fn(usize, &P) -> P);
 }
 
 pub trait BasicBezier<F: Num, P: Clone>:

@@ -28,6 +28,11 @@ pub fn abs<F: Num>(f: F) -> F {
     }
 }
 
+pub fn sorted<F: Num, const D: usize>(values: &[F; D]) -> [F; D] {
+    let mut values = *values;
+    values.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    values
+}
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter_between<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     assert!(

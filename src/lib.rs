@@ -10,8 +10,19 @@ Add tests for:
 * t_closest
 * reduce
 * elevate_by(>1)
-+ add 'BezierCubic' trait? - support arc
-+ add 'BezierQuadratic' trait?
+* BezierOps
+* Polynomial (set_multiply, set_divide, find cubic real root, tests for [F])
+* section_length with t0<0, t1>1, t1<t0
+* Approximation t_of_distance beyond length
+* Approximation derivative_at of t<0 or t>1
+* Approximation into iterator
+* Appromixation for_each_control_point
+
+* add 'BezierCubic' trait? - support arc
+* add 'BezierQuadratic' trait?
+* Amalgamate BezierSplit and BezierSection
+* Move BezierOps, Distance, MinMax, etc (all dyn compatible) to BezierEval If Approxmiation can do them
+* Add c_sq, f_sq, df_sq_from_line to BezierEval
 
 # Bezier curve library
 

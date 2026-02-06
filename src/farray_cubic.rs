@@ -72,9 +72,9 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 4] {
             *s = vector::scale(*s, scale);
         }
     }
-    fn map_pts(&mut self, map: &dyn Fn(&[F; D]) -> [F; D]) {
-        for s in self.iter_mut() {
-            *s = map(s);
+    fn map_pts(&mut self, map: &dyn Fn(usize, &[F; D]) -> [F; D]) {
+        for (i, s) in self.iter_mut().enumerate() {
+            *s = map(i, s);
         }
     }
 }
