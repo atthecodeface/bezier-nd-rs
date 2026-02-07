@@ -813,4 +813,4 @@ pub use distance::BezierDistance2D;
 pub use implementations::Bezier;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
-pub use implementations::bezier_nd::Bezier as BezierND;
+pub use implementations::bezier_nd::BezierND;
