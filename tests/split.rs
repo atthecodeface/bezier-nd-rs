@@ -1,7 +1,7 @@
 //a Imports
 mod utils;
 use bezier_nd::bernstein_fns::generate_elevate_by_one_matrix;
-use bezier_nd::{Bezier, BezierEval, BezierND, BezierSplit};
+use bezier_nd::{metrics, Bezier, BezierEval, BezierND, BezierSplit};
 use geo_nd::{
     matrix,
     vector::{self},
@@ -269,9 +269,9 @@ fn reduce_and_elevate_cubic_in_parts() {
             "Uniform reduction to quadratic has same point for t {t} in {ts:?}"
         );
     }
-    let dm = b.metric_dm_sq_est(&nb, 1000).sqrt();
-    let df = b.metric_df_sq(&nb).sqrt();
-    let dc = b.metric_dc_sq(&nb).sqrt();
+    let dm = metrics::dm_sq_est(&b, &nb, 1000).unwrap().sqrt();
+    let df = metrics::df_sq(&b, &nb).unwrap().sqrt();
+    let dc = metrics::dc_sq(&b, &nb).unwrap().sqrt();
     eprintln!("Metrics for b/nb: dm {dm} < dc {dc} < df {df}");
     assert!(dm < dc);
     assert!(dc < df);
@@ -292,9 +292,9 @@ fn reduce_and_elevate_cubic_in_parts() {
     }
 
     let nb0 = b0.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
-    let dm0 = b0.metric_dm_sq_est(&nb0, 1000).sqrt();
-    let df0 = b0.metric_df_sq(&nb0).sqrt();
-    let dc0 = b0.metric_dc_sq(&nb0).sqrt();
+    let dm0 = metrics::dm_sq_est(&b0, &nb0, 1000).unwrap().sqrt();
+    let df0 = metrics::df_sq(&b0, &nb0).unwrap().sqrt();
+    let dc0 = metrics::dc_sq(&b0, &nb0).unwrap().sqrt();
     eprintln!("Metrics for b0/nb0: dm {dm0} < dc {dc0} < df {df0}");
     assert!(dm0 < dc0);
     assert!(dc0 < df0);

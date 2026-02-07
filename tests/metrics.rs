@@ -1,11 +1,8 @@
 use bezier_nd::BezierEval;
-use bezier_nd::{BezierBuilder, BezierND};
+use bezier_nd::{metrics, BezierBuilder, BezierND};
 mod utils;
 
-fn check_metrics_of_beziers<const N: usize, const D: usize>(
-    b0: &BezierND<f32, N, D>,
-    b1: &BezierND<f32, N, D>,
-) {
+fn check_metrics_of_beziers<const D: usize, B: BezierEval<f32, [f32; D]>>(b0: &B, b1: &B) {
     let mut max_d = 0.0;
     let mut max_t = 0.0;
     for t in utils::float_iter(101) {
@@ -23,17 +20,17 @@ fn check_metrics_of_beziers<const N: usize, const D: usize>(
         b1.point_at(max_t)
     );
 
-    let l2_sq = b0.metric_l2_est(&b1, 10000);
-    let dm_sq = b0.metric_dm_sq_est(&b1, 10000);
-    let dc_sq = b0.metric_dc_sq(&b1);
-    let df_sq = b0.metric_df_sq(&b1);
-    eprintln!("b0-b1 l2 {l2_sq} dm {dm_sq} dc {dc_sq} df {df_sq}",);
+    let dl_sq = metrics::dl_sq_est(b0, b1, 10000).unwrap();
+    let dm_sq = metrics::dm_sq_est(b0, b1, 10000).unwrap();
+    let dc_sq = metrics::dc_sq(b0, b1).unwrap();
+    let df_sq = metrics::df_sq(b0, b1).unwrap();
+    eprintln!("b0-b1 l2 {dl_sq} dm {dm_sq} dc {dc_sq} df {df_sq}",);
 
-    assert!(l2_sq <= dm_sq * 1.1, "L_SQ < dm_sq (with margin)");
+    assert!(dl_sq <= dm_sq * 1.1, "dl_sq < dm_sq (with margin)");
     assert!(dm_sq <= dc_sq * 1.1, "dm_sq < dc_sq (with margin)");
     assert!(dc_sq <= df_sq * 1.01, "dc_sq < df_sq (with margin)");
     assert!(
-        df_sq <= dc_sq * (N as f32) * 1.01,
+        df_sq <= dc_sq * (b0.num_control_points() as f32) * 1.01,
         "df_sq < N*dc_sq (with margin)"
     );
 }

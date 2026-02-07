@@ -2,10 +2,7 @@
 use crate::Float;
 use geo_nd::vector;
 
-use crate::{
-    BezierElevate, BezierEval, BezierIntoIterator, BezierMinMax, BezierReduce, BezierSection,
-    BezierSplit,
-};
+use crate::BezierEval;
 
 //fi lambda_of_k_d
 fn lambda_of_k_d<F: Float>(k: F, d: F) -> F {
