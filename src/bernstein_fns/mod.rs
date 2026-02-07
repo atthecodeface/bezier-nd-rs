@@ -5,6 +5,6 @@ mod elevate_matrix;
 pub mod arc;
 
 /// Functions that split Bernestein Bezier curves, generating new control points
-pub mod split;
+pub mod de_casteljau;
 pub use coeffs::*;
 pub use elevate_matrix::*;

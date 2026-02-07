@@ -9,7 +9,7 @@ use geo_nd::vector;
 /// The first Bezier returned has parameter t0 where 0<=t0<=1 maps to 0<=t*t0<=t
 ///
 /// This destroys the provided points
-pub fn into_two_at_de_cast<F: Num, const D: usize>(pts: &mut [[F; D]], t: F, first: &mut [[F; D]]) {
+pub fn split_at<F: Num, const D: usize>(pts: &mut [[F; D]], t: F, first: &mut [[F; D]]) {
     // eprintln!("Split {pts:?} at {t}");
     // Beta[0][i] = pts[i]
     // for j = 1..=n
@@ -34,7 +34,7 @@ pub fn into_two_at_de_cast<F: Num, const D: usize>(pts: &mut [[F; D]], t: F, fir
 /// points set for the Bezier between t and 1.0
 ///
 /// The Bezier is updated such that it has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
-pub fn bezier_to_de_cast<F: Num, const D: usize>(pts: &mut [[F; D]], t: F) {
+pub fn bezier_to<F: Num, const D: usize>(pts: &mut [[F; D]], t: F) {
     let n = pts.len();
     let u = F::one() - t;
     for j in 1..n {
@@ -50,7 +50,7 @@ pub fn bezier_to_de_cast<F: Num, const D: usize>(pts: &mut [[F; D]], t: F) {
 /// points set for the Bezier between t and 1.0
 ///
 /// The Bezier is updated such that it has parameter t1 where 0<=t1<=1 maps to t<=t+(1-t)*t1<=1
-pub fn bezier_from_de_cast<F: Num, const D: usize>(pts: &mut [[F; D]], t: F) {
+pub fn bezier_from<F: Num, const D: usize>(pts: &mut [[F; D]], t: F) {
     let n = pts.len();
     let u = F::one() - t;
     for j in 1..n {

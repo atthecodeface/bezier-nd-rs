@@ -782,16 +782,12 @@ mod traits;
 pub use traits::{Float, Num};
 
 mod approximation;
-mod curve;
 mod distance;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
 
-mod farray_cubic;
-mod farray_line;
-mod farray_quadratic;
-mod fvec;
+mod implementations;
 
 /// Useful functions for generating Bernstein coefficients and operating on Berstein Bezier curves
 pub mod bernstein_fns;
@@ -814,8 +810,8 @@ pub use traits::{
 
 pub use builder::BezierBuilder;
 pub use constants::*;
-pub use curve::Bezier;
 pub use distance::BezierDistance2D;
+pub use implementations::Bezier;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
 pub use bernstein::Bezier as BezierND;

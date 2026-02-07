@@ -294,7 +294,7 @@ impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 3] {
     fn split_at(&self, t: F) -> (Self, Self) {
         let mut latter = *self;
         let mut first = [[F::ZERO; D]; 3];
-        bernstein_fns::split::into_two_at_de_cast(&mut latter, t, &mut first);
+        bernstein_fns::de_casteljau::split_at(&mut latter, t, &mut first);
         (first, latter)
     }
 
@@ -303,11 +303,11 @@ impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 3] {
     fn section(&self, t0: F, t1: F) -> Self {
         let mut to_split = *self;
         if t0 > F::ZERO {
-            bernstein_fns::split::bezier_from_de_cast(&mut to_split, t0);
+            bernstein_fns::de_casteljau::bezier_from(&mut to_split, t0);
         }
         if t1 < F::ONE {
             let t10 = (t1 - t0) / (F::ONE - t0);
-            bernstein_fns::split::bezier_to_de_cast(&mut to_split, t10);
+            bernstein_fns::de_casteljau::bezier_to(&mut to_split, t10);
         }
         to_split
     }
