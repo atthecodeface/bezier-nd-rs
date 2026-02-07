@@ -50,17 +50,25 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
 
 impl<F: Num, const D: usize> BezierOps<F, [F; D]> for Vec<[F; D]> {
     fn add(&mut self, other: &Self) -> bool {
-        for (s, o) in self.iter_mut().zip(other.iter()) {
-            *s = vector::add(*s, o, F::ONE)
+        if self.len() != other.len() {
+            false
+        } else {
+            for (s, o) in self.iter_mut().zip(other.iter()) {
+                *s = vector::add(*s, o, F::ONE)
+            }
+            true
         }
-        true
     }
 
     fn sub(&mut self, other: &Self) -> bool {
-        for (s, o) in self.iter_mut().zip(other.iter()) {
-            *s = vector::sub(*s, o, F::ONE)
+        if self.len() != other.len() {
+            false
+        } else {
+            for (s, o) in self.iter_mut().zip(other.iter()) {
+                *s = vector::sub(*s, o, F::ONE)
+            }
+            true
         }
-        true
     }
     fn scale(&mut self, scale: F) {
         for s in self.iter_mut() {
