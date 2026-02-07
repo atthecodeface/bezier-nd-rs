@@ -1,3 +1,4 @@
+pub mod bezier_nd;
 mod curve;
 mod farray_cubic;
 mod farray_line;

@@ -773,7 +773,6 @@ for Computationally Efficient Motion Planning (Omur Arslan and Aron Tiemessen):
 
 /*a Imports
 */
-pub mod bernstein;
 mod builder;
 pub(crate) mod constants;
 pub(crate) mod utils;
@@ -814,4 +813,4 @@ pub use distance::BezierDistance2D;
 pub use implementations::Bezier;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
-pub use bernstein::Bezier as BezierND;
+pub use implementations::bezier_nd::Bezier as BezierND;
