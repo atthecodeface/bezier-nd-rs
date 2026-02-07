@@ -1,4 +1,4 @@
-use crate::{BezierEval, BezierIntoIterator, BezierSplit, Float, Num};
+use crate::{utils, BezierEval, BezierIntoIterator, BezierSplit, Float, Num};
 use geo_nd::vector;
 
 /// An approximation to a Bezier of potentially high degree,
@@ -60,6 +60,23 @@ where
             points.push(p);
             ts.push(t);
         }
+        let bezier = bezier.clone();
+        Self {
+            bezier,
+            closeness_sq,
+            ts,
+            points,
+        }
+    }
+
+    /// Create a new Approximation from a Bezier and regular `t` intervals
+    ///
+    /// The specified `closeness_sq` should *exceed* the expected distance; this
+    /// can be taken (if required) from metrics::dc_sq_from_line(bezier)
+    pub fn of_regular_t(bezier: &B, num_pts: usize, closeness_sq: Option<F>) -> Self {
+        let ts: Vec<F> = utils::float_iter(num_pts).collect();
+        let points = ts.iter().map(|t| bezier.point_at(*t)).collect();
+        let closeness_sq = closeness_sq.unwrap_or_else(|| bezier.dc_sq_from_line());
         let bezier = bezier.clone();
         Self {
             bezier,

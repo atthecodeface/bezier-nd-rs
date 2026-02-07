@@ -1,8 +1,10 @@
+use crate::polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 use crate::utils;
 use crate::{
     bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
     BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
+
 use crate::{Float, Num};
 use geo_nd::vector;
 
@@ -150,36 +152,31 @@ impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 3] {
             dsq_min = d1_sq;
         }
 
-        let p012 = vector::add(
-            vector::add(self[0], &self[1], (-2.0_f32).into()),
-            &self[2],
-            F::ONE,
-        );
-        let p01 = vector::add(self[1], &self[0], (-1.0_f32).into());
-        let p0p = vector::add(self[0], pt, (-2.0_f32).into());
-        let mut d_dt_dsq_poly = [
+        // eprintln!("Cloeset endpoint {t_min}:{dsq_min}");
+        let p012 = vector::sum_scaled(self, &[F::ONE, (-2.0_f32).into(), F::ONE]);
+        let p01 = vector::sum_scaled(self, &[-F::ONE, F::ONE]);
+        let p0p = vector::add(self[0], pt, -F::ONE);
+        let d_dt_dsq_poly = [
             vector::dot(&p01, &p0p),
             vector::dot(&p01, &p01) * (2.0_f32).into() + vector::dot(&p012, &p0p),
             vector::dot(&p01, &p012) * (3.0_f32).into(),
             vector::dot(&p012, &p012),
         ];
-        use crate::polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
-        let Some(t0) = d_dt_dsq_poly.find_root_nr(0.5_f32.into(), 1E7_f32.into()) else {
+        //eprintln!("Polynomial {d_dt_dsq_poly:?}");
+
+        let (Some(t0), opt_t1, opt_t2) = d_dt_dsq_poly.find_roots_cubic() else {
+            //eprintln!("Failed to find root");
             // panic!("Failed to find root for polynomial {d_dt_dsq_poly:?}");
             return Some((t_min, dsq_min));
         };
-        let mut d_dt_dsq_poly_without_root = [F::ZERO; 3];
-        if !d_dt_dsq_poly_without_root.set_divide(
-            &mut d_dt_dsq_poly,
-            &[-t0, F::ONE],
-            (1.0E-4_f32).into(),
-        ) {
-            // panic!("Failed to divide by x-root!");
-            return Some((t_min, dsq_min));
-        }
-        let (opt_t1, opt_t2) = d_dt_dsq_poly_without_root.find_roots_quad();
+
         let t1 = opt_t1.unwrap_or(t0);
         let t2 = opt_t2.unwrap_or(t0);
+        // eprintln!(
+        //    "Poly values {} {}",
+        //    d_dt_dsq_poly.calc(t1),
+        //    d_dt_dsq_poly.calc(t2),
+        //);
         // Make t0 < t1; t1 and t2 will be unordered, and t0 and t2 will be unordered
         let (t0, t1) = {
             if t0 < t1 {
@@ -210,30 +207,32 @@ impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 3] {
         // At this point t0 and t2 are minima, and t0<t2
         //
         // There are six cases:
-        //         0.             1.           Minimum
-        // --------------------------------------------
-        //  t0 t2  |              |          | at t=0
-        //  t0     |  t2          |          | at t=0 or t2
-        //  t0     |              |  t2      | at t=0 or t=1
-        //         |  t0 t2       |          | at t0 or t2
-        //         |  t0          |  t2      | at t0 or t=1
-        //         |              |  t0 t2.  } at t=1
+        //          0.             1.           Minimum
+        //  --------------------------------------------
+        // 1: t0 t2  |              |          | at t=0
+        // 2: t0     |  t2          |          | at t=0 or t2
+        // 3: t0     |              |  t2      | at t=0 or t=1
+        // 4:        |  t0 t2       |          | at t0 or t2
+        // 5:        |  t0          |  t2      | at t0 or t=1
+        // 6:        |              |  t0 t2.  } at t=1
+        // eprintln!("{t0} {t1} {t2}");
         let t0_lt_zero = t0 <= F::ZERO;
         let t2_lt_zero = t2 <= F::ZERO;
         let t0_gt_one = t0 >= F::ONE;
         let t2_gt_one = t2 >= F::ONE;
+        // Handle #1, #3, #6
         if t2_lt_zero || t0_gt_one || (t0_lt_zero && t2_gt_one) {
             return Some((t_min, dsq_min));
         }
         let dsq_at_t0 = vector::distance_sq(pt, &self.point_at(t0));
-        let dsq_at_t1 = vector::distance_sq(pt, &self.point_at(t1));
-        if dsq_at_t0 < dsq_min {
+        let dsq_at_t2 = vector::distance_sq(pt, &self.point_at(t2));
+        if !t0_lt_zero && dsq_at_t0 < dsq_min {
             dsq_min = dsq_at_t0;
             t_min = t0;
         }
-        if dsq_at_t1 < dsq_min {
-            dsq_min = dsq_at_t1;
-            t_min = t1;
+        if !t2_gt_one && dsq_at_t2 < dsq_min {
+            dsq_min = dsq_at_t2;
+            t_min = t2;
         }
         Some((t_min, dsq_min))
     }

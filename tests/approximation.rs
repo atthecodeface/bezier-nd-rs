@@ -19,7 +19,7 @@ mod utils;
 use geo_nd::vector;
 use utils::test_beziers_approx_eq;
 
-fn test_approximation<
+fn test_approximation_closeness_sq<
     B: BezierEval<f32, [f32; D]> + BezierSplit + Clone + std::fmt::Debug,
     const D: usize,
 >(
@@ -85,13 +85,13 @@ fn test_f_array() {
     // Test with a quadratic Bezier with 10 diumensional points
     let bezier = utils::new_random_point_array::<_, _, _, 3, 10>(&mut rng, &distribution);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier, closeness_sq);
+        test_approximation_closeness_sq(&bezier, closeness_sq);
     }
 
     // Test with a cubic Bezier with 6 diumensional points
     let bezier = utils::new_random_point_array::<_, _, _, 4, 6>(&mut rng, &distribution);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier, closeness_sq);
+        test_approximation_closeness_sq(&bezier, closeness_sq);
     }
 }
 
@@ -104,7 +104,7 @@ fn test_fvec() {
         let mut bezier = vec![[0.0_f32; 2]; degree + 1];
         utils::set_random_point_array(&mut rng, &distribution, &mut bezier);
         for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-            test_approximation(&bezier, closeness_sq);
+            test_approximation_closeness_sq(&bezier, closeness_sq);
         }
     }
 }
@@ -122,7 +122,7 @@ fn test_bezier() {
     assert!(opt_tf.is_err());
     test_beziers_approx_eq(&bezier_nd, &tf_bezier);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier_nd, closeness_sq);
+        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 
     // Test with a quadratic Bezier with 10 dimensional points
@@ -133,7 +133,7 @@ fn test_bezier() {
     assert!(opt_tf.is_err());
     test_beziers_approx_eq(&bezier_nd, &tf_bezier);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier_nd, closeness_sq);
+        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 
     // Test with a degree 7 Bezier with 10 dimensional points
@@ -144,7 +144,7 @@ fn test_bezier() {
     assert!(opt_tf.is_err());
     test_beziers_approx_eq(&bezier_nd, &tf_bezier);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier_nd, closeness_sq);
+        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 }
 
@@ -157,13 +157,13 @@ fn test_bezier_nd() {
     let bezier = utils::new_random_point_array::<_, _, _, 3, 10>(&mut rng, &distribution);
     let bezier_nd = BezierND::<_, 6, _>::new(&bezier);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier_nd, closeness_sq);
+        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 
     // Test with a degree 7 Bezier with 10 diumensional points
     let bezier = utils::new_random_point_array::<_, _, _, 8, 10>(&mut rng, &distribution);
     let bezier_nd = BezierND::<_, 9, _>::new(&bezier);
     for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation(&bezier_nd, closeness_sq);
+        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 }

@@ -344,8 +344,19 @@ fn test_specific_quad(poly: &[f32; 3]) {
     utils::assert_near_equal_sorted_scale(&[r0, r1], &[x1, x0], 1.0);
 }
 
+fn test_specific_cubic(poly: &[f32; 4]) {
+    eprintln!("Test specific cubic {poly:?}");
+    let root0 = poly.find_root_nr(0.0, 1E-6).unwrap();
+    let (r0, r1, r2) = poly.find_roots_cubic();
+    eprintln!("Poly {poly:?} found cubic roots {r0:?} {r1:?} {r2:?}, known to be {root0},...");
+    let r0 = r0.expect("Cubics have at least one real root");
+    //     let r1 = r1.expect("Two roots should have been found, first was None");
+    // utils::assert_near_equal_sorted_scale(&[r0, r1], &[x1, x0], 1.0);
+}
+
 #[test]
 fn specific_tests() {
     test_specific_quad(&[12.0_f32, -25.0, 4.0]);
     test_specific_quad(&[11.903965, -25.258091, 3.5866723]);
+    test_specific_cubic(&[9.146291, -4.4568596, -97.76549, 89.3183]);
 }

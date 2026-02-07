@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierMinMax, BezierOps, BezierSection, BezierSplit,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate,
+    BezierEval, BezierMinMax, BezierOps, BezierSection, BezierSplit, Float,
 };
 use geo_nd::{matrix, vector};
 
@@ -119,6 +119,57 @@ impl<F: Num, const D: usize> BezierSection<F> for Vec<[F; D]> {
             bernstein_fns::de_casteljau::bezier_to(&mut to_split, t10);
         }
         to_split
+    }
+}
+
+// Note this requires *Float*
+impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for Vec<[F; D]> {
+    /// The closest point on a cubic bezier to a point is not analytically determinable
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        match self.len() {
+            1 => Some((F::ZERO, vector::distance_sq(&self[0], pt))),
+            2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&self[0..2])
+                .unwrap()
+                .t_dsq_closest_to_pt(pt),
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
+                .unwrap()
+                .t_dsq_closest_to_pt(pt),
+            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
+                .unwrap()
+                .t_dsq_closest_to_pt(pt),
+            _ => None,
+        }
+    }
+
+    /// An estimate of the minimum distance squared from the Bezier to the point
+    /// for 0<=t<=1. This must ALWAYS be less than or equal to the true minimum distance.
+    /// If a Bezier does not support this estimate then it *can* return ZERO.
+    ///
+    /// The points on the Bezier are all within the convex hull of the Bezier, which is
+    /// not simple to determine for a cubic.
+    ///
+    /// The points on the Bezier are also within a distance max(dc_sq) of the line betwen the endpoints
+    /// of the Bezier where `dc_sq[i]` is the square of the distance between control point `[i]` and the
+    /// position of that control point on a linear Bezier elevated to the degree of this Bezier.
+    ///
+    /// Hence if the point is at a distance squared of d_sq from the linear Bezier, then it is potentially
+    /// at a distance of d_sq-max(dc_sq) (or 0 if that is negative) away from the Bezier curve.
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        let d_sq = crate::utils::distance_sq_to_line_segment(
+            pt,
+            self.first().unwrap(),
+            self.last().unwrap(),
+        );
+        let dc_sq = crate::metrics::dc_sq_from_line(self);
+        if d_sq < dc_sq {
+            F::ZERO
+        } else {
+            // dout <= dmin = sqrt(d_sq) - sqrt(dc_sq)
+            // dout^2 <= (sqrt(d_sq) - sqrt(dc_sq)).sqrt(d_sq) - sqrt(dc_sq)
+            // dout^2 <= d_sq + dc_sq - 2.sqrt(dc_sq).sqrt(d_sq)
+            // dout^2 <= d_sq - dc_sq
+            d_sq - dc_sq
+        }
     }
 }
 

@@ -251,12 +251,12 @@ fn improve_root<F: Num + From<f32>>(poly: &[F], x: F, min_grad: F) -> Option<(F,
     let f = poly.calc(x);
     let df = poly.gradient(x);
     let d2f = poly.d2f(x);
-    eprintln!("f:{f} df:{df} df2:{d2f}");
+    // eprintln!("f:{f} df:{df} df2:{d2f}");
     if abs(df) < min_grad {
         None
     } else {
         let new_x = x - f * df / (df * df - f * d2f / (2.0_f32.into()));
-        eprintln!("x:{x} f:{f} df:{df} d2f:{d2f} new_x:{new_x}");
+        // eprintln!("x:{x} f:{f} df:{df} d2f:{d2f} new_x:{new_x}");
         Some((new_x, abs(new_x - x)))
     }
 }
@@ -320,7 +320,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
         let delta_1 =
             b * b * b * two - a * b * c * (9.0_f32.into()) + a * a * d * (27.0_f32.into());
         let disc = delta_1 * delta_1 - delta_0 * delta_0 * delta_0 * (4.0_f32.into());
-        dbg!(delta_0, delta_1, disc);
+        // dbg!(delta_0, delta_1, disc);
         if delta_0.abs() < F::epsilon() {
             // three identical roots if delta_1 is zero
             //
@@ -358,7 +358,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             // discriminant is -ve, so square root of discriminant is imaginary
             let big_c_cubed_i = (-disc).sqrt() / two;
             let big_c_cubed_r = delta_1 / two;
-            dbg!(big_c_cubed_r, big_c_cubed_i);
+            // dbg!(big_c_cubed_r, big_c_cubed_i);
             let cbrt_theta = big_c_cubed_i.atan2(big_c_cubed_r) / (3.0_f32.into());
             let cbrt_mag = (big_c_cubed_i * big_c_cubed_i + big_c_cubed_r * big_c_cubed_r)
                 .powf((1.0_f32 / 6.0).into());
@@ -366,7 +366,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_i = cbrt_theta.sin() * cbrt_mag;
             // Note that / big_C is the same as * big_C comp / |C|^2
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
-            dbg!(thing);
+            // dbg!(thing);
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
@@ -378,7 +378,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_r = new_big_c_r;
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
-            dbg!(thing);
+            // dbg!(thing);
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
@@ -390,7 +390,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_r = new_big_c_r;
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
-            dbg!(thing);
+            // dbg!(thing);
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
@@ -429,7 +429,7 @@ pub trait PolyNewtonRaphson<F: Num> {
     {
         let mut iters = 100;
         while let Some((improved_x, improved_dx)) = self.improve_root(x, min_grad) {
-            eprintln!("x:{x}, {improved_x} {improved_dx}");
+            // eprintln!("x:{x}, {improved_x} {improved_dx}");
             x = improved_x;
             if improved_dx < min_grad {
                 break;
