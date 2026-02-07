@@ -18,14 +18,19 @@ pub fn min_or_max<F: Num>(use_max: bool, ta: F, a: F, tb: F, b: F) -> (F, F) {
 }
 
 /// Iterate in 'n' steps from t0 to t1 inclusive
-pub fn float_iter<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
+pub fn float_iter_between<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     assert!(
         n >= 2,
         "Float iterator must have at least two steps for begin and end"
     );
     let r = t1 - t0;
     assert!(r >= N::zero(), "Float range must be positive");
-    (0..n).map(move |i: usize| r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap())
+    (0..n).map(move |i: usize| t0 + r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap())
+}
+
+/// Iterate in 'n' steps from 0 to 1 inclusive
+pub fn float_iter<F: Num>(n: usize) -> impl Iterator<Item = F> {
+    float_iter_between(F::ZERO, F::ONE, n)
 }
 
 /// Calculate the projection of the point onto the line, the length squared of a line,

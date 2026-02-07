@@ -241,8 +241,8 @@ where
     fn degree(&self) -> usize {
         self.bezier.degree()
     }
-    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
-        self.bezier.for_each_control_points(map);
+    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
+        self.bezier.for_each_control_point(map);
     }
 }
 

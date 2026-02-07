@@ -180,7 +180,7 @@ pub trait BezierEval<F: Num, P: Clone> {
     }
 
     /// Apply a mutable closure to the control points
-    fn for_each_control_points(&self, map: &mut dyn FnMut(&P));
+    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &P));
 }
 
 /// A trait that provides for measurement of distance from a point to the Bezier, and closest

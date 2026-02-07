@@ -798,6 +798,8 @@ pub mod bernstein_fns;
 
 pub mod bignum;
 
+pub mod metrics;
+
 /*a Exports
 */
 pub use approximation::Approximation;

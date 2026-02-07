@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierMinMax,
-    BezierOps, BezierSection, BezierSplit,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierMinMax, BezierOps, BezierSection, BezierSplit,
 };
 use geo_nd::{matrix, vector};
 
@@ -34,11 +34,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
         self.dc_sq_from_line()
     }
     fn dc_sq_from_line(&self) -> F {
-        bernstein_fns::metrics::dc_sq_from_line(
-            self.iter(),
-            self.first().unwrap(),
-            self.last().unwrap(),
-        )
+        metrics::dc_sq_from_line(self)
     }
 
     fn num_control_points(&self) -> usize {
@@ -47,8 +43,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
     }
-    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
-        self.iter().for_each(map)
+    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
+        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
     }
 }
 

@@ -4,9 +4,6 @@ mod elevate_matrix;
 /// Functions to permit creation of cubic Bezier curves of circular arcs
 pub mod arc;
 
-/// Functions to evaluate various metrics for Bernstein polynomial Bezier curves
-pub mod metrics;
-
 /// Functions that split Bernestein Bezier curves, generating new control points
 pub mod split;
 pub use coeffs::*;

@@ -49,8 +49,8 @@ impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
     }
-    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
-        self.iter().for_each(map)
+    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
+        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
     }
 }
 

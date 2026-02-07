@@ -21,11 +21,9 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         (&self[0], &self[2])
     }
     fn closeness_sq_to_line(&self) -> F {
-        eprintln!("quad {self:?}");
         utils::distance_sq_to_line_segment(&self[1], &self[0], &self[2])
     }
     fn dc_sq_from_line(&self) -> F {
-        eprintln!("dc {self:?}");
         vector::length_sq(&vector::sum_scaled(
             self,
             &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],
@@ -38,8 +36,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     fn control_point(&self, n: usize) -> &[F; D] {
         &self[n]
     }
-    fn for_each_control_points(&self, map: &mut dyn FnMut(&[F; D])) {
-        self.iter().for_each(map)
+    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
+        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
     }
 }
 

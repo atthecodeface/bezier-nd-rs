@@ -15,20 +15,22 @@ fn test_bezier_ops<
     bezier: &B,
     pts: [[F; D]; NP],
 ) {
-    fn sum_pts<'a, F: Num, const D: usize>(total: &'a mut [F; D]) -> impl FnMut(&[F; D]) + 'a {
+    fn sum_pts<'a, F: Num, const D: usize>(
+        total: &'a mut [F; D],
+    ) -> impl FnMut(usize, &[F; D]) + 'a {
         *total = [F::ZERO; D];
-        move |p| {
+        move |_n, p| {
             *total = vector::add(*total, p, F::ONE);
         }
     }
 
     let mut b_pts_total = [F::ZERO; D];
-    bezier.for_each_control_points(&mut sum_pts(&mut b_pts_total));
+    bezier.for_each_control_point(&mut sum_pts(&mut b_pts_total));
     let mut b2 = bezier.clone();
     b2.scale(2.0_f32.into());
 
     let mut b2_pts_total = [F::ZERO; D];
-    b2.for_each_control_points(&mut sum_pts(&mut b2_pts_total));
+    b2.for_each_control_point(&mut sum_pts(&mut b2_pts_total));
     assert_near_equal_scale(&b_pts_total, &b2_pts_total, 2.0_f32);
 
     let mut b3 = b2.clone();
@@ -37,17 +39,17 @@ fn test_bezier_ops<
     b1.sub(&b2);
 
     let mut b3_pts_total = [F::ZERO; D];
-    b3.for_each_control_points(&mut sum_pts(&mut b3_pts_total));
+    b3.for_each_control_point(&mut sum_pts(&mut b3_pts_total));
     assert_near_equal_scale(&b_pts_total, &b3_pts_total, 3.0_f32);
 
     let mut b1_pts_total = [F::ZERO; D];
-    b1.for_each_control_points(&mut sum_pts(&mut b1_pts_total));
+    b1.for_each_control_point(&mut sum_pts(&mut b1_pts_total));
     assert_near_equal_scale(&b_pts_total, &b1_pts_total, 1.0_f32);
 
     test_beziers_approx_eq(bezier, &b1);
 
     b1.map_pts(&|i, p| vector::sub(pts[i], p, F::ONE));
-    b1.for_each_control_points(&mut |p| {
+    b1.for_each_control_point(&mut |_, p| {
         assert_near_equal(p, &[F::ZERO; D]);
     });
 }
