@@ -2,22 +2,33 @@
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
 use bezier_nd::Float;
-use bezier_nd::{BezierIntoIterator, BezierSplit};
+use bezier_nd::{BezierIntoIterator, BezierOps, BezierSplit};
 mod utils;
 use geo_nd::{vector, FArray, Vector};
 
+#[track_caller]
 fn bezier_straight_as<F: Float>(bezier: &Bezier<F, 2>, straightness: F)
 where
     FArray<F, 2>: Vector<F, 2>,
 {
     for i in 0..30 {
         let s: F = (1.4_f32).powi(i - 15).into();
-        eprintln!("{} {} {}", straightness, s, bezier.is_straight(s));
-        assert_eq!(
-            straightness < s,
-            bezier.is_straight(s),
-            "Bezier {bezier} .is_straight({s}) mismatched with straightness<s for {straightness}",
-        );
+        //eprintln!(
+        //    "{bezier} is_straight {straightness} {s} {}",
+        //    bezier.is_straight(s)
+        //);
+
+        if straightness < s {
+            assert!(
+                bezier.is_straight(s),
+                "Bezier {bezier} should be straighter than {straightness}",
+            );
+        } else {
+            assert!(
+                !bezier.is_straight(s),
+                "Bezier {bezier} should not be straighter than {straightness}",
+            );
+        }
     }
 }
 
@@ -64,61 +75,62 @@ where
 
 //fi test_straight_as
 fn test_straight_as() {
-    let p0: FArray<f32, 2> = [0., 0.].into();
-    let p1: FArray<f32, 2> = [10., 0.].into();
-    let p2: FArray<f32, 2> = [10., 1.].into();
-    let p3: FArray<f32, 2> = [20., 0.].into();
-    let p4: FArray<f32, 2> = [20., 1.].into();
+    let p0 = [0., 0.];
+    let p1 = [10., 0.];
+    let p2 = [10., 1.];
+    let p3 = [20., 0.];
+    let p4 = [20., 1.];
 
-    let sp0 = p0 * 10.;
-    let sp1 = p1 * 10.;
-    let sp2 = p2 * 10.;
-    let sp3 = p3 * 10.;
-    let sp4 = p4 * 10.;
+    let sp0 = vector::scale(p0, 10.0);
+    let sp1 = vector::scale(p1, 10.0);
+    let sp2 = vector::scale(p2, 10.0);
+    let sp3 = vector::scale(p3, 10.0);
+    let sp4 = vector::scale(p4, 10.0);
 
-    let mut b = Bezier::line(&p0, &p1);
-    let sb = Bezier::line(&sp0, &sp1);
+    let mut b: Bezier<_, _> = [p0, p1].into();
+    let sb: Bezier<_, _> = [sp0, sp1].into();
     b.scale(10.);
     utils::vec_eq(b.control_point(0), sb.control_point(0));
     utils::vec_eq(b.control_point(1), sb.control_point(1));
 
-    bezier_straight_as(&Bezier::line(&p0, &p1), 1E-10);
-    bezier_straight_as(&Bezier::line(&p0, &p2), 1E-10);
-    bezier_straight_as(&Bezier::line(&p0, &p3), 1E-10);
-    bezier_straight_as(&Bezier::line(&p0, &p4), 1E-10);
-    bezier_straight_as(&Bezier::line(&sp0, &sp1), 1E-10);
-    bezier_straight_as(&Bezier::line(&sp0, &sp2), 1E-10);
-    bezier_straight_as(&Bezier::line(&sp0, &sp3), 1E-10);
-    bezier_straight_as(&Bezier::line(&sp0, &sp4), 1E-10);
+    bezier_straight_as(&[p0, p1].into(), 1E-10);
+    bezier_straight_as(&[p0, p2].into(), 1E-10);
+    bezier_straight_as(&[p0, p3].into(), 1E-10);
+    bezier_straight_as(&[p0, p4].into(), 1E-10);
+    bezier_straight_as(&[sp0, sp1].into(), 1E-10);
+    bezier_straight_as(&[sp0, sp2].into(), 1E-10);
+    bezier_straight_as(&[sp0, sp3].into(), 1E-10);
+    bezier_straight_as(&[sp0, sp4].into(), 1E-10);
 
     // P0, P1, P3 are in a line so should be perfectly straight
-    bezier_straight_as(&Bezier::quadratic(&p0, &p1, &p3), 1E-10);
-    bezier_straight_as(&Bezier::quadratic(&sp0, &sp1, &sp3), 1E-10);
+    bezier_straight_as(&[p0, p1, p3].into(), 1E-10);
+    bezier_straight_as(&[sp0, sp1, sp3].into(), 1E-10);
 
     // P0 -> P3 with P2 as a control; P2 is a small amount above the centre of P3
     // This basically tests scaling of straightness is linear, and it matches
     // these know good values of straightness
     //
     // (The values for straightness here are determined by hand...)
-    bezier_straight_as(&Bezier::quadratic(&p0, &p2, &p3), 0.8);
-    bezier_straight_as(&Bezier::quadratic(&sp0, &sp2, &sp3), 8.0);
+    bezier_straight_as(&[p0, p2, p3].into(), 0.8);
+    bezier_straight_as(&[sp0, sp2, sp3].into(), 8.0);
 
-    bezier_straight_as(&Bezier::quadratic(&p0, &p1, &p4), 0.5);
-    bezier_straight_as(&Bezier::quadratic(&sp0, &sp1, &sp4), 5.0);
+    bezier_straight_as(&[p0, p1, p4].into(), 0.5);
+    bezier_straight_as(&[sp0, sp1, sp4].into(), 5.0);
 
-    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p3), 0.8);
-    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp3), 8.0);
+    bezier_straight_as(&[p0, p1, p2, p3].into(), 0.8);
+    bezier_straight_as(&[sp0, sp1, sp2, sp3].into(), 8.0);
 
-    let mut b = Bezier::cubic(&p0, &p1, &p2, &p4);
-    let sb = Bezier::cubic(&sp0, &sp1, &sp2, &sp4);
+    let mut b = [p0, p1, p2, p4];
+    let sb = [sp0, sp1, sp2, sp4];
+
     b.scale(10.);
     utils::vec_eq(b.control_point(0), sb.control_point(0));
     utils::vec_eq(b.control_point(1), sb.control_point(1));
     utils::vec_eq(b.control_point(2), sb.control_point(2));
     utils::vec_eq(b.control_point(3), sb.control_point(3));
 
-    bezier_straight_as(&Bezier::cubic(&p0, &p1, &p2, &p4), 0.6);
-    bezier_straight_as(&Bezier::cubic(&sp0, &sp1, &sp2, &sp4), 6.0);
+    bezier_straight_as(&[p0, p1, p2, p4].into(), 0.6);
+    bezier_straight_as(&[sp0, sp1, sp2, sp4].into(), 6.0);
 }
 
 //fi test_within_straightness
@@ -129,32 +141,32 @@ fn test_within_straightness() {
     let p3 = [20., 0.];
 
     for straightness_sq in [0.1, 0.01, 0.001] {
-        let b = Bezier::line(&p0, &p2);
+        let b: Bezier<_, _> = [p0, p2].into();
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p0, p2], straightness_sq);
         bezier_lines_within_straightness(&vec![p0, p2], straightness_sq);
 
-        let b = Bezier::quadratic(&p0, &p3, &p1);
+        let b: Bezier<_, _> = [p0, p3, p1].into();
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p0, p1, p2], straightness_sq);
         bezier_lines_within_straightness(&vec![p0, p1, p2], straightness_sq);
 
-        let b = Bezier::cubic(&p0, &p1, &p2, &p3);
+        let b: Bezier<_, _> = [p0, p1, p2, p3].into();
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p0, p1, p2, p3], straightness_sq);
         bezier_lines_within_straightness(&vec![p0, p1, p2, p3], straightness_sq);
 
-        let b = Bezier::cubic(&p0, &p2, &p1, &p3);
+        let b = [p0, p2, p1, p3];
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p0, p2, p1, p3], straightness_sq);
         bezier_lines_within_straightness(&vec![p0, p2, p1, p3], straightness_sq);
 
-        let b = Bezier::cubic(&p3, &p2, &p1, &p0);
+        let b = vec![p3, p2, p1, p0];
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p3, p2, p1, p0], straightness_sq);
         bezier_lines_within_straightness(&vec![p3, p2, p1, p0], straightness_sq);
 
-        let b = Bezier::cubic(&p2, &p3, &p0, &p1);
+        let b: Bezier<_, _> = [p2, p3, p0, p1].into();
         bezier_lines_within_straightness(&b, straightness_sq);
         bezier_lines_within_straightness(&[p2, p3, p0, p1], straightness_sq);
         bezier_lines_within_straightness(&vec![p2, p3, p0, p1], straightness_sq);

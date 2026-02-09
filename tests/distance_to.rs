@@ -1,6 +1,7 @@
 //a Imports
 use bezier_nd::{
-    Approximation, BasicBezier, BezierDistance, BezierEval, BezierMinMax, BezierSplit,
+    Approximation, BasicBezier, Bezier, BezierDistance, BezierEval, BezierMinMax, BezierND,
+    BezierSplit,
 };
 use bezier_nd::{Float, Num};
 mod utils;
@@ -19,7 +20,7 @@ fn test_distance_to<
         + std::fmt::Debug,
 >(
     bezier: &B,
-    test_pts: &[[F; 2]],
+    test_pts: &[[F; D]],
 ) {
     let mut bbox_min = [F::ZERO; D];
     let mut bbox_max = [F::ZERO; D];
@@ -62,6 +63,7 @@ fn test_distance_to<
             pt[i] = t[i] * bbox_max[i] - (t[i] - 1.0_f32.into()) * bbox_min[i];
         }
 
+        eprintln!("Bezier {bezier:?} pt:{pt:?}");
         let (approx_t, min_dist_sq_to_approx) =
             approx
                 .iter_t_pts()
@@ -75,13 +77,15 @@ fn test_distance_to<
                 });
 
         let est = bezier.est_min_distance_sq_to(&pt);
-        // eprintln!("Pt {pt:?} is t/dist_sq {approx_t}/{min_dist_sq_to_approx} from approx [pt {:?}], and estimated at {est} from Bezier {bezier:?}", bezier.point_at(approx_t));
+        eprintln!("Pt {pt:?} is approx t/dist_sq {approx_t}/{min_dist_sq_to_approx} from approx [pt {:?}], and estimated at {est} from Bezier {bezier:?}", bezier.point_at(approx_t));
         assert!(est <= min_dist_sq_to_approx * (1.05_f32.into()), "Estimate of distance {est} must be less than the actual distance (to approximation it is {min_dist_sq_to_approx}");
         if let Some((t, d_sq)) = bezier.t_dsq_closest_to_pt(&pt) {
             // eprintln!("Pt {pt:?} closest on Bezier at {t}/{d_sq} [={:?}], approx closest at {approx_t}/{min_dist_sq_to_approx}, from Bezier {bezier:?}", bezier.point_at(t));
             assert!(d_sq <= min_dist_sq_to_approx + (1E-3_f32).into(), "Actual distance {d_sq} must be less than the closest approximation point of {min_dist_sq_to_approx}");
-            assert!(t >= approx_t - approx_t_spacing && t <= approx_t + approx_t_spacing,
-                    "Expected {t} to be within {approx_t_spacing} of the closest `t` on the Approximation  of {approx_t}");
+
+            // The following check is not correct if the point is equidistant to *two* points on the Bezier
+            // assert!(t >= approx_t - approx_t_spacing && t <= approx_t + approx_t_spacing,
+            //        "Expected closest point on bezier (supposedly at {t}) to have a `t` value within {approx_t_spacing} of the closest `t` on the Approximation  of {approx_t}");
         }
     }
 }
@@ -91,8 +95,9 @@ fn test_bezier<
     R: Rng,
     D: Distribution<f32>,
     const N: usize,
-    B: BasicBezier<F, [F; 2]> + BezierDistance<F, [F; 2]> + BezierSplit + Clone + std::fmt::Debug,
-    M: Fn([[F; 2]; N]) -> B,
+    const FD: usize,
+    B: BasicBezier<F, [F; FD]> + BezierDistance<F, [F; FD]> + BezierSplit + Clone + std::fmt::Debug,
+    M: Fn([[F; FD]; N]) -> B,
 >(
     rng: &mut R,
     distribution: &D,
@@ -100,8 +105,8 @@ fn test_bezier<
     create_bezier: M,
 ) {
     for _ in 0..10 {
-        let pts: [[F; 2]; N] = utils::new_random_point_array(rng, distribution);
-        let test_pts: [[F; 2]; 100] =
+        let pts: [[F; FD]; N] = utils::new_random_point_array(rng, distribution);
+        let test_pts: [[F; FD]; 100] =
             utils::new_random_point_array(rng, &rand::distr::Uniform::new(0.0_f32, 1.0).unwrap());
         let bezier = create_bezier(pts);
         test_distance_to::<_, _, _>(&bezier, &test_pts);
@@ -112,48 +117,94 @@ fn distance_to() {
     let mut rng = utils::make_random("test_cubics_seed");
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
 
-    eprintln!("*************************************************\nTesting 'Bezier<>' type (from 'try_into())");
-    //test_bezier::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-    //    let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-    //    b
-    //});
+    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type line (from 'try_into())");
+    test_bezier::<f32, _, _, 2, 2, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
+        b
+    });
 
-    eprintln!("*************************************************\nTesting 'Bezier<>' type again (from 'into')");
-    //test_bezier::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-    //    let b: Bezier<_, _> = pts.into();
-    //    b
-    //});
+    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type again quad (from 'into')");
+    test_bezier::<f32, _, _, 3, 2, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.into();
+        b
+    });
+
+    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type again cubic (from 'into')");
+    test_bezier::<f32, _, _, 4, 2, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.into();
+        b
+    });
+
+    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type line (from 'try_into())");
+    test_bezier::<f32, _, _, 2, 4, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
+        b
+    });
+
+    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type again quad (from 'into')");
+    test_bezier::<f32, _, _, 3, 4, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.into();
+        b
+    });
+
+    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type again cubic (from 'into')");
+    test_bezier::<f32, _, _, 4, 4, _, _>(&mut rng, &distribution, |pts| {
+        let b: Bezier<_, _> = pts.into();
+        b
+    });
+
+    eprintln!("*************************************************\nTesting 'BezierND<>' type line");
+    test_bezier::<f32, _, _, 2, 3, _, _>(&mut rng, &distribution, |pts| {
+        BezierND::<_, 6, _>::new(&pts)
+    });
+
+    eprintln!("*************************************************\nTesting 'BezierND<>' type quad");
+    test_bezier::<f32, _, _, 3, 1, _, _>(&mut rng, &distribution, |pts| {
+        BezierND::<_, 6, _>::new(&pts)
+    });
+
+    eprintln!("*************************************************\nTesting 'BezierND<>' type cubic");
+    test_bezier::<f32, _, _, 4, 2, _, _>(&mut rng, &distribution, |pts| {
+        BezierND::<_, 6, _>::new(&pts)
+    });
+
+    eprintln!(
+        "*************************************************\nTesting 'BezierND<>' type degree 6"
+    );
+    test_bezier::<f32, _, _, 6, 3, _, _>(&mut rng, &distribution, |pts| {
+        BezierND::<_, 8, _>::new(&pts)
+    });
 
     eprintln!("*************************************************\nTesting 'Vec' of line type");
-    test_bezier::<f32, _, _, 2, _, _>(&mut rng, &distribution, |pts| {
+    test_bezier::<f32, _, _, 2, 2, _, _>(&mut rng, &distribution, |pts| {
         let b: Vec<_> = pts.into();
         b
     });
 
     eprintln!("*************************************************\nTesting 'Vec' of quad type");
-    test_bezier::<f32, _, _, 3, _, _>(&mut rng, &distribution, |pts| {
+    test_bezier::<f32, _, _, 3, 4, _, _>(&mut rng, &distribution, |pts| {
         let b: Vec<_> = pts.into();
         b
     });
 
     eprintln!("*************************************************\nTesting 'Vec' of cubic type");
-    test_bezier::<f32, _, _, 4, _, _>(&mut rng, &distribution, |pts| {
+    test_bezier::<f32, _, _, 4, 2, _, _>(&mut rng, &distribution, |pts| {
         let b: Vec<_> = pts.into();
         b
     });
 
     eprintln!("*************************************************\nTesting 'Vec' of degree 5 type");
-    test_bezier::<f32, _, _, 6, _, _>(&mut rng, &distribution, |pts| {
+    test_bezier::<f32, _, _, 6, 2, _, _>(&mut rng, &distribution, |pts| {
         let b: Vec<_> = pts.into();
         b
     });
 
     eprintln!("*************************************************\nTesting 'Array' of line type");
-    test_bezier::<f32, _, _, 2, _, _>(&mut rng, &distribution, |pts| pts);
+    test_bezier::<f32, _, _, 2, 2, _, _>(&mut rng, &distribution, |pts| pts);
 
     eprintln!("*************************************************\nTesting 'Array' of quad type");
-    test_bezier::<f32, _, _, 3, _, _>(&mut rng, &distribution, |pts| pts);
+    test_bezier::<f32, _, _, 3, 2, _, _>(&mut rng, &distribution, |pts| pts);
 
     eprintln!("*************************************************\nTesting 'Array' of cubic type");
-    test_bezier::<f32, _, _, 4, _, _>(&mut rng, &distribution, |pts| pts);
+    test_bezier::<f32, _, _, 4, 2, _, _>(&mut rng, &distribution, |pts| pts);
 }

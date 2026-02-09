@@ -101,7 +101,6 @@ fn lambda_of_k_d<F: Float>(k: F, d: F) -> F {
         + a5 * k_d * k_d * k_d * k_d * k_d
 }
 
-//fp arc
 /// Create a Cubic Bezier that approximates closely a circular arc
 ///
 /// The arc has a center C, a radius R, and is of an angle (should be <= PI/2).
@@ -144,7 +143,6 @@ pub fn arc<F: Float, const D: usize>(
     [p0, c0, c1, p1]
 }
 
-//fp of_round_corner
 /// Create a Cubic Bezier that is a circular arc focused on the corner point,
 /// with v0 and v1 are vectors IN to the point (P)
 ///
@@ -233,7 +231,6 @@ pub fn of_round_corner<F: Float, const D: usize>(
     }
 }
 
-//mp center_radius_of_bezier_arc
 /// Find the center and radius of a Bezier if it is assumed to
 /// be a circular arc
 ///

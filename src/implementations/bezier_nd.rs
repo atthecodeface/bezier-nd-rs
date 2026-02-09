@@ -121,9 +121,11 @@
 //!
 //! i.e. the reduction chosen has the property that elevate(reduce) is the identity, which we need for a reduction
 
-use crate::BezierEval;
 use crate::{bernstein_fns, BezierBuilder, BezierConstruct};
-use crate::{BezierOps, BezierSection, BezierSplit, Num};
+use crate::{metrics, BezierEval};
+use crate::{
+    BezierDistance, BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, Float, Num,
+};
 
 use geo_nd::matrix;
 use geo_nd::vector;
@@ -322,41 +324,40 @@ where
         }
         s
     }
-}
 
-impl<F, const N: usize, const D: usize> BezierND<F, N, D>
-where
-    F: Num,
-{
-    /// Returns the point at parameter 't' along the Bezier using de Casteljau's algorithm
-    ///
-    /// This does not require powi, but it is an O(n^2) operations and O(n) space operation
-    pub fn point_at_de_cast(&self, t: F) -> [F; D] {
-        // Beta[0][i] = pt[i]
-        let mut pts = self.pts;
-        // for j = 1..=n
-        //  for i = 0..=n-j
-        // Beta[j][i] = (1-t)*Beta[j-1][i] + t*Beta[j-1][i+1]
-        let u = F::one() - t;
-        for j in 1..(self.degree + 1) {
-            for i in 0..(self.degree + 1 - j) {
-                pts[i] = vector::add(vector::scale(pts[i], u), &pts[i + 1], t);
-            }
-        }
-        pts[0]
+    /// Return a slice of the control points
+    pub fn pts(&self) -> &[[F; D]] {
+        &self.pts[0..self.degree + 1]
     }
 
-    /// Returns the value of the nth deriviative at parameter 't' along the Bezier
-    ///
-    /// This could be optimized to not store the points, but that seems ultimately to be
-    /// unnecessary
-    pub fn nth_derivative_value_at(&self, n: usize, t: F) -> [F; D] {
-        if n > self.degree {
-            [F::zero(); D]
-        } else {
-            let (dn, f) = self.nth_derivative(n);
-            vector::scale(dn.point_at_de_cast(t), f)
+    /// Return a mutable slice of the control points
+    pub fn pts_mut(&mut self) -> &mut [[F; D]] {
+        &mut self.pts[0..self.degree + 1]
+    }
+
+    /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
+    /// and calculate the new dc squared
+    pub fn dc2_of_ele_red(&self, matrix: &[F]) -> F {
+        assert_eq!(
+            matrix.len(),
+            (self.degree + 1) * (self.degree + 1),
+            "Matrix to apply to Bezier of degree {} must have {} elements",
+            self.degree,
+            (self.degree + 1) * (self.degree + 1)
+        );
+        let mut max_d2 = F::zero();
+        let nc = self.degree + 1;
+        for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
+            let mut sum = [F::zero(); D];
+            for (coeff, p) in m.iter().zip(self.pts.iter()) {
+                sum = vector::add(sum, p, *coeff);
+            }
+            let d2 = vector::distance_sq(s, &sum);
+            if max_d2 < d2 {
+                max_d2 = d2;
+            }
         }
+        max_d2
     }
 }
 
@@ -365,43 +366,22 @@ where
     F: Num,
 {
     fn point_at(&self, t: F) -> [F; D] {
-        let mut r = [F::zero(); D];
-        for ((_i, c), pt) in
-            bernstein_fns::basis_coeff_enum_num(self.degree, t).zip(self.pts.iter())
-        {
-            r = vector::add(r, pt, c);
-        }
-        r
+        bernstein_fns::values::point_at(self.pts(), t)
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        (F::ONE, self.nth_derivative_value_at(1, t))
+        bernstein_fns::values::derivative_at(self.pts(), t)
     }
 
-    /// Borrow the endpoints of the Bezier
     fn endpoints(&self) -> (&[F; D], &[F; D]) {
         (&self.pts[0], &self.pts[self.degree])
     }
 
     fn closeness_sq_to_line(&self) -> F {
-        self.dc_sq_from_line()
+        metrics::dc_sq_from_line(self)
     }
+
     fn dc_sq_from_line(&self) -> F {
-        if self.degree < 2 {
-            F::ZERO
-        } else {
-            let n = (self.degree + 1) as f32;
-            let mut max_dc_sq = F::ZERO;
-            let p01 = [self.pts[0], self.pts[self.degree]];
-            for (i, p) in self.pts.iter().take(self.degree).skip(1).enumerate() {
-                let t = ((i as f32) / n).into();
-                let pt = vector::sum_scaled(&p01, &[F::ONE - t, t]);
-                let dc_sq = vector::distance_sq(&pt, p);
-                if dc_sq > max_dc_sq {
-                    max_dc_sq = dc_sq;
-                }
-            }
-            max_dc_sq
-        }
+        metrics::dc_sq_from_line(self)
     }
 
     fn num_control_points(&self) -> usize {
@@ -416,11 +396,117 @@ where
         self.degree
     }
     fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.pts
-            .iter()
-            .take(self.degree + 1)
-            .enumerate()
-            .for_each(|(i, pt)| map(i, pt))
+        self.pts().iter().enumerate().for_each(|(i, pt)| map(i, pt))
+    }
+}
+
+impl<F, const N: usize, const D: usize> BezierOps<F, [F; D]> for BezierND<F, N, D>
+where
+    F: Num,
+{
+    fn add(&mut self, other: &Self) -> bool {
+        if self.degree != other.degree {
+            false
+        } else {
+            for (s, o) in self.pts_mut().iter_mut().zip(other.pts.iter()) {
+                *s = vector::add(*s, o, F::ONE)
+            }
+            true
+        }
+    }
+
+    /// Subtract another Bezier from this
+    fn sub(&mut self, other: &Self) -> bool {
+        if self.degree != other.degree {
+            false
+        } else {
+            for (s, o) in self.pts_mut().iter_mut().zip(other.pts.iter()) {
+                *s = vector::sub(*s, o, F::ONE)
+            }
+            true
+        }
+    }
+
+    /// Scale the points
+    fn scale(&mut self, scale: F) {
+        self.map_pts(&|_, p| vector::scale(*p, scale));
+    }
+
+    /// Map the points
+    fn map_pts(&mut self, map: &dyn Fn(usize, &[F; D]) -> [F; D]) {
+        for (i, p) in self.pts.iter_mut().take(self.degree + 1).enumerate() {
+            *p = map(i, p);
+        }
+    }
+}
+impl<F, const N: usize, const D: usize> BezierMinMax<F> for BezierND<F, N, D>
+where
+    F: Num,
+{
+    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
+        match self.degree {
+            0 => Some((F::ZERO, self.pts[0][pt_index])),
+            1 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&self.pts[0..2])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            2 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self.pts[0..3])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self.pts[0..4])
+                .unwrap()
+                .t_coord_at_min_max(use_max, pt_index),
+            _ => None,
+        }
+    }
+}
+
+// Note this requires *Float*
+impl<F, const N: usize, const D: usize> BezierDistance<F, [F; D]> for BezierND<F, N, D>
+where
+    F: Float,
+{
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        metrics::t_dsq_closest_to_pt(self.pts(), pt)
+    }
+
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        if self.pts.len() == 0 {
+            F::ZERO
+        } else {
+            metrics::est_min_distance_sq_to(self.pts(), pt)
+        }
+    }
+}
+
+impl<F, const N: usize, const D: usize> BezierSplit for BezierND<F, N, D>
+where
+    F: Num,
+{
+    fn split(&self) -> (Self, Self) {
+        self.split_at(0.5_f32.into())
+    }
+}
+
+impl<F, const N: usize, const D: usize> BezierSection<F> for BezierND<F, N, D>
+where
+    F: Num,
+{
+    fn split_at(&self, t: F) -> (Self, Self) {
+        let mut first = *self;
+        let mut latter = *self;
+        bernstein_fns::de_casteljau::split_at(latter.pts_mut(), t, first.pts_mut());
+        (first, latter)
+    }
+    fn section(&self, t0: F, t1: F) -> Self {
+        let mut to_split = *self;
+        if t0 > F::ZERO {
+            bernstein_fns::de_casteljau::bezier_from(to_split.pts_mut(), t0);
+        }
+        if t1 < F::ONE {
+            let t10 = (t1 - t0) / (F::ONE - t0);
+            bernstein_fns::de_casteljau::bezier_to(to_split.pts_mut(), t10);
+        }
+        to_split
     }
 }
 
@@ -471,17 +557,7 @@ where
     }
 }
 
-impl<F, const N: usize, const D: usize> BezierND<F, N, D>
-where
-    F: Num,
-{
-    /// Return a slice of the control points
-    pub fn pts(&self) -> &[[F; D]] {
-        &self.pts[0..self.degree + 1]
-    }
-}
-
-impl<F, const N: usize, const D: usize> crate::BezierReduce<F, [F; D]> for BezierND<F, N, D>
+impl<F, const N: usize, const D: usize> BezierReduce<F, [F; D]> for BezierND<F, N, D>
 where
     F: crate::Num,
 {
@@ -511,111 +587,5 @@ where
     }
     fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
         None
-    }
-}
-
-impl<F, const N: usize, const D: usize> BezierSplit for BezierND<F, N, D>
-where
-    F: Num,
-{
-    fn split(&self) -> (Self, Self) {
-        self.split_at(0.5_f32.into())
-    }
-}
-
-impl<F, const N: usize, const D: usize> BezierSection<F> for BezierND<F, N, D>
-where
-    F: Num,
-{
-    fn split_at(&self, t: F) -> (Self, Self) {
-        let mut first = *self;
-        let mut latter = *self;
-        bernstein_fns::de_casteljau::split_at(
-            &mut latter.pts[0..self.degree + 1],
-            t,
-            &mut first.pts,
-        );
-        (first, latter)
-    }
-    fn section(&self, t0: F, t1: F) -> Self {
-        let mut to_split = *self;
-        if t0 > F::ZERO {
-            bernstein_fns::de_casteljau::bezier_from(&mut to_split.pts, t0);
-        }
-        if t1 < F::ONE {
-            let t10 = (t1 - t0) / (F::ONE - t0);
-            bernstein_fns::de_casteljau::bezier_to(&mut to_split.pts, t10);
-        }
-        to_split
-    }
-}
-
-impl<F, const N: usize, const D: usize> BezierND<F, N, D>
-where
-    F: Num,
-{
-    /// Apply a (degree+1) by (degree+1) matrix (should be elevate-of-reduce) to the points
-    /// and calculate the new dc squared
-    pub fn dc2_of_ele_red(&self, matrix: &[F]) -> F {
-        assert_eq!(
-            matrix.len(),
-            (self.degree + 1) * (self.degree + 1),
-            "Matrix to apply to Bezier of degree {} must have {} elements",
-            self.degree,
-            (self.degree + 1) * (self.degree + 1)
-        );
-        let mut max_d2 = F::zero();
-        let nc = self.degree + 1;
-        for (m, s) in matrix.chunks_exact(nc).zip(self.pts.iter()) {
-            let mut sum = [F::zero(); D];
-            for (coeff, p) in m.iter().zip(self.pts.iter()) {
-                sum = vector::add(sum, p, *coeff);
-            }
-            let d2 = vector::distance_sq(s, &sum);
-            if max_d2 < d2 {
-                max_d2 = d2;
-            }
-        }
-        max_d2
-    }
-}
-
-impl<F, const N: usize, const D: usize> BezierOps<F, [F; D]> for BezierND<F, N, D>
-where
-    F: Num,
-{
-    fn add(&mut self, other: &Self) -> bool {
-        if self.degree != other.degree {
-            false
-        } else {
-            for (s, o) in self.pts.iter_mut().zip(other.pts.iter()) {
-                *s = vector::add(*s, o, F::ONE)
-            }
-            true
-        }
-    }
-
-    /// Subtract another Bezier from this
-    fn sub(&mut self, other: &Self) -> bool {
-        if self.degree != other.degree {
-            false
-        } else {
-            for (s, o) in self.pts.iter_mut().zip(other.pts.iter()) {
-                *s = vector::sub(*s, o, F::ONE)
-            }
-            true
-        }
-    }
-
-    /// Scale the points
-    fn scale(&mut self, scale: F) {
-        self.map_pts(&|_, p| vector::scale(*p, scale));
-    }
-
-    /// Map the points
-    fn map_pts(&mut self, map: &dyn Fn(usize, &[F; D]) -> [F; D]) {
-        for (i, p) in self.pts.iter_mut().take(self.degree + 1).enumerate() {
-            *p = map(i, p);
-        }
     }
 }

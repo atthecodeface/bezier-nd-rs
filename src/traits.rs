@@ -547,6 +547,17 @@ where
     fn as_t_points_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
         BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
     }
+
+    // Calculates the length of the Bezier when it is rendered down
+    // to the given a straightness
+    //
+    // `straightness` is independent of the length of the Bezier
+    //fn length(&self, straightness: F) -> F {
+    //    self.as_lines(straightness * straightness)
+    //        .fold(F::ZERO, |acc, (p0, p1)| {
+    //            acc + geo_nd::vector::distance(&p0, &p1)
+    //        })
+    //}
 }
 
 impl<F, B, P> BezierIntoIterator<F, P> for B

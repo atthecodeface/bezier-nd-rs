@@ -15,28 +15,26 @@ use utils::{
 
 #[test]
 fn bisect() {
-    let p0: FArray<f64, 2> = [0., 0.].into();
-    let p1: FArray<f64, 2> = [10., 0.].into();
-    let p2: FArray<f64, 2> = [6., 1.].into();
-    let p3: FArray<f64, 2> = [20., 5.].into();
+    let mut rng = utils::make_random("test_bisect_seed");
+    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
 
-    test_beziers_approx_eq(
-        &Bezier::cubic(&p0, &p1, &p2, &p3),
-        &Bezier::cubic(&p0, &p1, &p2, &p3),
-    );
-    test_beziers_approx_eq(
-        &Bezier::cubic(&p2, &p1, &p3, &p0),
-        &Bezier::cubic(&p2, &p1, &p3, &p0),
-    );
-    test_beziers_approx_eq(
-        &Bezier::quadratic(&p2, &p1, &p3),
-        &Bezier::quadratic(&p2, &p1, &p3),
-    );
-    test_beziers_approx_eq(
-        &Bezier::quadratic(&p0, &p1, &p2),
-        &Bezier::quadratic(&p0, &p1, &p2),
-    );
-    test_beziers_approx_eq(&Bezier::line(&p0, &p2), &Bezier::line(&p0, &p2));
+    let pts: [[f32; 2]; 2] = utils::new_random_point_array(&mut rng, &distribution);
+    let b: Bezier<_, _> = pts.into();
+    test_beziers_approx_eq(&b, &pts);
+    test_beziers_approx_eq(&pts, &pts);
+    test_beziers_approx_eq(&pts.to_vec(), &pts);
+
+    let pts: [[f32; 2]; 3] = utils::new_random_point_array(&mut rng, &distribution);
+    let b: Bezier<_, _> = pts.into();
+    test_beziers_approx_eq(&b, &pts);
+    test_beziers_approx_eq(&pts, &pts);
+    test_beziers_approx_eq(&pts.to_vec(), &pts);
+
+    let pts: [[f32; 2]; 4] = utils::new_random_point_array(&mut rng, &distribution);
+    let b: Bezier<_, _> = pts.into();
+    test_beziers_approx_eq(&b, &pts);
+    test_beziers_approx_eq(&pts, &pts);
+    test_beziers_approx_eq(&pts.to_vec(), &pts);
 }
 
 #[test]

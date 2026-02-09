@@ -103,7 +103,7 @@ impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
         }
         let half_b = p0 + p2 - p1 - p1;
         let c = p1 - p0;
-        eprintln!("t_coord_min_max for cubic: a.t^2 + 2b.t + c = 0 for a:{a} b:{half_b} c:{c} discriminant {}", half_b*half_b -a*c);
+        // eprintln!("t_coord_min_max for cubic: a.t^2 + 2b.t + c = 0 for a:{a} b:{half_b} c:{c} discriminant {}", half_b*half_b -a*c);
         if half_b * half_b < a * c {
             Some(p02_sel)
         } else {
@@ -115,7 +115,7 @@ impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
                 return Some(p02_sel);
             };
             let t1 = -(b / a + t0);
-            eprintln!("t_coord_min_max for cubic: t = {t0} or {t1}");
+            // eprintln!("t_coord_min_max for cubic: t = {t0} or {t1}");
             let p02_sel = {
                 if t0 > F::ZERO && t0 < F::ONE {
                     let u0 = F::ONE - t0;
@@ -156,29 +156,12 @@ impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
         None
     }
 
-    /// An estimate of the minimum distance squared from the Bezier to the point
-    /// for 0<=t<=1. This must ALWAYS be less than or equal to the true minimum distance.
-    /// If a Bezier does not support this estimate then it *can* return ZERO.
-    ///
-    /// The points on the Bezier are all within the convex hull of the Bezier, which is
-    /// not simple to determine for a cubic.
-    ///
-    /// The points on the Bezier are also within a distance max(dc_sq) of the line betwen the endpoints
-    /// of the Bezier where `dc_sq[i]` is the square of the distance between control point `[i]` and the
-    /// position of that control point on a linear Bezier elevated to the degree of this Bezier.
-    ///
-    /// Hence if the point is at a distance squared of d_sq from the linear Bezier, then it is potentially
-    /// at a distance of d_sq-max(dc_sq) (or 0 if that is negative) away from the Bezier curve.
     fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
         let d_sq = crate::utils::distance_sq_to_line_segment(pt, &self[0], &self[3]);
         let dc_sq = crate::utils::straightness_sq_of_cubic(self);
         if d_sq < dc_sq {
             F::ZERO
         } else {
-            // dout <= dmin = sqrt(d_sq) - sqrt(dc_sq)
-            // dout^2 <= (sqrt(d_sq) - sqrt(dc_sq)).sqrt(d_sq) - sqrt(dc_sq)
-            // dout^2 <= d_sq + dc_sq - 2.sqrt(dc_sq).sqrt(d_sq)
-            // dout^2 <= d_sq - dc_sq
             d_sq - dc_sq
         }
     }

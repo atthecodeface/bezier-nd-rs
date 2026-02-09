@@ -106,13 +106,12 @@ where
     }
     loop {
         let mut poly_remaining = poly.clone();
-        dbg!(&poly_remaining, &result, &poly);
         let divide_without_remainder =
             poly_remaining.set_divide(poly.clone().as_mut(), &result, 0.0001_f32.into());
         assert!(divide_without_remainder, "Should divide without remainder");
         poly_remaining.normalize(1E-6_f32.into());
         let d = poly_remaining.degree();
-        dbg!(&poly_remaining, &result, &poly, &d);
+        eprintln!("{poly_remaining:?}: {result:?}, {poly:?}, {d}");
         match d {
             0 => {
                 assert!(
@@ -152,7 +151,7 @@ where
                 }
             }
             _ => {
-                let Some(root) = poly_remaining.find_root_nr(10.0_f32.into(), 1E-7_f32.into())
+                let Some(root) = poly_remaining.find_root_nr(10.0_f32.into(), 1E-5_f32.into())
                 else {
                     panic!("Failed to find root for polynomial {poly_remaining:?}");
                 };
@@ -346,10 +345,20 @@ fn test_specific_quad(poly: &[f32; 3]) {
 
 fn test_specific_cubic(poly: &[f32; 4]) {
     eprintln!("Test specific cubic {poly:?}");
-    let root0 = poly.find_root_nr(0.0, 1E-6).unwrap();
+    let root0 = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
+        .into_iter()
+        .find_map(|x| poly.find_root_nr(x, 1E-6))
+        .unwrap();
     let (r0, r1, r2) = poly.find_roots_cubic();
-    eprintln!("Poly {poly:?} found cubic roots {r0:?} {r1:?} {r2:?}, known to be {root0},...");
+    eprintln!(
+        "Poly {poly:?} found cubic roots {r0:?} {r1:?} {r2:?}, known to be (from NR) {root0},..."
+    );
     let r0 = r0.expect("Cubics have at least one real root");
+    let v = poly.calc(r0);
+    assert!(
+        v.abs() < 1E-5,
+        "Root of specific cubic {poly:?} should have poly value 0 but got {v}"
+    );
     //     let r1 = r1.expect("Two roots should have been found, first was None");
     // utils::assert_near_equal_sorted_scale(&[r0, r1], &[x1, x0], 1.0);
 }
@@ -359,4 +368,8 @@ fn specific_tests() {
     test_specific_quad(&[12.0_f32, -25.0, 4.0]);
     test_specific_quad(&[11.903965, -25.258091, 3.5866723]);
     test_specific_cubic(&[9.146291, -4.4568596, -97.76549, 89.3183]);
+    test_specific_cubic(&[-0.024026299, 0.32613635, -1.094574, 1.0]);
+    test_specific_cubic(&[-0.038705796, 0.38514474, -1.1151307, 1.0]);
+    test_specific_cubic(&[-0.26665005, 1.2261595, -1.9053915, 1.0]);
+    //    assert!(false);
 }

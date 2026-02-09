@@ -1,8 +1,15 @@
 use bezier_nd::BezierEval;
-use bezier_nd::{metrics, BezierBuilder, BezierND};
+use bezier_nd::{metrics, BezierBuilder, BezierND, BezierOps};
 mod utils;
+use geo_nd::vector;
 
-fn check_metrics_of_beziers<const D: usize, B: BezierEval<f32, [f32; D]>>(b0: &B, b1: &B) {
+fn check_metrics_of_beziers<
+    const D: usize,
+    B: BezierEval<f32, [f32; D]> + BezierOps<f32, [f32; D]> + Clone + std::fmt::Debug,
+>(
+    b0: &B,
+    b1: &B,
+) {
     let mut max_d = 0.0;
     let mut max_t = 0.0;
     for t in utils::float_iter(101) {
@@ -32,6 +39,39 @@ fn check_metrics_of_beziers<const D: usize, B: BezierEval<f32, [f32; D]>>(b0: &B
     assert!(
         df_sq <= dc_sq * (b0.num_control_points() as f32) * 1.01,
         "df_sq < N*dc_sq (with margin)"
+    );
+
+    let df_sq = metrics::df_sq_from_line(b0);
+    let dc_sq = b0.closeness_sq_to_line();
+    assert!(dc_sq <= df_sq * 1.01, "dc_sq < df_sq (with margin)");
+    assert!(
+        df_sq <= dc_sq * (b0.num_control_points() as f32) * 1.01,
+        "df_sq < N*dc_sq (with margin)"
+    );
+
+    let mut b0_relative_to_line = b0.clone();
+    let (l0, l1) = b0.endpoints();
+    let l0 = *l0;
+    let l1 = *l1;
+    b0_relative_to_line.map_pts(&|n, pt| {
+        let t = (n as f32) / (b0.degree() as f32);
+        vector::sum_scaled(&[*pt, l0, l1], &[1.0, t - 1.0, -t])
+    });
+    eprintln!("B0 {b0:?} relative {b0_relative_to_line:?}");
+    let f_sq = metrics::f_sq(&b0_relative_to_line);
+    let c_sq = metrics::c_sq(&b0_relative_to_line);
+
+    utils::approx_eq(
+        f_sq,
+        df_sq,
+        1E-4,
+        "f_sq and df_sq should match if bezier has endpoints at origin",
+    );
+    utils::approx_eq(
+        c_sq,
+        dc_sq,
+        1E-4,
+        "c_sq and dc_sq should match if bezier has endpoints at origin",
     );
 }
 

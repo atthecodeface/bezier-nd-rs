@@ -13,6 +13,7 @@
 use bezier_nd::Approximation;
 use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
+use bezier_nd::BezierIntoIterator;
 use bezier_nd::BezierND;
 use bezier_nd::BezierSplit;
 mod utils;
@@ -49,7 +50,7 @@ fn test_approximation_closeness_sq<
         "Approximation not close enough to original Bezier (max {max_dist_sq}, closeness_sq {closeness_sq})"
     );
 
-    for (i, (t, p)) in a.iter_t_pts().enumerate() {
+    for (i, (t, p)) in a.as_t_points(0.0).enumerate() {
         assert!(
             vector::distance_sq(&bezier.point_at(t), &p) < 1E-6,
             "Approximation should have same points for values of t"
@@ -75,6 +76,49 @@ fn test_approximation_closeness_sq<
     }
     let d_sq = vector::distance_sq(&a_pt, &b_pt);
     assert!(d_sq < (steps as f32)*closeness_sq, "Expected Sum(derivatives) for closeness {closeness_sq} to be about equal but was {d_sq} distance sq apart {a_pt:?} <> {b_pt:?}");
+
+    for ((t, p), (t1, p1)) in a
+        .as_t_points(closeness_sq)
+        .zip(a.as_t_points_dc(closeness_sq))
+    {
+        assert_eq!(t, t1);
+        assert_eq!(p, p1);
+    }
+
+    for ((p0, p1), (_t0, pt0, _t1, pt1)) in a.as_lines(closeness_sq).zip(a.as_t_lines(closeness_sq))
+    {
+        assert_eq!(p0, pt0);
+        assert_eq!(p1, pt1);
+    }
+
+    for ((p0, p1), (_t0, pt0, _t1, pt1)) in
+        a.as_lines(closeness_sq).zip(a.as_t_lines_dc(closeness_sq))
+    {
+        assert_eq!(p0, pt0);
+        assert_eq!(p1, pt1);
+    }
+
+    for ((_, p), p1) in a.as_t_points(closeness_sq).zip(a.as_points(closeness_sq)) {
+        assert_eq!(p, p1);
+    }
+
+    for (t0, p0, t1, p1) in a.as_t_lines(closeness_sq) {
+        let bp = bezier.point_at(t0);
+        let d_sq = vector::distance_sq(&bp, &p0);
+        assert!(
+            d_sq < 1E-10,
+            "Distance between point at {t0} {p0:?} and actual bezier at t {bp:?} is too big {d_sq}"
+        );
+
+        let bp = bezier.point_at(t1);
+        let d_sq = vector::distance_sq(&bp, &p1);
+        assert!(
+            d_sq < 1E-10,
+            "Distance between point at {t1} {p1:?} and actual bezier at t {bp:?} is too big {d_sq}"
+        );
+    }
+
+    a.for_each_control_point(&mut |n, pt| assert_eq!(bezier.control_point(n), pt));
 }
 
 #[test]

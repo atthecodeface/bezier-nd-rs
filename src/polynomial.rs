@@ -35,6 +35,8 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 
 !*/
 
+use geo_nd::matrix::lup_invert;
+
 //a Imports
 use crate::{Float, Num};
 
@@ -247,21 +249,26 @@ impl<F: Num> Polynomial<F> for [F] {
 /// Improve an estimate for a root; as we get closer the dx should get smaller
 ///
 /// If the dx is *larger* than the last dx then stop
-fn improve_root<F: Num + From<f32>>(poly: &[F], x: F, min_grad: F) -> Option<(F, F)> {
+fn improve_root<F: Num + From<f32>>(poly: &[F], x: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
     let d2f = poly.d2f(x);
-    // eprintln!("f:{f} df:{df} df2:{d2f}");
-    if abs(df) < min_grad {
-        None
+    let denom = (df * df - f * d2f / (2.0_f32.into()));
+    if denom.is_unreliable_divisor() {
+        if df.is_unreliable_divisor() {
+            None
+        } else {
+            let new_x = x - f / df;
+            Some((new_x, abs(new_x - x)))
+        }
     } else {
-        let new_x = x - f * df / (df * df - f * d2f / (2.0_f32.into()));
+        let new_x = x - f * df / denom;
         // eprintln!("x:{x} f:{f} df:{df} d2f:{d2f} new_x:{new_x}");
         Some((new_x, abs(new_x - x)))
     }
 }
 
-pub fn find_real_roots_linear<F: Float>(poly: &[F]) -> Option<F> {
+pub fn find_real_roots_linear<F: Num>(poly: &[F]) -> Option<F> {
     assert!(
         poly.len() >= 2,
         "Root of a linear polynomial requires at least two coefficients (and [2..] should be zero)"
@@ -370,7 +377,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
-                eprintln!("Value at {x} {}", poly.calc(x));
+                // eprintln!("Value at {x} {}", poly.calc(x));
                 r0 = Some(x);
             }
             let new_big_c_r = (-big_c_r - big_c_i * sqrt3) / two;
@@ -382,7 +389,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
-                eprintln!("Value at {x} {}", poly.calc(x));
+                // eprintln!("Value at {x} {}", poly.calc(x));
                 r1 = Some(x);
             }
             let new_big_c_r = (-big_c_r - big_c_i * sqrt3) / two;
@@ -394,7 +401,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             if thing.abs() < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
-                eprintln!("Value at {x} {}", poly.calc(x));
+                // eprintln!("Value at {x} {}", poly.calc(x));
                 r2 = Some(x);
             }
             (r0, r1, r2)
@@ -421,25 +428,36 @@ pub trait PolyFindRoots<F: Float> {
 /// and so only requires 'Num' not 'Float'
 pub trait PolyNewtonRaphson<F: Num> {
     /// Improve a root using Newton-Raphson
-    fn improve_root(&self, x: F, min_grad: F) -> Option<(F, F)>;
+    fn improve_root(&self, x: F) -> Option<(F, F)>;
     /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
-    fn find_root_nr(&self, mut x: F, min_grad: F) -> Option<F>
+    fn find_root_nr_with_err(&self, mut x: F, min_dx: F, mut iters: usize) -> (F, F)
     where
         Self: Polynomial<F>,
     {
-        let mut iters = 100;
-        while let Some((improved_x, improved_dx)) = self.improve_root(x, min_grad) {
+        let mut last_dx = 1E7_f32.into();
+        while let Some((improved_x, improved_dx)) = self.improve_root(x) {
             // eprintln!("x:{x}, {improved_x} {improved_dx}");
             x = improved_x;
-            if improved_dx < min_grad {
+            last_dx = improved_dx;
+            if iters == 0 || improved_dx < min_dx {
                 break;
-            }
-            if iters == 0 {
-                return None;
             }
             iters -= 1;
         }
-        Some(x)
+        (x, last_dx)
+    }
+
+    /// Find a root using Newton-Raphson given a starting guess, and minimum gradient (in case of root multiplicity)
+    fn find_root_nr(&self, x: F, min_dx: F) -> Option<F>
+    where
+        Self: Polynomial<F>,
+    {
+        let (x, last_dx) = self.find_root_nr_with_err(x, min_dx, 100);
+        if last_dx > min_dx {
+            None
+        } else {
+            Some(x)
+        }
     }
 }
 
@@ -456,7 +474,7 @@ impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
     }
 }
 impl<F: Num, const N: usize> PolyNewtonRaphson<F> for [F; N] {
-    fn improve_root(&self, x: F, min_grad: F) -> Option<(F, F)> {
-        improve_root(self, x, min_grad)
+    fn improve_root(&self, x: F) -> Option<(F, F)> {
+        improve_root(self, x)
     }
 }

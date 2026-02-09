@@ -1,3 +1,4 @@
+use crate::polynomial::{PolyNewtonRaphson, Polynomial};
 use crate::Num;
 use geo_nd::vector;
 
@@ -9,6 +10,21 @@ pub fn max<F: Num>(a: F, b: F) -> F {
     }
 }
 
+pub fn min<F: Num>(a: F, b: F) -> F {
+    if a < b {
+        a
+    } else {
+        b
+    }
+}
+
+pub fn abs<F: Num>(a: F) -> F {
+    if a < F::ZERO {
+        -a
+    } else {
+        a
+    }
+}
 pub fn min_or_max<F: Num>(use_max: bool, ta: F, a: F, tb: F, b: F) -> (F, F) {
     if use_max == (a < b) {
         (tb, b)
@@ -153,5 +169,229 @@ pub fn straightness_sq_of_cubic<F: crate::Num, const D: usize>(cubic: &[[F; D]; 
         dc2_1
     } else {
         dc2_0
+    }
+}
+
+pub fn find_real_roots_quad_num<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
+    assert!(
+        poly.len() >= 3,
+        "Root of a quadratic polynomial requires at least three coefficients (and [3..] should be zero)"
+    );
+    if poly[2].is_unreliable_divisor() {
+        (crate::polynomial::find_real_roots_linear(poly), None)
+    } else {
+        let a = poly[2];
+        let b = poly[1];
+        let c = poly[0];
+        let two: F = (2.0_f32).into();
+        let disc = b * b - a * c * ((4.0_f32).into());
+        if disc < F::zero() {
+            (None, None)
+        } else {
+            let disc_sq = sqrt_est::<_, 5>(disc, true);
+            (
+                Some((-b + disc_sq) / two / a),
+                Some((-b - disc_sq) / two / a),
+            )
+        }
+    }
+}
+
+pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, Option<F>) {
+    if poly[3].is_unreliable_divisor() {
+        let (root_a, root_b) = find_real_roots_quad_num(&poly);
+        (root_a, root_b, None)
+    } else {
+        poly[0] = poly[0] / poly[3];
+        poly[1] = poly[1] / poly[3];
+        poly[2] = poly[2] / poly[3];
+        poly[3] = F::ONE;
+
+        // If a NR fails at some point from t=-1 then probably at that t (a) the polynomial has
+        // a small absolute value (b) d/dt of the polynomial is near zero (i.e. t is a root for that);
+        //
+        // If it fails again at a different point from t=2 then presuambly we have found the *two*
+        // turning points of the cubic, which is unfortunate; but we can try the midpoint of the two
+        // as that *must* be closer to the root with d/dt being larger
+        //
+        // If it fails again at the same point from t=2
+        let mut t0 = F::ZERO;
+        let mut p_t0: F = 1E8_f32.into();
+        for t in [0.0_f32, 1.0, 2.0, -1.0] {
+            let (root_est, root_dt) = poly.find_root_nr_with_err(t.into(), 1E-6_f32.into(), 20);
+            let p_t = abs(poly.calc(root_est));
+            if p_t < p_t0 {
+                t0 = root_est;
+                p_t0 = p_t;
+            }
+        }
+        if abs(p_t0) > 1E-4_f32.into() {
+            panic!("Failed to find root for polynomial {poly:?}");
+            return (None, None, None);
+        }
+
+        eprintln!("Poly at t0 {t0} - {p_t0}");
+        let (b, c) = {
+            if t0.is_unreliable_divisor() {
+                // Divide by x
+                (poly[2], poly[1])
+            } else {
+                // Divide by (x-t0)
+                let b = poly[2] + t0; // == (c - d_dt_sq_poly[1]) / t0;
+                let c = poly[1] + t0 * b; // == d_dt_sq_poly[0] / t0;
+                (b, c)
+            }
+        };
+        let (opt_t1, opt_t2) = find_real_roots_quad_num(&[c, b, F::ONE]);
+        (Some(t0), opt_t1, opt_t2)
+    }
+}
+
+/// Estimate a square root given a Num
+///
+/// This uses Newton-Raphson on a scaled version of `sq`; it will always return a value
+/// below or equal to the actual square root if 'min' is true, else a value larger or equal to
+///
+/// A value of N=5 will yield a square root accurate to one part in a 1E6.
+pub fn sqrt_est<F: Num, const N: usize>(sq: F, min: bool) -> F {
+    if sq < 1E-4_f32.into() {
+        if min {
+            F::ZERO
+        } else {
+            sq
+        }
+    } else {
+        if sq.is_unreliable_divisor() {
+            return F::ZERO;
+        }
+        let scale: F = 4.0_f32.into();
+        let scale_r: F = 0.25_f32.into(); // 1/scale
+        let scale_sq_r: F = 0.0625_f32.into(); // 1/scale^2
+        let scale_sq: F = 16.0_f32.into(); // scale^2
+        let mut est = 2.0_f32.into(); // scale/2.0
+        let half: F = 0.5_f32.into();
+
+        let mut tsq = sq;
+        while tsq < F::ONE {
+            est *= scale_r;
+            tsq *= scale_sq;
+        }
+        while tsq > scale_sq {
+            est *= scale;
+            tsq *= scale_sq_r;
+        }
+        for _ in 0..N {
+            est = half * (est + sq / est);
+        }
+        let est2 = sq / est;
+        if min == (est < est2) {
+            est
+        } else {
+            est2
+        }
+    }
+}
+
+/// Estimate a cube root given a Num
+///
+/// This uses Newton-Raphson on a scaled version of `cb`
+///
+/// A value of N=3 will yield a square root accurate to one part in a 1E4.
+///
+/// A value of N=5 will yield a square root accurate to one part in a 1E7.
+pub fn cbrt_est<F: Num, const N: usize>(cb: F) -> F {
+    if cb.is_unreliable_divisor() {
+        return F::ZERO;
+    }
+    let scale: F = 4.0_f32.into();
+    let scale_r: F = 0.25_f32.into(); // 1/scale
+    let scale_cb_r: F = 0.015625_f32.into(); // 1/scale^2
+    let scale_cb: F = 64.0_f32.into(); // scale^2
+    let mut est: F = 2.0_f32.into();
+
+    let mut tcb = {
+        if cb < F::ZERO {
+            est = -est;
+            -cb
+        } else {
+            cb
+        }
+    };
+    while tcb < F::ONE {
+        est *= scale_r;
+        tcb *= scale_cb;
+    }
+    while tcb > scale_cb {
+        est *= scale;
+        tcb *= scale_cb_r;
+    }
+    let two_cb = cb + cb;
+    for _ in 0..N {
+        let est_cb = est * est * est;
+        est *= (est_cb + two_cb) / (est_cb + est_cb + cb);
+    }
+    est
+}
+
+#[test]
+fn test_sqrt() {
+    fn test_x<F: Num, const N: usize>(x: f32, accuracy: f32) {
+        let x: F = x.into();
+        let x_sq = x * x;
+        let est_min = sqrt_est::<_, N>(x_sq, true);
+        let est_max = sqrt_est::<_, N>(x_sq, false);
+        if x < 1E-6_f32.into() {
+            assert!(est_min < 1E-6_f32.into());
+            assert!(est_max < 1E-6_f32.into());
+            return;
+        }
+        assert!(
+            est_min <= x,
+            "Minimum est of sqrt(x_sq) {est_min}<>{est_max} must be <= x {x}"
+        );
+        assert!(
+            est_max >= x,
+            "Maximum est of sqrt(x_sq) {est_min}<>{est_max} must be >= x {x}"
+        );
+        assert!(
+            (x - est_min) / x < accuracy.into(),
+            "Result {est_min}<>{est_max} should be within {accuracy} of x {x}"
+        );
+        assert!(
+            (est_max - x) / x < accuracy.into(),
+            "Result {est_min}<>{est_max} should be within {accuracy} of x {x}"
+        );
+    }
+    for x in [0.0_f32, 1., 2., 3., 4., 5., 6., 7.] {
+        for y in [1.0_f32, 1E2, 1E3, 1E4, 1E5, 1E-1, 1E-2] {
+            test_x::<f32, 3>(x * y, 1E-3);
+            test_x::<f32, 5>(x * y, 1E-7);
+        }
+    }
+}
+
+#[test]
+fn test_cbrt() {
+    fn test_x<F: Num, const N: usize>(x: f32, accuracy: f32) {
+        let x: F = x.into();
+        let x_cb = x * x * x;
+        let est = cbrt_est::<_, N>(x_cb);
+        if x > (-1E-6_f32).into() && x < 1E-6_f32.into() {
+            assert!(est < 1E-2_f32.into());
+            assert!(est > (-1E-2_f32).into());
+            return;
+        }
+        assert!(
+            (x - est) / x < accuracy.into(),
+            "Result {est} should be within {accuracy} of x {x}"
+        );
+    }
+    for x in [0.0_f32, 1., 2., 3., 4., 5., 6., 7.] {
+        for y in [1.0_f32, 1E2, 1E3, 1E4, 1E5, 1E-1, 1E-2] {
+            test_x::<f32, 3>(x * y, 1E-3);
+            test_x::<f32, 3>(x * y, 1E-3);
+            test_x::<f32, 4>(-x * y, 1E-6);
+            test_x::<f32, 4>(-x * y, 1E-6);
+        }
     }
 }

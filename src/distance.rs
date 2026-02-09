@@ -1,5 +1,5 @@
 //a Imports
-use crate::Float;
+use crate::{BezierDistance, BezierEval, BezierIntoIterator, Float};
 use geo_nd::vector;
 
 use crate::traits::BezierSplit;
@@ -13,11 +13,11 @@ use crate::Bezier;
 /// counter-clockwise winding has inside on the *left* of the lines that make up the curve.
 pub struct BezierDistance2D<F: Float> {
     /// The straightness that the Bezier's will be flattened to
-    straightness: F,
+    closeness_sq: F,
     /// The winding, for a closed path, to determine inside/outside
     winding: bool,
     /// The beziers that make up the complete path
-    beziers: Vec<Bezier<F, 2>>,
+    beziers: Vec<Box<dyn BezierEval<F, [F; 2]>>>,
     /// The flattened line segments
     flattened: Vec<[F; 2]>,
     /// The indicies for each Bezier of the first and last flattened line segments
@@ -28,9 +28,9 @@ impl<F: Float> BezierDistance2D<F> {
     /// Create a new BezierDistance2D type given a straightness and winding
     ///
     /// For an open path, a winding of True suffices
-    pub fn new(straightness: F, winding: bool) -> Self {
+    pub fn new(closeness_sq: F, winding: bool) -> Self {
         Self {
-            straightness,
+            closeness_sq,
             winding,
             beziers: vec![],
             flattened: vec![],
@@ -39,50 +39,23 @@ impl<F: Float> BezierDistance2D<F> {
     }
 
     /// Add a bezier to the path
-    pub fn add_bezier(&mut self, bezier: Bezier<F, 2>) {
-        assert!(
-            self.flattened.is_empty(),
-            "Addind Beziers is only permitted to a new or reset BezierDistance2D"
-        );
-        self.beziers.push(bezier);
-    }
-
-    /// Add a bezier to the path, splitting it into smaller beziers to get within a straightness
-    pub fn add_bezier_with_straightness(&mut self, bezier: Bezier<F, 2>, straightness: F) {
-        if bezier.is_straight(straightness) {
-            self.beziers.push(bezier);
-        } else {
-            let (b0, b1) = bezier.split();
-            self.add_bezier_with_straightness(b0, straightness);
-            self.add_bezier_with_straightness(b1, straightness);
+    pub fn add_bezier<
+        B: BezierEval<F, [F; 2]> + BezierIntoIterator<F, [F; 2]> + Clone + 'static,
+    >(
+        &mut self,
+        bezier: &B,
+    ) {
+        self.beziers.push(Box::new(bezier.clone()));
+        let first = self.flattened.len();
+        for p in bezier.as_points(self.closeness_sq) {
+            self.flattened.push(p);
         }
-    }
-
-    /// Create the flattened segments
-    fn create_segments(&mut self) {
-        if self.beziers.is_empty() {
-            return;
-        }
-        if !self.flattened.is_empty() {
-            return;
-        }
-        for b in &self.beziers {
-            let first = self.flattened.len();
-            for pt in b.as_points(self.straightness) {
-                if !self.flattened.is_empty()
-                    && vector::distance_sq(&pt, self.flattened.last().unwrap()) > F::epsilon()
-                {
-                    self.flattened.push(pt);
-                }
-            }
-            self.bezier_indices.push((first, self.flattened.len()));
-        }
+        self.bezier_indices.push((first, self.flattened.len()));
     }
 
     /// Calculate the distance (squared) from the point to the closest point on the Bezier,
     /// and determine if the point is inside or outside the Beziers if they are a closed path
     pub fn distance_sq_to(&mut self, pt: &[F; 2]) -> (F, bool) {
-        self.create_segments();
         let mut min_d2_s = (F::max_value(), 0);
         for (i, (p0, p1)) in self
             .flattened
@@ -90,7 +63,7 @@ impl<F: Float> BezierDistance2D<F> {
             .zip(self.flattened.iter().skip(1))
             .enumerate()
         {
-            let (distance_sq, _inside) = Bezier::pt_distance_sq_from(pt, p0, p1);
+            let (_t, distance_sq) = [*p0, *p1].t_dsq_closest_to_pt(pt).unwrap();
             if distance_sq < min_d2_s.0 {
                 min_d2_s = (distance_sq, i);
             }

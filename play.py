@@ -1,4 +1,94 @@
 #!/usr/bin/env python3
+import math
+
+
+def sqrt_est(sq):
+    scale = 4
+    bottom = 1
+    top = scale * scale
+
+    real_sqrt = math.sqrt(sq)
+    tsq = sq
+    est = 2
+    while tsq < bottom:
+        est /= scale
+        tsq *= scale * scale
+        pass
+    while tsq > top:
+        est *= scale
+        tsq /= scale * scale
+        pass
+    count = 0
+    while math.fabs(real_sqrt - est) > 1e-12:
+        # Two steps in one is three multiplications and a division
+        # est *= (est * est + 3 * sq) / (3 * est * est + sq)
+        #
+        # One step is a division plus halving which is a multiply
+        est = 0.5 * (est + sq / est)
+        count += 1
+        pass
+    print(f"sq {sq:.4} tsq {tsq:.4} after count {count} reached correct value")
+    return count
+
+
+def cbrt_est(cb):
+    # Optimal at scale=3.6 probably
+    scale = 4
+    bottom = 1
+    top = scale * scale * scale
+
+    real_cbrt = math.pow(cb, 0.333333333333)
+    tcb = cb
+    est = 2
+    # Scale to between bottom and bottom*scale_down^3
+    #
+    # Mid-point is
+    while tcb < bottom:
+        est /= scale
+        tcb *= scale * scale * scale
+        pass
+    while tcb > top:
+        est *= scale
+        tcb /= scale * scale * scale
+        pass
+    count = 0
+    while math.fabs(real_cbrt - est) > 1e-8:
+        # Two steps in one is three multiplications four adds and a division
+        # _0 = est*est, _1 = est*_0 _2 = _1+_1, _3=cb+cb, _4=_3+_1, _5=-2+cb, _6=_4/_5, x=x*_6
+        est *= (est * est * est + 2 * cb) / (2 * est * est * est + cb)
+        #
+        # One step is three multplies, two adds and a division
+        # est = (est * est * est * 2 + cb) / (3 * est * est)
+        count += 1
+        pass
+    print(f"cb {cb:.4} tcb {tcb:.4} after count {count} reached correct value")
+    return count
+
+
+total = 0
+n = 0
+for i in [-5, -4, -3, -1, 0, 1, 2, 3, 4, 5, 6]:
+    for j in range(0, 8, 2):
+        k = (j + 1) * math.pow(10, i)
+        total += sqrt_est(k)
+        n += 1
+        pass
+    pass
+print(total, total / n)
+
+
+total = 0
+n = 0
+for i in [-5, -4, -3, -1, 0, 1, 2, 3, 4, 5, 6]:
+    for j in range(0, 8, 2):
+        k = (j + 1) * math.pow(10, i)
+        total += cbrt_est(k)
+        n += 1
+        pass
+    pass
+print(total, total / n)
+
+di
 
 
 class Quadratic:

@@ -1,7 +1,7 @@
 //! This library provides functions that return *Metrics* for Bezier curves or the difference between
 //! them and other curves or lines.
 //!
-use crate::{utils, BezierEval, Num};
+use crate::{utils, BezierDistance, BezierEval, Float, Num};
 use geo_nd::vector;
 
 /// Maximum of the squared length of the control points
@@ -162,4 +162,63 @@ pub fn df_sq_from_line<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bezier:
         result += vector::distance_sq(pt, &l);
     });
     result
+}
+
+/// Calculates the length of the Bezier when it is rendered down
+/// to the given a straightness
+///
+/// `straightness` is independent of the length of the Bezier
+pub fn length_of_lines<F: Float, const D: usize, I: Iterator<Item = ([F; D], [F; D])>>(
+    lines: I,
+) -> F {
+    lines.fold(F::ZERO, |acc, (p0, p1)| {
+        acc + geo_nd::vector::distance(&p0, &p1)
+    })
+}
+
+pub fn t_dsq_closest_to_pt<F: Float, const D: usize>(
+    pts: &[[F; D]],
+    pt: &[F; D],
+) -> Option<(F, F)> {
+    match pts.len() {
+        1 => Some((F::ZERO, vector::distance_sq(&pts[0], pt))),
+        2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&pts[0..2])
+            .unwrap()
+            .t_dsq_closest_to_pt(pt),
+        3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&pts[0..3])
+            .unwrap()
+            .t_dsq_closest_to_pt(pt),
+        4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&pts[0..4])
+            .unwrap()
+            .t_dsq_closest_to_pt(pt),
+        _ => None,
+    }
+}
+
+pub fn est_min_distance_sq_to<F: Num, const D: usize>(pts: &[[F; D]], pt: &[F; D]) -> F {
+    // eprintln!("est_min_distance_sq_to {pts:?} {pt:?}");
+    let l0 = pts.first().unwrap();
+    let l1 = pts.last().unwrap();
+    let d_sq = crate::utils::distance_sq_to_line_segment(pt, l0, l1);
+    let t_iter = utils::float_iter(pts.len());
+    let dc_sq = pts.iter().zip(t_iter).fold(F::ZERO, |acc, (pt, t)| {
+        utils::max(acc, vector::distance_sq(pt, &vector::mix(l0, l1, t)))
+    });
+    // min possible distance to Bezier = sqrt(d_sq) - sqrt(dc_sq)
+    if d_sq < dc_sq {
+        F::ZERO
+    } else {
+        // dout <= min possible distance = sqrt(d_sq) - sqrt(dc_sq)
+
+        // Get min estimate for d_sq (i.e. d_est = d_sq.sqrt() - eps)
+        let d_est = utils::sqrt_est::<_, 4>(d_sq, true);
+        // Get max estimate for dc_sq (i.e. dc_est = dc_sq.sqrt() + eps)
+        let dc_est = utils::sqrt_est::<_, 4>(dc_sq, false);
+
+        if d_est > dc_est {
+            F::ZERO
+        } else {
+            d_est - dc_est
+        }
+    }
 }
