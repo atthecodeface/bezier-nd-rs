@@ -3,11 +3,10 @@ use bezier_nd::{
     Approximation, BasicBezier, Bezier, BezierDistance, BezierEval, BezierMinMax, BezierND,
     BezierSplit,
 };
-use bezier_nd::{Float, Num};
+use bezier_nd::Float;
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
-use utils::min;
 
 fn test_distance_to<
     F: Float,
@@ -54,7 +53,7 @@ fn test_distance_to<
     vector::expand_bbox(1.0_f32.into(), &mut bbox_min, &mut bbox_max);
     const NUM_APPROX_PTS: usize = 100;
     let num_approx_pts: F = (NUM_APPROX_PTS as f32).into();
-    let approx_t_spacing = F::ONE / num_approx_pts;
+    let _approx_t_spacing = F::ONE / num_approx_pts;
     let approx = Approximation::of_regular_t(bezier, NUM_APPROX_PTS, None);
 
     for t in test_pts {
@@ -79,7 +78,7 @@ fn test_distance_to<
         let est = bezier.est_min_distance_sq_to(&pt);
         eprintln!("Pt {pt:?} is approx t/dist_sq {approx_t}/{min_dist_sq_to_approx} from approx [pt {:?}], and estimated at {est} from Bezier {bezier:?}", bezier.point_at(approx_t));
         assert!(est <= min_dist_sq_to_approx * (1.05_f32.into()), "Estimate of distance {est} must be less than the actual distance (to approximation it is {min_dist_sq_to_approx}");
-        if let Some((t, d_sq)) = bezier.t_dsq_closest_to_pt(&pt) {
+        if let Some((_t, d_sq)) = bezier.t_dsq_closest_to_pt(&pt) {
             // eprintln!("Pt {pt:?} closest on Bezier at {t}/{d_sq} [={:?}], approx closest at {approx_t}/{min_dist_sq_to_approx}, from Bezier {bezier:?}", bezier.point_at(t));
             assert!(d_sq <= min_dist_sq_to_approx + (1E-3_f32).into(), "Actual distance {d_sq} must be less than the closest approximation point of {min_dist_sq_to_approx}");
 

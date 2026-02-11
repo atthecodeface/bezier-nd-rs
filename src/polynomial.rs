@@ -35,7 +35,6 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 
 !*/
 
-use geo_nd::matrix::lup_invert;
 
 //a Imports
 use crate::{Float, Num};
@@ -253,7 +252,7 @@ fn improve_root<F: Num + From<f32>>(poly: &[F], x: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
     let d2f = poly.d2f(x);
-    let denom = (df * df - f * d2f / (2.0_f32.into()));
+    let denom = df * df - f * d2f / (2.0_f32.into());
     if denom.is_unreliable_divisor() {
         if df.is_unreliable_divisor() {
             None

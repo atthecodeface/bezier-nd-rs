@@ -69,11 +69,8 @@ impl<const N: usize> std::cmp::PartialOrd for IntN<N> {
 
 impl<const N: usize> std::fmt::Display for IntN<N> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        if self.is_neg {
-            write!(fmt, "-{}", self.value)
-        } else {
-            self.value.fmt(fmt)
-        }
+        let s: String = self.value.as_digits(10).collect();
+        fmt.pad_integral(!self.is_neg, "", &s)
     }
 }
 

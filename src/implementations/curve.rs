@@ -1,9 +1,9 @@
 //a Imports
-use crate::{bernstein_fns, Float};
+use crate::Float;
 use geo_nd::vector;
 
 use crate::{
-    metrics, BezierDistance, BezierElevate, BezierEval, BezierIntoIterator, BezierMinMax,
+    BezierDistance, BezierElevate, BezierEval, BezierMinMax,
     BezierOps, BezierReduce, BezierSection, BezierSplit,
 };
 

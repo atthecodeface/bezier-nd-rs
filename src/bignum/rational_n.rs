@@ -120,7 +120,8 @@ impl<const N: usize> std::fmt::Display for RationalN<N> {
         if self.denom().is_one() {
             self.numer.fmt(fmt)
         } else {
-            write!(fmt, "{}/{}", self.numer, self.denom)
+            let s = format!("{}/{}", self.numer, self.denom);
+            fmt.pad(&s)
         }
     }
 }
@@ -504,14 +505,17 @@ impl<const N: usize> RationalN<N> {
     /// Should only include this if alloc
     pub fn with_common_denom<'a, I: Iterator<Item = &'a Self> + Clone + 'a>(
         iter: I,
-    ) -> impl Iterator<Item = (IntN<N>, UIntN<N>)> + 'a {
+    ) -> (impl Iterator<Item = IntN<N>> + 'a, UIntN<N>) {
         let lcm = iter
             .clone()
             .fold(UIntN::ONE, |lcm, v| lcm.lcm(&v.denom).unwrap());
-        iter.map(move |v| {
-            let m = lcm / v.denom;
-            (v.numer * m, lcm)
-        })
+        (
+            iter.map(move |v| {
+                let m = lcm / v.denom;
+                v.numer * m
+            }),
+            lcm,
+        )
     }
 }
 

@@ -218,7 +218,7 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         let mut t0 = F::ZERO;
         let mut p_t0: F = 1E8_f32.into();
         for t in [0.0_f32, 1.0, 2.0, -1.0] {
-            let (root_est, root_dt) = poly.find_root_nr_with_err(t.into(), 1E-6_f32.into(), 20);
+            let (root_est, _root_dt) = poly.find_root_nr_with_err(t.into(), 1E-6_f32.into(), 20);
             let p_t = abs(poly.calc(root_est));
             if p_t < p_t0 {
                 t0 = root_est;

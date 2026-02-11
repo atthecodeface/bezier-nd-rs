@@ -1,7 +1,7 @@
 mod coeffs;
 
 /// Elevation matrix functions
-pub mod elevate_matrix;
+pub mod elevate_reduce_matrix;
 
 /// Functions to permit creation of cubic Bezier curves of circular arcs
 pub mod arc;
@@ -16,4 +16,3 @@ pub mod values;
 pub mod distance;
 
 pub use coeffs::*;
-pub use elevate_matrix::*;

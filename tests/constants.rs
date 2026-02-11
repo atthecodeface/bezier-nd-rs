@@ -1,46 +1,45 @@
 mod utils;
-use bezier_nd::{bernstein_fns, Num};
-use utils::test_beziers_approx_eq;
-
-fn elevate_by_one_matrix<F: Num>(degree: usize) -> Vec<F> {
-    // Elevate by one for degree N is and N+2 by N+1 matrix
-    let n = degree + 1;
-    let n1 = degree + 2;
-    let mut elevate_by_one = vec![F::ZERO; n * n1];
-    let f =
-        bernstein_fns::elevate_matrix::generate_elevate_by_one_matrix(&mut elevate_by_one, degree);
-    // eprintln!("{f} &{elevate_by_one:?},");
-    elevate_by_one
-}
+use bezier_nd::{bernstein_fns, bignum::RationalN};
 
 #[test]
-fn elevate_constants() {
-    let degree = 1;
-    let n2 = degree + 2;
-    let n1 = degree + 1;
-    let e = elevate_by_one_matrix::<f32>(degree);
-    let mut e_t = e.clone();
-    geo_nd::matrix::transpose_dyn(n2, n1, &e, &mut e_t);
-    let mut e_e_t = vec![0.0; n1 * n1];
-    geo_nd::matrix::multiply_dyn(n1, n2, n1, &e, &e_t, &mut e_e_t);
-    let mut e_e_t_inv = e_e_t.clone();
-    let mut lu = e_e_t.clone();
-    let mut pivot = vec![0; n1];
-    let mut tr1 = vec![0.0; n1];
-    let mut tr2 = vec![0.0; n1];
-    let det = geo_nd::matrix::lup_decompose(n1, &e_e_t, &mut lu, &mut pivot);
-    eprintln!("{det} {e_e_t:?}");
-    assert!(geo_nd::matrix::lup_invert(
-        n1,
-        &lu,
-        &pivot,
-        &mut e_e_t_inv,
-        &mut tr1,
-        &mut tr2
-    ));
-    eprintln!("{e_e_t:?} {e_e_t_inv:?}");
-    let mut r = vec![0.0; n1 * n2];
-    geo_nd::matrix::multiply_dyn(n1, n1, n2, &e_e_t_inv, &e_t, &mut r);
-    eprintln!("{r:?}");
-    assert!(false);
+fn reduce_min_l2() {
+    for degree in 1..7 {
+        let n2 = degree + 2;
+        let n1 = degree + 1;
+
+        // r is n1 by n2
+        // e is n2 by n1
+        eprintln!("Reduce degree {n1} to {degree}");
+        let r = bernstein_fns::elevate_reduce_matrix::reduce_l2_min_by_one_matrix::<RationalN<4>>(
+            degree,
+        );
+        utils::display::eprintln_rational_matrix(&r, degree + 2);
+
+        // eprintln!("{degree}: elevate");
+        let (scale, mut e) = bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix::<
+            RationalN<4>,
+        >(degree);
+        for e in e.iter_mut() {
+            *e /= scale;
+        }
+        // utils::display::eprintln_matrix(&e, n1);
+
+        // Reduction * Elevation * Point == Point
+        //
+        // r * e is n1 by n1; it should be the identity
+        // eprintln!("{degree}: reduction of elevation - must be the identity");
+        let mut test = vec![0.0_f32.into(); n1 * n1];
+        geo_nd::matrix::multiply_dyn(n1, n2, n1, &r, &e, &mut test);
+        // utils::display::eprintln_matrix(&test, n1);
+        utils::assert_near_identity(n1, &test);
+
+        // Elevated reduction minus identity
+        eprintln!("Elevated reduce of degree {n1} to {degree} minus identity");
+        let mut test = vec![0.0_f32.into(); n2 * n2];
+        geo_nd::matrix::multiply_dyn(n2, n1, n2, &e, &r, &mut test);
+        for i in 0..n2 {
+            test[i * (n2 + 1)] -= 1_f32.into();
+        }
+        utils::display::eprintln_rational_matrix(&test, degree + 2);
+    }
 }

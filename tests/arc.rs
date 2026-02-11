@@ -1,6 +1,6 @@
 //a Imports
 use bezier_nd::BezierEval;
-use bezier_nd::{bernstein_fns, metrics, Bezier, BezierDistance, BezierIntoIterator};
+use bezier_nd::{bernstein_fns, metrics, Bezier, BezierIntoIterator};
 mod utils;
 use geo_nd::{vector, FArray};
 

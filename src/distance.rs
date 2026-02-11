@@ -1,9 +1,6 @@
 //a Imports
 use crate::{BezierDistance, BezierEval, BezierIntoIterator, Float};
-use geo_nd::vector;
 
-use crate::traits::BezierSplit;
-use crate::Bezier;
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///
 /// The Beziers will be flattened to the given straightness, and if they form a closed path then

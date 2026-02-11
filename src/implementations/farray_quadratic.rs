@@ -1,11 +1,10 @@
-use crate::polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 use crate::utils;
 use crate::{
     bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
     BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
-use crate::{Float, Num};
+use crate::Num;
 use geo_nd::vector;
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {

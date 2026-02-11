@@ -19,6 +19,7 @@ pub use measures::*;
 pub use minmax_bbox::*;
 pub use point_set::BezierPtSet;
 pub use random::*;
+pub mod display;
 
 pub fn abs<F: Num>(f: F) -> F {
     if f < F::ZERO {
@@ -62,7 +63,7 @@ pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: 
 }
 
 /// Generate Bernstein matrices for a given degree and values of t
-pub fn bernstein_basis_coeff_br<N: geo_nd::Num + From<i64>>(degree: usize, i: usize, t: N) -> N {
+pub fn bernstein_basis_coeff_br<N: Num>(degree: usize, i: usize, t: N) -> N {
     let u = N::ONE - t;
     let mut result = N::ONE;
     for c in 0..degree {
@@ -77,12 +78,12 @@ pub fn bernstein_basis_coeff_br<N: geo_nd::Num + From<i64>>(degree: usize, i: us
     // This is multiply by (n-j) for j = 0..i-1 inclusive and divide by j for j = 1..i inclusive
     for j in 0..=i {
         if j < i {
-            let f: N = ((degree - j) as i64).into();
+            let f: N = ((degree - j) as f32).into();
             result *= f;
         }
 
         if j >= 1 {
-            let f: N = (j as i64).into();
+            let f: N = (j as f32).into();
             result /= f;
         }
     }
@@ -95,11 +96,7 @@ pub fn bernstein_basis_coeff_br<N: geo_nd::Num + From<i64>>(degree: usize, i: us
 /// to generate the positions on the Bezier (of that degree with those control points) at
 /// N specified values of 't' (given by ts)
 #[track_caller]
-pub fn generate_bernstein_matrix_br<N: geo_nd::Num + From<i64>>(
-    matrix: &mut [N],
-    degree: usize,
-    ts: &[N],
-) {
+pub fn generate_bernstein_matrix_br<N: Num>(matrix: &mut [N], degree: usize, ts: &[N]) {
     assert_eq!(
         matrix.len(),
         (degree + 1) * ts.len(),
@@ -120,19 +117,19 @@ pub fn generate_bernstein_matrix_br<N: geo_nd::Num + From<i64>>(
 /// to generate a new array of control points of the elevated Bezier
 #[track_caller]
 #[must_use]
-pub fn generate_elevate_by_n_matrix<N: bezier_nd::Num>(degree: usize, by_n: usize) -> Vec<N> {
-    use bernstein_fns::generate_elevate_by_one_matrix;
-
+pub fn generate_elevate_by_n_matrix<N: Num>(degree: usize, by_n: usize) -> Vec<N> {
+    use bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix;
     assert!(by_n >= 1);
-    let mut result = vec![N::ZERO; (degree + 1) * (degree + 1 + by_n)];
     if by_n == 1 {
-        let scale = generate_elevate_by_one_matrix(&mut result, degree);
+        let (scale, mut result) = generate_elevate_by_one_matrix(degree);
         for e in result.iter_mut() {
             *e /= scale;
         }
+        result
     } else {
         // m_a is degree+2 * degree+1
         // m_a is degree+1+by_n * degree+2
+        let mut result = vec![N::ZERO; (degree + 1) * (degree + 1 + by_n)];
         let m_a = generate_elevate_by_n_matrix(degree, 1);
         let m_b = generate_elevate_by_n_matrix(degree + 1, by_n - 1);
         matrix::multiply_dyn(
@@ -143,6 +140,6 @@ pub fn generate_elevate_by_n_matrix<N: bezier_nd::Num>(degree: usize, by_n: usiz
             &m_a,
             &mut result,
         );
+        result
     }
-    result
 }

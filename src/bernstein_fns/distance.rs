@@ -1,4 +1,4 @@
-use crate::polynomial::{PolyNewtonRaphson, Polynomial};
+use crate::polynomial::Polynomial;
 use crate::utils;
 use crate::{BezierEval, Num};
 

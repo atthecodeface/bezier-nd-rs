@@ -1,4 +1,5 @@
 use num_traits::{ConstOne, ConstZero, Zero};
+use std::fmt::Write;
 
 /// Unsigned integer of N*64 bits, supporting copy
 ///
@@ -125,9 +126,8 @@ impl<const N: usize> std::iter::Iterator for UIntNDigitIter<N> {
 
 impl<const N: usize> std::fmt::Display for UIntN<N> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        use std::fmt::Write;
-        for c in UIntNDigitIter::new(*self, 10) {
-            fmt.write_char(char::from_digit(c, 10).unwrap())?;
+        for c in self.as_digits(10) {
+            fmt.write_char(c)?;
         }
         Ok(())
     }
@@ -277,6 +277,11 @@ impl<const N: usize> num_traits::identities::ConstOne for UIntN<N> {
 }
 
 impl<const N: usize> UIntN<N> {
+    /// Generate an iterator of char for the digits of the number given a radix
+    pub fn as_digits(&self, radix: u32) -> impl Iterator<Item = char> {
+        UIntNDigitIter::new(*self, radix).map(move |c| char::from_digit(c, radix).unwrap())
+    }
+
     fn value_is_zero(&self) -> bool {
         self.value.iter().all(|s| *s == 0)
     }
