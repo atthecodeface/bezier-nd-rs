@@ -176,6 +176,7 @@ pub fn length_of_lines<F: Float, const D: usize, I: Iterator<Item = ([F; D], [F;
     })
 }
 
+/// Find the closest point and parameter t on a Bezier to a give point
 pub fn t_dsq_closest_to_pt<F: Float, const D: usize>(
     pts: &[[F; D]],
     pt: &[F; D],
@@ -195,6 +196,7 @@ pub fn t_dsq_closest_to_pt<F: Float, const D: usize>(
     }
 }
 
+/// Estimate the minimum squared distance to a Bezier
 pub fn est_min_distance_sq_to<F: Num, const D: usize>(pts: &[[F; D]], pt: &[F; D]) -> F {
     // eprintln!("est_min_distance_sq_to {pts:?} {pt:?}");
     let l0 = pts.first().unwrap();

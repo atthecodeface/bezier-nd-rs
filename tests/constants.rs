@@ -42,4 +42,5 @@ fn reduce_min_l2() {
         }
         utils::display::eprintln_rational_matrix(&test, degree + 2);
     }
+    assert!(false);
 }

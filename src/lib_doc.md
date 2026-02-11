@@ -392,18 +392,18 @@ p(t,u=1-t) = u^3.p0 + 3.t.u^2.c0 + 3.u.t^2.c1 + t^3.p1
 
 ## Other mathematical representations (including *Monomial*)
 
-Bezier curves with `n` control points as defined in the previous section
-are described by:
+Bezier curves with `N` control points as defined in the previous section
+are generically described by:
 
 ```text
-p(t) = Sum( (1-t)^(n-i)*t^i*n!/(i!*(n-i)!) * p[i] )
+p(t) = Sum( (1-t)^(N-i)*t^i*N!/(i!*(N-i)!) * p[i] )
 ```
 
 The coefficients of the control points are known as Bernstein basis polynomials:
-from here on they will be written as `B[i,n](t)`:
+from here on they will be written as `B[i,N](t)`:
 
 ```text
-B[i,n](t) = (1-t)^(n-i) * t^i * n!/(i!*(n-i)!)
+B[i,N](t) = (1-t)^(N-i) * t^i * N!/(i!*(N-i)!)
 ```
 
 The equation for p(t) can be expanded out into a polynomial in t; each coefficient of `t^i` would
@@ -539,9 +539,9 @@ have been done; the purpose is to provide something that is clean,
 works across the range, and is efficient. There is no perfect solution
 to this problem!
 
-# Construct a Bezier curve from points and `t` values
+# <a name="construction"></a>Construct a Bezier curve from points and `t` values
 
-A Bezier curve can be constructed purely from a given set of points,
+A Bezier curve of degree `N` can be constructed purely from a given set of `N+1` points,
 each with an associated `t` value (where all the `t` values are different).
 
 How can this be done?
@@ -711,30 +711,44 @@ itself was the origin.
 Since *monomial* representations are equivalent to standard Bezier curves, this
 means that standard Bezier curves cannot be reduced without loss in most cases.
 
-So how does one approximate a Bezier of degree 10 with cubic Beziers? Or even with line segments - which are simply Bezier curves of degree 1?
+So how does one approximate a Bezier of degree 10 with cubic Beziers? Or even
+with line segments - which are simply Bezier curves of degree 1? This requires
+reduction of a Bezier curve from a higher degree to a lower one, using a linear
+mapping from the original Bezier curve's control points to the lower degree
+curve's control points.
+
+As reduction is deemed to be akin to the inverse of elevation, elevation can be
+seen to be the inverse of reduction. Hence a basic requirement can be that the
+reduction of an elevation be the identity.
+
+If reductions and elevations, as linear mappings of control points, are denoted
+by matrices applied to the control points then what is required for a reduction
+from degree m to degree n (i.e. `m>n`) is `R[m,n]*E[n,m] = Identity[n,n]`; this
+inspires R to be of the form `(A*E).inverse()*A`; this requires `A*E` to be
+invertible (square and full rank), and hence A to be full rank n-by-(n+1)
+matrix. Any such matrix will suffice for `A`, with different values of `A`
+having different properties with regard to the metrics of the reduced Bezier
+curves (i.e. some values of A will distort the curves more than others).
 
 ## Least squares reduction (degree N to M)
 
-A Bezier curve can be reduced such that the total (for all 0<=t<=1) squared distance between the reduced Bezier and the original Bezier is a minimum.
-Each of the `M` control points is a linear combination of the original `N` control points, and is usually best described by an M by N matrix. For every
-combination of M and N, with M<N, there is a standard matrix.
+A Bezier curve can be reduced such that the total (for all 0<=t<=1) squared
+distance between the reduced Bezier and the original Bezier is a minimum. It turns out that the matrix `A` can be set to `E.transpose()`; this is guaranteed to be full rank as required, as `E` is. 
 
-The least squares reduction, though, is frequently not what is required; usually the *endpoints* need to be kept unchanged, so that a Bezier that has
-been split up into subsections that *can* be sensibly reduced - and which join up - remain after reduction as a Bezier curves that join up. It would be
-fairly silly to split up for drwaing a Bezier curve into segments that can be represented by lines, but then to choose lines that do not join up end-to-end.
+This makes the least squares reduction matrix `R[n+1, n]` the
+pseudo-inverse of the elevation matrix `E[n+1,n]` (an (n+1)-by-n matrix).
 
-The least squares
-reduction matrix R[n+1, n] (an n-by-(n+1) matrix) is defined as the pseudo-inverse
-of the elevation matrix E[n+1,n] (an (n+1)-by-n matrix).
+Note that the inverse of an `N-by-N` matrix T is the `N-by-N` matrix 'S' that,
+when T is pre-multiplied by S, yields the `N-by-N` identity.
 
-The inverse of an `N-by-N` matrix T is the `N-by-N` matrix 'S' that, when T is pre-multiplied by S, yields the `N-by-N- identity.
+The *pseudo-inverse* of an `M-by-N, M>N` matrix T is the `N-by-M` matrix 'S'
+that when T is pre-multiplied by S, yields the `N-by-N` identity. This always
+exists if the matrix T is full rank.
 
-The pseudo-inverse of an 'M-by-N' matrix T is the 'N-by-M' matrix 'S' that when T is pre-multiplied by S, yields the `N-by-N` identity.
-
-`R[n+1,n] = (E[n,n+1].transpose() * E[n,n+1]).inverse() * E[n,n+1].transpose()`
+Hence we have `R[n+1,n] = (E[n,n+1].transpose() * E[n,n+1]).inverse() * E[n,n+1].transpose()`
 
 ```
-`R[n+1,n]*E[n,n+1] = (E[n,n+1].transpose() * E[n,n+1]).inverse()* E[n,n+1].transpose() * E[n,n+1]
+R[n+1,n]*E[n,n+1] = (E[n,n+1].transpose() * E[n,n+1]).inverse()* E[n,n+1].transpose() * E[n,n+1]
                    = Identity[n,n]
 ```
 
@@ -742,24 +756,44 @@ e.g. take the 5-by-4 elevation matrix to raise a Bezier from a cubic to a quarti
 elevation matrix to generate a 4-by-4 matrix. Invert this. Multiply this by the transpose obtained earlier. This is the 4-by-5 reduction matrix,
 to convert from a quartic Bezier to a cubic Bezier maintaining a minimum l2 distance between the curves.
 
-The reduce-by-one matrix for a quadratic to a line is `1/9` of `|10 1 -8| |-8 1 10|`. If this is elevated back to a quadratic
-the Bezier would be `10p0+c-8p1` 
+As examples:
 
+* the reduce-by-one matrix with minimum least squares difference for a quadratic to a line is `|5/6 2/6 -1/6| |-1/6 2/6 5/6|`.
+  Note that the reduction of an elevation of a line (to `p0, (p0+p1)/2, p1`) then reduced will yield `(p0, p1)`.
 
-The reduce-by-one matrix for a cubic to a quadratic is
+* the matrix for a cubic to a quadratic is `1/20*|19 3 -3 1| |-5 15 15 -5| |1 -3 3 19|`.
+  Note that the reduction of an elevation of a quadratic (to `p0, (p0+2c)/3, (2c+p1)/3, p1`) then reduced will yield `(p0, c, p1)`.
 
-## Reduction keeping endpoints - equispaced points
+## Reduction preserving *specific* points (such as endpoints)
 
-It is possible to reduce a Bezier and preserve the endpoints.
+The least squares reduction, though, is frequently not what is required; usually
+the *endpoints* need to be kept unchanged, so that a Bezier that has been split
+up into subsections that *can* be sensibly reduced - and which join up - remain
+after reduction as a Bezier curves that join up. It would be fairly silly to
+split up for drwaing a Bezier curve into segments that can be represented by
+lines, but then to choose lines that do not join up end-to-end.
 
-Perhaps the simplest method is to use the 'construct a Bezier from N points each at a different `t` value' described above: to reduce a Bezier to degree M
-will require M+1 points, which can be taken at equal spacing along the original Bezier curve (e.g. at t=0, t=1/M, t=2/M, up to t=1).
+It is possible to reduce a Bezier of degree `M` to one of degree `N` while preserving `N+1` points (at `N+1` specific `t` values) precisely; this is evident from the fact that a Bezier curve of degree `N` is described precisely by `N+1` pairs of `t` and points [see construction](#construction)
 
-Given that the new Bezier curve is guaranteed to go through the points given, which includes the endpoints (for t=0 and t=1), the new Bezier curve
-will pass through the endpoints.
+Perhaps the simplest method of reducing a Bezier curve, down to degree `N`, preserving its endpoints, is to take `N+1` evenly spaced `t` values (from 0 to 1) and the associated Bezier curve points (e.g. at t=0, t=1/N, t=2/N, up to t=1); then reconstruct the Bezier curve of degree `N` from these points.
 
-It is worth noting that the same algorithm can be used to elevate a Bezier curve (with M being larger than the original Bezier degree of N) - this is equivalent to the standard
-Bezier elevation process (it must be, as both processes produce a Bezier curve that goes through the same `M+1` points, and there is only one such curve of degree M that does)
+When reducing a (Bernstein) Bezier curve of degree `N+1` to `N`, the process
+involves the creation of `N+1` points at specific values of `t` from this
+Bezier; this is equivalent to creating `T`, an `(N+1)-by(N+2)` matrix, with each
+`i'th`row being the Bernstein coefficients of `N+2` at the value `ts[i]`. A
+second `(N+1)-by-(N+1)` matrix `S` can be created similarly using the same values of
+t, but for the Bernstein coefficients of `N+1`.
+
+Matrix `T` maps `N+2` control points to `N+1` points in space based on the `t`
+values; `S` maps `N+1` control points similarly. Inverting S maps those points in space back to
+control points, so `S.inverse()*T` is an `(N+1)-by-(N+2)` that maps the `N+2` control
+points to `N+1` control points while preserving the positions of the points at
+the `N+1` values of `t`.
+
+In the above we noted `R` is of the form `(A*E).inverse()*A`; where A is an `(N+1)-by-(N+2)` matrix. It should be clear that `A=T`, and `A*E=S`.
+
+It is worth noting that the same algorithm can be used to elevate a Bezier curve to degree `N` - this must be equivalent to the standard
+Bezier elevation process, as both processes produce a Bezier curve that goes through the same `N+1` points (and there is only one such curve of degree `N` that does)
 
 Of course, the points used do not have to be equispaced; they could be chosen to be more dense towards the endpoints, or however is desired.
 
