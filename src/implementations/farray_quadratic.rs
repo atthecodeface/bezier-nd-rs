@@ -202,7 +202,7 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
+impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
     type ElevatedByOne = [[F; D]; 4];
     // Full elevation is not supported
     type Elevated = Self;

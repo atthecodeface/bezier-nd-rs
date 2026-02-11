@@ -724,6 +724,25 @@ The least squares reduction, though, is frequently not what is required; usually
 been split up into subsections that *can* be sensibly reduced - and which join up - remain after reduction as a Bezier curves that join up. It would be
 fairly silly to split up for drwaing a Bezier curve into segments that can be represented by lines, but then to choose lines that do not join up end-to-end.
 
+The least squares
+reduction matrix R[n+1, n] (an n-by-(n+1) matrix) is defined as the pseudo-inverse
+of the elevation matrix E[n+1,n] (an (n+1)-by-n matrix).
+
+The inverse of an `N-by-N` matrix T is the `N-by-N` matrix 'S' that, when T is pre-multiplied by S, yields the `N-by-N- identity.
+
+The pseudo-inverse of an 'M-by-N' matrix T is the 'N-by-M' matrix 'S' that when T is pre-multiplied by S, yields the `N-by-N` identity.
+
+`R[n+1,n] = (E[n,n+1].transpose() * E[n,n+1]).inverse() * E[n,n+1].transpose()`
+
+```
+`R[n+1,n]*E[n,n+1] = (E[n,n+1].transpose() * E[n,n+1]).inverse()* E[n,n+1].transpose() * E[n,n+1]
+                   = Identity[n,n]
+```
+
+e.g. take the 5-by-4 elevation matrix to raise a Bezier from a cubic to a quartic, tranpose this to a 4-by-5 matrix and premultiply the
+elevation matrix to generate a 4-by-4 matrix. Invert this. Multiply this by the transpose obtained earlier. This is the 4-by-5 reduction matrix,
+to convert from a quartic Bezier to a cubic Bezier maintaining a minimum l2 distance between the curves.
+
 ## Reduction keeping endpoints - equispaced points
 
 It is possible to reduce a Bezier and preserve the endpoints.

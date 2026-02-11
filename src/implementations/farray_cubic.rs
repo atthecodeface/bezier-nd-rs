@@ -1,13 +1,13 @@
 use crate::utils;
 use crate::Num;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierEval, BezierMinMax,
-    BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
+    BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
 
-impl<F: 'static + Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
+impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn point_at(&self, t: F) -> [F; D] {
         let three: F = (3.0_f32).into();
         let u = F::ONE - t;
@@ -260,7 +260,15 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
     }
 }
 
-impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
+impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 4] {
+    type ElevatedByOne = Self;
+    type Elevated = Self;
+    fn elevate_by_one(&self) -> Option<[[F; D]; 4]> {
+        None
+    }
+}
+
+impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     type Reduced = [[F; D]; 3];
     type Quadratic = [[F; D]; 3];
     type Cubic = Self;

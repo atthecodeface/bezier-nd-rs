@@ -134,16 +134,20 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
     type ElevatedByOne = Self;
     type Elevated = Self;
     fn elevate_by_one(&self) -> Option<Self> {
-        let mut s = Vec::with_capacity(self.len() + 1);
-        s.push(*self.first().unwrap());
         let n = self.len();
+        let mut s = vec![[F::ZERO; D]; n + 1];
+        s[0] = *self.first().unwrap();
+        s[n] = *self.last().unwrap();
         let n_f: F = (n as f32).into();
-        for (i, (p0, p1)) in self.iter().zip(self.iter().skip(1)).enumerate() {
-            let s0: F = ((i + 1) as f32).into();
-            let s1: F = ((n - (i + 1)) as f32).into();
-            s.push(vector::sum_scaled(&[*p0, *p1], &[s0 / n_f, s1 / n_f]));
+        let mut s0 = F::ONE;
+        for (p, (p0, p1)) in s
+            .iter_mut()
+            .skip(1)
+            .zip(self.iter().zip(self.iter().skip(1)))
+        {
+            *p = vector::sum_scaled(&[*p0, *p1], &[s0 / n_f, F::ONE - s0 / n_f]);
+            s0 += F::ONE;
         }
-        s.push(*self.last().unwrap());
         Some(s)
     }
     fn elevate_by(&self, degree: usize) -> Option<Self> {

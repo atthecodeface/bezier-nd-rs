@@ -124,7 +124,8 @@
 use crate::{bernstein_fns, BezierBuilder, BezierConstruct};
 use crate::{metrics, BezierEval};
 use crate::{
-    BezierDistance, BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, Float, Num,
+    BezierDistance, BezierElevate, BezierMinMax, BezierOps, BezierReduce, BezierSection,
+    BezierSplit, Float, Num,
 };
 
 use geo_nd::matrix;
@@ -290,37 +291,6 @@ where
                 sum = vector::add(sum, p, *coeff);
             }
             *sp = sum;
-        }
-        s
-    }
-
-    /// Elevate a Bezier by one degree
-    ///
-    /// This generates and applies the elevate-by-one matrix
-    pub fn elevate_by_one(&self) -> Self {
-        assert!(
-            self.degree < N + 2,
-            "Cannot elevate Bezier<{N}> which already has {} pts",
-            self.degree + 1
-        );
-        // n = number of points, i.e. self.pts[n-1] is the last valid point
-        let n = self.degree + 1;
-        let mut s = Self {
-            degree: n,
-            ..Default::default()
-        };
-        s.pts[0] = self.pts[0];
-        s.pts[self.degree] = self.pts[self.degree];
-        let scale: F = (1.0 / ((n + 1) as f32)).into();
-        for j in 1..self.degree {
-            s.pts[j] = vector::scale(
-                vector::add(
-                    vector::scale(self.pts[j], (j as f32).into()),
-                    &self.pts[j + 1],
-                    ((n + 1 - j) as f32).into(),
-                ),
-                scale,
-            );
         }
         s
     }
@@ -554,6 +524,50 @@ where
             }
         }
         None
+    }
+}
+impl<F, const N: usize, const D: usize> BezierElevate<F, [F; D]> for BezierND<F, N, D>
+where
+    F: crate::Num,
+{
+    type ElevatedByOne = Self;
+    type Elevated = Self;
+    fn elevate_by_one(&self) -> Option<Self> {
+        if self.degree + 1 >= N {
+            None
+        } else {
+            // n = number of points, i.e. self.pts[n-1] is the last valid point
+            let n = self.degree + 1;
+            let mut s = Self {
+                degree: n,
+                ..Default::default()
+            };
+            s.pts[0] = self.pts[0];
+            s.pts[s.degree] = self.pts[self.degree];
+            let n_f: F = (n as f32).into();
+            let mut s0 = F::ONE;
+            for (p, (p0, p1)) in s
+                .pts
+                .iter_mut()
+                .skip(1)
+                .zip(self.pts.iter().zip(self.pts.iter().skip(1)))
+            {
+                *p = vector::sum_scaled(&[*p0, *p1], &[s0 / n_f, F::ONE - s0 / n_f]);
+                s0 += F::ONE;
+            }
+            Some(s)
+        }
+    }
+    fn elevate_by(&self, degree: usize) -> Option<Self> {
+        if degree == 0 {
+            Some(self.clone())
+        } else {
+            let mut bezier = self.elevate_by_one();
+            for _ in 1..degree {
+                bezier = bezier.unwrap().elevate_by_one();
+            }
+            bezier
+        }
     }
 }
 
