@@ -7,11 +7,11 @@ use std::marker::PhantomData;
 #[derive(Clone)]
 pub struct BezierQuadIter<
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone + BezierReduce<F, P>,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone + BezierReduce<F, P>,
     P: Clone,
 > {
     /// Bezier iterator
-    split_iter: BezierSplitIter<B>,
+    split_iter: BezierSplitIter<F, B>,
     /// Maximum curviness of the line segments returned
     closeness_sq: F,
     phantom: PhantomData<P>,
@@ -20,7 +20,7 @@ pub struct BezierQuadIter<
 impl<F, B, P> BezierQuadIter<F, B, P>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone + BezierReduce<F, P>,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone + BezierReduce<F, P>,
     P: Clone,
 {
     //fp new
@@ -44,7 +44,7 @@ where
 impl<F, B, P> std::iter::Iterator for BezierQuadIter<F, B, P>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone + BezierReduce<F, P>,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone + BezierReduce<F, P>,
     P: Clone,
 {
     /// Item is a pair of points that make a straight line

@@ -9,9 +9,7 @@
 //! * [[f32;N];3] - Quadratic Bezier
 //! * [[f32;N];4] - Cubic Bezier
 
-use bezier_nd::BezierEval;
-use bezier_nd::BezierFlatIterator;
-use bezier_nd::BezierSplit;
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit, Num};
 use geo_nd::vector;
 mod utils;
 
@@ -19,7 +17,11 @@ mod utils;
 ///
 /// This will also test BezierSplit, and 'point_at' of BezierEval
 fn test_points<
-    B: BezierEval<f32, [f32; D]> + BezierSplit + Clone + std::fmt::Debug,
+    B: BezierEval<f32, [f32; D]>
+        + BezierSplit<f32>
+        + BezierFlatIterator<f32, [f32; D]>
+        + Clone
+        + std::fmt::Debug,
     const D: usize,
 >(
     bezier: &B,
@@ -65,7 +67,8 @@ fn test_points<
 
 fn test_point_iter<const D: usize, const N: usize>(seed: &str)
 where
-    [[f32; D]; N]: BezierEval<f32, [f32; D]> + BezierSplit,
+    [[f32; D]; N]:
+        BezierEval<f32, [f32; D]> + BezierSplit<f32> + BezierFlatIterator<f32, [f32; D]> + Clone,
 {
     let mut rng = utils::make_random(seed);
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();

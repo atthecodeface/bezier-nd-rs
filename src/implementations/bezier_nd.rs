@@ -123,7 +123,10 @@
 
 use crate::{bernstein_fns, BezierBuilder, BezierConstruct};
 use crate::{metrics, BezierEval};
-use crate::{BezierElevate, BezierOps, BezierReduce, BezierSection, BezierSplit, Num};
+use crate::{
+    BezierElevate, BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierOps, BezierReduce,
+    BezierReduction, BezierSplit, Num,
+};
 
 use geo_nd::matrix;
 use geo_nd::vector;
@@ -445,19 +448,13 @@ where
     }
 }
 
-impl<F, const N: usize, const D: usize> BezierSplit for BezierND<F, N, D>
+impl<F, const N: usize, const D: usize> BezierSplit<F> for BezierND<F, N, D>
 where
     F: Num,
 {
     fn split(&self) -> (Self, Self) {
         self.split_at(0.5_f32.into())
     }
-}
-
-impl<F, const N: usize, const D: usize> BezierSection<F> for BezierND<F, N, D>
-where
-    F: Num,
-{
     fn split_at(&self, t: F) -> (Self, Self) {
         let mut first = *self;
         let mut latter = *self;
@@ -474,6 +471,21 @@ where
             bernstein_fns::de_casteljau::bezier_to(to_split.pts_mut(), t10);
         }
         to_split
+    }
+}
+
+impl<F, const N: usize, const D: usize> BezierFlatIterator<F, [F; D]> for BezierND<F, N, D>
+where
+    F: Num,
+{
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
+        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
 }
 
@@ -576,13 +588,13 @@ where
     type Quadratic = Self;
     type Cubic = Self;
 
-    fn reduce(&self) -> Self::Reduced {
+    fn reduce(&self, method: BezierReduction) -> Self::Reduced {
         todo!()
     }
-    fn can_reduce(&self) -> bool {
+    fn can_reduce(&self, method: BezierReduction) -> bool {
         self.degree > 1
     }
-    fn closeness_sq_to_reduction(&self) -> Option<F> {
+    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F> {
         None
     }
 

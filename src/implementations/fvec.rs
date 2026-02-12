@@ -1,8 +1,9 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps,
-    BezierSection, BezierSplit,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierOps, BezierReduction, BezierSplit,
 };
+
 use geo_nd::{matrix, vector};
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
@@ -96,13 +97,10 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for Vec<[F; D]> {
     }
 }
 
-impl<F: Num, const D: usize> BezierSplit for Vec<[F; D]> {
+impl<F: Num, const D: usize> BezierSplit<F> for Vec<[F; D]> {
     fn split(&self) -> (Self, Self) {
         self.split_at(0.5_f32.into())
     }
-}
-
-impl<F: Num, const D: usize> BezierSection<F> for Vec<[F; D]> {
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self) {
         let mut latter = self.clone();
@@ -123,6 +121,21 @@ impl<F: Num, const D: usize> BezierSection<F> for Vec<[F; D]> {
             bernstein_fns::de_casteljau::bezier_to(&mut to_split, t10);
         }
         to_split
+    }
+}
+
+impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for Vec<[F; D]>
+where
+    F: Num,
+{
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
+        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
 }
 

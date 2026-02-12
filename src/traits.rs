@@ -83,22 +83,12 @@ where
 }
 
 pub trait BasicBezier<F: Num, P: Clone>:
-    BezierEval<F, P>
-    + BezierOps<F, P>
-    + BezierSplit
-    + BezierSection<F>
-    + BezierFlatIterator<F, P>
-    + Clone
+    BezierEval<F, P> + BezierOps<F, P> + BezierSplit<F> + BezierFlatIterator<F, P> + Clone
 {
 }
 
 impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
-    T: BezierEval<F, P>
-        + BezierOps<F, P>
-        + BezierSplit
-        + BezierSection<F>
-        + BezierFlatIterator<F, P>
-        + Clone
+    T: BezierEval<F, P> + BezierOps<F, P> + BezierSplit<F> + BezierFlatIterator<F, P> + Clone
 {
 }
 
@@ -313,11 +303,7 @@ pub trait BezierOps<F: Num, P: Clone> {
 /// *this* trait [BezierSplit] and [BezierEval] (plus [Clone])
 ///
 /// This is not dyn-compatible, and not supported by `Approximation`
-pub trait BezierSplit: Sized {
-    /// Bisect the Bezier into two of the same degree
-    fn split(&self) -> (Self, Self);
-}
-
+///
 /// A trait provided by a Bezier to allow it to be split in a manner more
 /// complex than just bisection
 ///
@@ -325,7 +311,9 @@ pub trait BezierSplit: Sized {
 /// a generic 'F'
 ///
 /// This is not dyn-compatible, and not supported by `Approximation`
-pub trait BezierSection<F: Num>: Sized {
+pub trait BezierSplit<F: Num>: Sized {
+    /// Bisect the Bezier into two of the same degree
+    fn split(&self) -> (Self, Self);
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self);
 
@@ -431,23 +419,6 @@ where
     /// This may require more points to be returned than a regular as_t_points iterator would return
     fn as_t_points_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
         BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
-    }
-}
-
-impl<F, B, P> BezierFlatIterator<F, P> for B
-where
-    F: crate::Num,
-    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
-    P: Clone,
-{
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
 }
 

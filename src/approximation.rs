@@ -18,7 +18,7 @@ use geo_nd::vector;
 #[derive(Debug, Clone)]
 pub struct Approximation<B, F, const D: usize>
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone,
+    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
     /// The underlying Bezier
@@ -44,7 +44,7 @@ where
 
 impl<B, F, const D: usize> Approximation<B, F, D>
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone,
+    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
     /// Create a new Approximation from a Bezier and a given closeness_sq
@@ -143,7 +143,7 @@ where
 
 impl<B, F, const D: usize> Approximation<B, F, D>
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone,
+    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Float,
 {
     /// Calculates the length of a setion of the Bezier
@@ -202,7 +202,7 @@ where
 
 impl<B, F, const D: usize> BezierEval<F, [F; D]> for Approximation<B, F, D>
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone,
+    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
     fn point_at(&self, t: F) -> [F; D] {
@@ -277,7 +277,7 @@ where
 
 impl<B, F, const D: usize> BezierFlatIterator<F, [F; D]> for Approximation<B, F, D>
 where
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone,
+    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
     fn as_lines(&self, _closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {

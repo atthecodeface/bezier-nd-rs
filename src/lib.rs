@@ -35,7 +35,7 @@ pub use bezier_iter::{
 };
 pub use traits::{
     BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierMetric,
-    BezierOps, BezierReduce, BezierReduction, BezierSection, BezierSplit, BoxedBezier,
+    BezierOps, BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
 };
 
 pub use builder::BezierBuilder;

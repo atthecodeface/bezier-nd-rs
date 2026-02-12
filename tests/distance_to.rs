@@ -1,6 +1,8 @@
 //a Imports
 use bezier_nd::Float;
-use bezier_nd::{Approximation, BasicBezier, BezierEval, BezierND, BezierSplit};
+use bezier_nd::{
+    Approximation, BasicBezier, BezierEval, BezierFlatIterator, BezierND, BezierSplit,
+};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
@@ -8,7 +10,11 @@ use rand::prelude::*;
 fn test_distance_to<
     F: Float,
     const D: usize,
-    B: BezierEval<F, [F; D]> + BezierSplit + Clone + std::fmt::Debug,
+    B: BezierEval<F, [F; D]>
+        + BezierSplit<F>
+        + BezierFlatIterator<F, [F; D]>
+        + Clone
+        + std::fmt::Debug,
 >(
     bezier: &B,
     test_pts: &[[F; D]],
@@ -87,7 +93,11 @@ fn test_bezier<
     D: Distribution<f32>,
     const N: usize,
     const FD: usize,
-    B: BasicBezier<F, [F; FD]> + BezierSplit + Clone + std::fmt::Debug,
+    B: BasicBezier<F, [F; FD]>
+        + BezierSplit<F>
+        + BezierFlatIterator<F, [F; FD]>
+        + Clone
+        + std::fmt::Debug,
     M: Fn([[F; FD]; N]) -> B,
 >(
     rng: &mut R,

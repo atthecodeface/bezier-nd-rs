@@ -1,20 +1,23 @@
 use crate::BezierSplit;
 use crate::Num;
+use std::marker::PhantomData;
 
 /// An iterator with Item = Bezier, allowing for splitting dynamically during
 /// iteration
 #[derive(Clone)]
-pub struct BezierSplitIter<B: BezierSplit + Clone> {
+pub struct BezierSplitIter<F: Num, B: BezierSplit<F> + Clone> {
     /// A stack of future beziers to examine
     /// The top of the stack is p0->p1; below that is p1->p2, etc
     /// These beziers may need to be split to achieve some critertion
     stack: Vec<B>,
+    _phantom: PhantomData<F>,
 }
 
 //pi BezierLineIter
-impl<B> BezierSplitIter<B>
+impl<F, B> BezierSplitIter<F, B>
 where
-    B: BezierSplit + Clone,
+    F: Num,
+    B: BezierSplit<F> + Clone,
 {
     //fp new
     /// Create a new Bezier line iterator for a given Bezier and
@@ -23,7 +26,10 @@ where
     /// This clones the Bezier.
     pub fn new(bezier: &B) -> Self {
         let stack = vec![bezier.clone()];
-        Self { stack }
+        Self {
+            stack,
+            _phantom: PhantomData,
+        }
     }
 
     /// Add a Bezier to the iterator
@@ -45,9 +51,10 @@ where
 }
 
 //ip Iterator for BezierLineIter
-impl<B> std::iter::Iterator for BezierSplitIter<B>
+impl<F, B> std::iter::Iterator for BezierSplitIter<F, B>
 where
-    B: BezierSplit + Clone,
+    F: Num,
+    B: BezierSplit<F> + Clone,
 {
     /// Item is a pair of points that make a straight line
     type Item = B;
@@ -66,7 +73,7 @@ where
 /// An iterator with Item = (F, F, Bezier), allowing for splitting dynamically during
 /// iteration
 #[derive(Clone)]
-pub struct BezierSplitTIter<B: BezierSplit + Clone, F: Num> {
+pub struct BezierSplitTIter<B: BezierSplit<F> + Clone, F: Num> {
     /// A stack of future beziers to examine
     /// The top of the stack is p0->p1; below that is p1->p2, etc
     /// These beziers may need to be split to achieve some critertion
@@ -76,7 +83,7 @@ pub struct BezierSplitTIter<B: BezierSplit + Clone, F: Num> {
 //pi BezierLineIter
 impl<B, F> BezierSplitTIter<B, F>
 where
-    B: BezierSplit + Clone,
+    B: BezierSplit<F> + Clone,
     F: Num,
 {
     /// Create a new Bezier line iterator for a given Bezier and
@@ -108,7 +115,7 @@ where
 //ip Iterator for BezierLineIter
 impl<B, F> std::iter::Iterator for BezierSplitTIter<B, F>
 where
-    B: BezierSplit + Clone,
+    B: BezierSplit<F> + Clone,
     F: Num,
 {
     /// Item is a pair of points that make a straight line

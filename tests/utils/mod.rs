@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
-use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
+use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::Num;

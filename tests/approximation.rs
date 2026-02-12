@@ -20,7 +20,12 @@ use geo_nd::vector;
 use utils::test_beziers_approx_eq;
 
 fn test_approximation_closeness_sq<
-    B: BezierEval<f32, [f32; D]> + BezierSplit + Clone + std::fmt::Debug,
+    B: BezierEval<f32, [f32; D]>
+        + BezierSplit<f32>
+        + BezierSplit<f32>
+        + BezierFlatIterator<f32, [f32; D]>
+        + Clone
+        + std::fmt::Debug,
     const D: usize,
 >(
     bezier: &B,

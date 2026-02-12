@@ -1,7 +1,8 @@
 use crate::Num;
 use crate::{
-    utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps, BezierReduce,
-    BezierSection, BezierSplit, BoxedBezier,
+    utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
+    BezierLineIter, BezierLineTIter, BezierOps, BezierReduce, BezierReduction, BezierSplit,
+    BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -113,7 +114,7 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 2] {
     }
 }
 
-impl<F: Num, const D: usize> BezierSplit for [[F; D]; 2] {
+impl<F: Num, const D: usize> BezierSplit<F> for [[F; D]; 2] {
     fn split(&self) -> (Self, Self) {
         let m = vector::scale(
             vector::add(self[0], &self[1], 1.0_f32.into()),
@@ -121,9 +122,7 @@ impl<F: Num, const D: usize> BezierSplit for [[F; D]; 2] {
         );
         ([self[0], m], [m, self[1]])
     }
-}
 
-impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 2] {
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self) {
         let m = vector::sum_scaled(self, &[F::ONE - t, t]);
@@ -136,6 +135,21 @@ impl<F: Num, const D: usize> BezierSection<F> for [[F; D]; 2] {
         let m0 = vector::sum_scaled(self, &[F::ONE - t0, t0]);
         let m1 = vector::sum_scaled(self, &[F::ONE - t1, t1]);
         [m0, m1]
+    }
+}
+
+impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for [[F; D]; 2]
+where
+    F: Num,
+{
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
+        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
 }
 
@@ -152,7 +166,7 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 2] {
         Box<dyn BoxedBezier<F, [F; D]>>,
         Box<dyn BoxedBezier<F, [F; D]>>,
     )> {
-        let (b0, b1) = <Self as BezierSplit>::split(self);
+        let (b0, b1) = <Self as BezierSplit<_>>::split(self);
         Some((Box::new(b0), Box::new(b1)))
     }
 }
@@ -174,13 +188,13 @@ impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 2] {
     type Reduced = Self;
     type Quadratic = Self;
     type Cubic = Self;
-    fn reduce(&self) -> Self::Reduced {
+    fn reduce(&self, method: BezierReduction) -> Self::Reduced {
         *self
     }
-    fn can_reduce(&self) -> bool {
+    fn can_reduce(&self, method: BezierReduction) -> bool {
         false
     }
-    fn closeness_sq_to_reduction(&self) -> Option<F> {
+    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F> {
         None
     }
 

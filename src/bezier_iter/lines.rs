@@ -13,12 +13,12 @@ use std::marker::PhantomData;
 #[derive(Clone)]
 pub struct BezierLineIter<
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
     const T: bool = false,
 > {
     /// Bezier iterator
-    split_iter: BezierSplitIter<B>,
+    split_iter: BezierSplitIter<F, B>,
     /// Maximum curviness of the line segments returned
     straightness_sq: F,
     phantom: PhantomData<P>,
@@ -28,7 +28,7 @@ pub struct BezierLineIter<
 impl<F, B, P, const T: bool> BezierLineIter<F, B, P, T>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
     //fp new
@@ -37,7 +37,7 @@ where
     ///
     /// This clones the Bezier.
     pub fn new(bezier: &B, straightness_sq: F) -> Self {
-        let split_iter = BezierSplitIter::new(bezier);
+        let split_iter = BezierSplitIter::<F, B>::new(bezier);
         Self {
             straightness_sq,
             split_iter,
@@ -52,7 +52,7 @@ where
 impl<F, B, P, const T: bool> std::iter::Iterator for BezierLineIter<F, B, P, T>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
     /// Item is a pair of points that make a straight line
@@ -96,7 +96,7 @@ where
 #[derive(Clone)]
 pub struct BezierLineTIter<
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
     const T: bool,
 > {
@@ -111,7 +111,7 @@ pub struct BezierLineTIter<
 impl<F, B, P, const T: bool> BezierLineTIter<F, B, P, T>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
     //fp new
@@ -133,7 +133,7 @@ where
 impl<F, B, P, const T: bool> std::iter::Iterator for BezierLineTIter<F, B, P, T>
 where
     F: Num,
-    B: BezierSplit + BezierEval<F, P> + Clone,
+    B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
     /// Item is a pair of points that make a straight line with the 't' values

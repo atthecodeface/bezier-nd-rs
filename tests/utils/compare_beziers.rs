@@ -1,4 +1,4 @@
-use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
+use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::Num;
@@ -41,8 +41,8 @@ pub fn test_subsection<
 
 /// Test that Beziers are approximately equal
 pub fn test_beziers_approx_eq<
-    B0: BezierEval<F, [F; D]> + BezierSplit + BezierSection<F> + std::fmt::Debug,
-    B1: BezierEval<F, [F; D]> + BezierSplit + BezierSection<F> + std::fmt::Debug,
+    B0: BezierEval<F, [F; D]> + BezierSplit<F> + std::fmt::Debug,
+    B1: BezierEval<F, [F; D]> + BezierSplit<F> + std::fmt::Debug,
     F: Num,
     const D: usize,
 >(
