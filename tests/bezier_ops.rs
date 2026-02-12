@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::{BasicBezier, Bezier, BezierND};
+use bezier_nd::{BasicBezier, BezierND};
 use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
@@ -86,18 +86,6 @@ fn test_ops<
 fn test_all_bezier_ops() {
     let mut rng = utils::make_random("test_all_bezier_ops_seed");
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' type (from 'try_into()), line");
-    test_ops::<f32, _, _, 3, 2, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' type again (from 'into'), quadratic");
-    test_ops::<f32, _, _, 2, 3, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
-        b
-    });
 
     eprintln!(
         "*************************************************\nTesting 'BezierND<>' type degree 6"

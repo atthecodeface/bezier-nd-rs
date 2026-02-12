@@ -1,5 +1,5 @@
 mod utils;
-use bezier_nd::{bernstein_fns, Bezier, BezierElevate};
+use bezier_nd::{bernstein_fns, BezierElevate, BezierND};
 use utils::test_beziers_approx_eq;
 
 #[test]
@@ -9,17 +9,17 @@ fn elevate_bezier() {
     let p2 = [6., 1.];
     let p3 = [20., 5.];
 
-    let b: Bezier<_, _> = [p0, p1, p2].into();
+    let b = BezierND::<_, 4, _>::new(&[p0, p1, p2]);
     let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
-    let b: Bezier<_, _> = [p3, p1, p2].into();
+    let b = BezierND::<_, 4, _>::new(&[p3, p1, p2]);
     let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);
 
-    let b: Bezier<_, _> = [p3, p1].into();
+    let b = BezierND::<_, 4, _>::new(&[p3, p1]);
     let b2 = b.elevate_by_one().unwrap();
     eprintln!("Elevated {b} to {b2}");
     test_beziers_approx_eq(&b, &b2);

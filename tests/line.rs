@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::{BasicBezier, Bezier};
+use bezier_nd::{BasicBezier, BezierND};
 use bezier_nd::{Float, Num};
 mod utils;
 use rand::prelude::*;
@@ -89,11 +89,7 @@ fn test_lines() {
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
 
     test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-        b
-    });
-    test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
+        let b = BezierND::<_, 5, _>::new(&pts);
         b
     });
     test_line::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {

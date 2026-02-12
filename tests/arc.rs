@@ -1,22 +1,21 @@
 //a Imports
 use bezier_nd::BezierEval;
-use bezier_nd::{bernstein_fns, metrics, Bezier, BezierIntoIterator};
+use bezier_nd::{bernstein_fns, metrics, BezierFlatIterator};
 mod utils;
 use geo_nd::{vector, FArray};
 
 fn test_cubic_arc() {
     let p0 = [0., 0.];
 
-    let x: Bezier<_, _> = bernstein_fns::arc::arc(
+    let x = bernstein_fns::arc::arc(
         (90.0f32).to_radians(),
         1.,
         &p0,
         &[1., 0.].into(),
         &[0., 1.].into(),
         0.,
-    )
-    .into();
-    println!("{}", x);
+    );
+    eprintln!("{:?}", x);
     use std::f32::consts::PI;
     utils::approx_eq(
         0.5,
@@ -47,8 +46,8 @@ fn test_cubic_arc() {
 }
 
 //fi arc_ave_square_error
-fn arc_ave_square_error(
-    arc: &Bezier<f32, 2>,
+fn arc_ave_square_error<B: BezierEval<f32, [f32; 2]>>(
+    arc: &B,
     center: &[f32; 2],
     radius: f32,
     t0: f32,
@@ -112,15 +111,15 @@ fn test_arc() {
         (170.0f32, 2., 9., 1., 0.),
     ] {
         let center: FArray<f32, 2> = [cx, cy].into();
-        let x: Bezier<_, _> = bernstein_fns::arc::arc(
+        let x = bernstein_fns::arc::arc(
             angle.to_radians(),
             radius,
             &center,
             &x_axis,
             &y_axis,
             rotate.to_radians(),
-        )
-        .into();
+        );
+
         let (c, r) = bernstein_fns::arc::center_radius_of_bezier_arc(&x);
         let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
         println!("c {c:?} r {r} arc_ave_square_error {e2}");
@@ -141,14 +140,13 @@ fn test_round() {
     let sqrt2 = 2.0_f32.sqrt();
     let r_sqrt2 = 1.0 / sqrt2;
 
-    let x: Bezier<_, _> = bernstein_fns::arc::of_round_corner(
+    let x = bernstein_fns::arc::of_round_corner(
         &(x_axis + y_axis),
         &(y_axis * 3.),
         &(x_axis * 0.5),
         1.,
-    )
-    .into();
-    println!("of_round_corner(&[1.,1.], &[0.,3.], &[0.5,0.], 1.) : {}", x);
+    );
+    println!("of_round_corner(&[1.,1.], &[0.,3.], &[0.5,0.], 1.) : {x:?}",);
     let (c, r) = bernstein_fns::arc::center_radius_of_bezier_arc(&x);
     let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
     println!("arc_ave_square_error {}", e2);
@@ -160,17 +158,13 @@ fn test_round() {
     utils::pt_eq(&x.point_at(0.), 1., 0.);
     utils::pt_eq(&x.point_at(1.), 0., 1.);
 
-    let x: Bezier<_, _> = bernstein_fns::arc::of_round_corner(
+    let x = bernstein_fns::arc::of_round_corner(
         &(x_axis + y_axis),
         &(x_axis * 0.5),
         &(y_axis * 3.),
         1.,
-    )
-    .into();
-    println!(
-        "of_round_corner(&[1.,1.], &[0.5,0.], &[0.,3.],  1.) : {}",
-        x
     );
+    println!("of_round_corner(&[1.,1.], &[0.5,0.], &[0.,3.],  1.) : {x:?}",);
     let (c, r) = bernstein_fns::arc::center_radius_of_bezier_arc(&x);
     let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
     println!("arc_ave_square_error {}", e2);
@@ -182,17 +176,13 @@ fn test_round() {
     utils::pt_eq(&x.point_at(0.), 0., 1.);
     utils::pt_eq(&x.point_at(1.), 1., 0.);
 
-    let x: Bezier<_, _> = bernstein_fns::arc::of_round_corner(
+    let x = bernstein_fns::arc::of_round_corner(
         &(x_axis * sqrt2),
         &(x_axis + y_axis),
         &(x_axis - y_axis),
         1.,
-    )
-    .into();
-    println!(
-        "of_round_corner(&[sqrt2,0.], &[1.,1.], &[1.,-1.], 1.) : {}",
-        x
     );
+    println!("of_round_corner(&[sqrt2,0.], &[1.,1.], &[1.,-1.], 1.) : {x:?}",);
     let (c, r) = bernstein_fns::arc::center_radius_of_bezier_arc(&x);
     let e2 = arc_ave_square_error(&x, &c, r, 0., 1., 10);
     println!("arc_ave_square_error {}", e2);
@@ -235,20 +225,13 @@ fn test_round() {
             &(x_axis * dx + y_axis * dy),
             &(x_axis * dx - y_axis * dy),
             radius,
-        )
-        .into();
+        );
         let (c, r) = bernstein_fns::arc::center_radius_of_bezier_arc(&x);
         let e2 = arc_ave_square_error(&x, &c, radius, 0., 1., 10);
-        println!(
-            "arc_ave_square_error for dx {} dy {} is {} (radius found {})",
-            dx, dy, e2, r
-        );
+        eprintln!("arc_ave_square_error for dx {dx} dy {dy} is {e2} (radius found {r})",);
         assert!(
             e2 < ase,
-            "Eccentricity of rounded corner {} {} should be < {}",
-            dx,
-            dy,
-            ase
+            "Eccentricity of rounded corner {dx} {dy} should be < {ase}",
         );
     }
 }

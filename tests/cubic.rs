@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::{Approximation, BasicBezier, Bezier, BezierEval};
+use bezier_nd::{Approximation, BasicBezier, BezierEval, BezierND};
 use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
@@ -144,15 +144,9 @@ fn test_cubics() {
     let mut rng = utils::make_random("test_cubics_seed");
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
 
-    eprintln!("*************************************************\nTesting 'Bezier<>' type (from 'try_into())");
+    eprintln!("*************************************************\nTesting 'BezierND<>' type");
     test_cubic::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' type again (from 'into')");
-    test_cubic::<f32, _, _, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
+        let b = BezierND::<_, 4, _>::new(&pts);
         b
     });
 

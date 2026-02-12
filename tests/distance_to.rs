@@ -1,6 +1,6 @@
 //a Imports
 use bezier_nd::Float;
-use bezier_nd::{Approximation, BasicBezier, Bezier, BezierEval, BezierND, BezierSplit};
+use bezier_nd::{Approximation, BasicBezier, BezierEval, BezierND, BezierSplit};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
@@ -107,42 +107,6 @@ fn test_bezier<
 fn distance_to() {
     let mut rng = utils::make_random("test_cubics_seed");
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type line (from 'try_into())");
-    test_bezier::<f32, _, _, 2, 2, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type again quad (from 'into')");
-    test_bezier::<f32, _, _, 3, 2, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 2D type again cubic (from 'into')");
-    test_bezier::<f32, _, _, 4, 2, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type line (from 'try_into())");
-    test_bezier::<f32, _, _, 2, 4, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.as_ref().try_into().unwrap();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type again quad (from 'into')");
-    test_bezier::<f32, _, _, 3, 4, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
-        b
-    });
-
-    eprintln!("*************************************************\nTesting 'Bezier<>' 4D type again cubic (from 'into')");
-    test_bezier::<f32, _, _, 4, 4, _, _>(&mut rng, &distribution, |pts| {
-        let b: Bezier<_, _> = pts.into();
-        b
-    });
 
     eprintln!("*************************************************\nTesting 'BezierND<>' type line");
     test_bezier::<f32, _, _, 2, 3, _, _>(&mut rng, &distribution, |pts| {

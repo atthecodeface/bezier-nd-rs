@@ -1,4 +1,4 @@
-use crate::{utils, BezierEval, BezierIntoIterator, BezierSplit, Float, Num};
+use crate::{utils, BezierEval, BezierFlatIterator, BezierSplit, Float, Num};
 use geo_nd::vector;
 
 /// An approximation to a Bezier of potentially high degree,
@@ -267,15 +267,15 @@ where
     }
     fn t_coords_at_min_max(
         &self,
-        pt_index: usize,
-        give_min: bool,
-        give_max: bool,
+        _pt_index: usize,
+        _give_min: bool,
+        _give_max: bool,
     ) -> (Option<(F, F)>, Option<(F, F)>) {
         (None, None)
     }
 }
 
-impl<B, F, const D: usize> BezierIntoIterator<F, [F; D]> for Approximation<B, F, D>
+impl<B, F, const D: usize> BezierFlatIterator<F, [F; D]> for Approximation<B, F, D>
 where
     B: BezierEval<F, [F; D]> + BezierSplit + Clone,
     F: Num,

@@ -1,7 +1,7 @@
 use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
 
 use bezier_nd::Float;
-use bezier_nd::{Bezier, Num};
+use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
 pub fn assert_min_max_coords<

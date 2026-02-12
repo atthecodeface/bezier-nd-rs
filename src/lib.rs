@@ -34,14 +34,13 @@ pub use bezier_iter::{
     BezierSplitIter, BezierSplitTIter,
 };
 pub use traits::{
-    BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierIntoIterator, BezierMetric,
+    BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierMetric,
     BezierOps, BezierReduce, BezierReduction, BezierSection, BezierSplit, BoxedBezier,
 };
 
 pub use builder::BezierBuilder;
 pub use constants::*;
 pub use distance::BezierDistance2D;
-pub use implementations::Bezier;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
 pub use implementations::bezier_nd::BezierND;

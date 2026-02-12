@@ -1,19 +1,27 @@
 use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
-/// Blah
+/// How to reduce a Bezier curve
 pub enum BezierReduction {
+    /// Reduce using LeastSquares
     LeastSquares,
+
+    /// Reduce using a mapping preserving points for paramater `t` uniformly from 0 to 1
     UniformT,
+
+    /// Reduce preserving some depth (if possible, not yet implemented...)
     Preserving(u8),
 }
 
-/// Blah
+/// Which metric to return
 pub enum BezierMetric {
+    /// Use sum of distance squared for N uniform `t` values
     SumDistanceSquared(usize),
-    MaxControl,
-    SumControl,
+
+    /// Maximum squared control point distance
     MaxControlSquared,
+
+    /// Sum of squared control point distance
     SumControlSquared,
 }
 
@@ -79,7 +87,7 @@ pub trait BasicBezier<F: Num, P: Clone>:
     + BezierOps<F, P>
     + BezierSplit
     + BezierSection<F>
-    + BezierIntoIterator<F, P>
+    + BezierFlatIterator<F, P>
     + Clone
 {
 }
@@ -89,7 +97,7 @@ impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
         + BezierOps<F, P>
         + BezierSplit
         + BezierSection<F>
-        + BezierIntoIterator<F, P>
+        + BezierFlatIterator<F, P>
         + Clone
 {
 }
@@ -343,7 +351,7 @@ pub trait BezierSection<F: Num>: Sized {
 /// This is not dyn-compatible
 ///
 /// This is supported by `Approximation`
-pub trait BezierIntoIterator<F, P>
+pub trait BezierFlatIterator<F, P>
 where
     F: crate::Num,
     P: Clone,
@@ -426,7 +434,7 @@ where
     }
 }
 
-impl<F, B, P> BezierIntoIterator<F, P> for B
+impl<F, B, P> BezierFlatIterator<F, P> for B
 where
     F: crate::Num,
     B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
@@ -496,7 +504,7 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     ///
     /// If this returns false then the 'reduce' method should not be invoked, and the
     /// 'closeness_sq_to_reduction' method will return a value that must be ignored
-    fn can_reduce(&self) -> bool;
+    fn can_reduce(&self, method: BezierReduction) -> bool;
 
     /// Find how close the Bezier is to the (potenital) reduction of the Bezier
     ///
@@ -505,14 +513,14 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// in units of square meteres
     ///
     /// If this returns None then 'reduce' need not return a sensible reult.
-    fn closeness_sq_to_reduction(&self) -> Option<F>;
+    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F>;
 
     /// Return the Bezier reduced by at least one degree
     ///
     /// The reduced Bezier *can* be reduced by more than one degree (such as
     /// a cubic Bezier from a Bezier of degree 10); the reduction *must* have a lower
     /// degree than the original.
-    fn reduce(&self) -> Self::Reduced;
+    fn reduce(&self, method: BezierReduction) -> Self::Reduced;
 
     /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
     ///

@@ -2,7 +2,7 @@ use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
 
 use bezier_nd::Float;
-use bezier_nd::{Bezier, Num};
+use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
 use super::{float_iter, max, min};

@@ -1,4 +1,3 @@
-use crate::polynomial::Polynomial;
 use crate::utils;
 use crate::{BezierEval, Num};
 

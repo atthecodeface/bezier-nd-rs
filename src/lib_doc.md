@@ -22,13 +22,22 @@ Add tests for:
 
 # Bezier curve library
 
-This library provides traits for implementing Bezier curves, such as
-evaluation at parameter values, derivatives, splitting into lines, and
-reduction/elevation of degree.
+This library provides traits for implementing Bezier curves, such as evaluation
+at parameter values, derivatives, splitting into lines, bounding boxes,
+distances to curves, and reduction/elevation of degree.
 
-Implementations are provided for arrays of points], where a point is an array of D dimensions of floats (such as f32 or f64), and `Vec` of points.
+A Bezier curve is a curve parmaterized by a value `t` for points in a particular
+space; this library expects `t` to be of some [Copy] type `F` which has the `Num`
+trait (e.g. f32, f64), and points are expected to be of type `[F; D]` for some usize-dimension
+`D`.
 
-The Beziers are stored using standard control points, and hence use Bernstein polynomials of a parameter 't' to find trace the locus of the Bezier.
+Implementations are provided for:
+
+* arrays of points `[[F;D]; N]` for `N` in `[2,3,4]` where a point is an array of D dimensions of floats (such as f32 or f64),
+* [Vec] of points `[F;D]`
+* a [BezierND] type that is copy, for Bezier curves of up to degree `N-1` (i.e. with `N` control points)
+
+The Beziers are stored using standard control points, and hence use Bernstein polynomials of the parameter `t` to find trace the locus of the Bezier.
 
 # Fundamental numeric types
 
@@ -51,8 +60,6 @@ The fundamental types 'f32' and 'f64' implement Num and Float.
 The simplest Bezier types are just arrays of points, where points are D-dimensional arrays of a type F.
 An array of two points can be used as a linear Bezier; an array of three points can be used as a quadratic Bezier; and array of four points can be used
 as a cubic Bezier.
-
-A legacy generic type Bezier is provided which can represent any one of linear, quadratic or cubic Bezier.
 
 A BezierN type is provided that has a generic usize 'N' indicating the *maximum* degree the individual curve can have, but the
 type also includes a degree that the curve actually has. The type stores its control points in an array `[[F;D];N]`, and so
@@ -92,6 +99,8 @@ The simplest trait provided is [BezierEval], which is a dyn-compatible trait tha
 * Evaluation of points and first derivatives at a parameter value 't'
 * Determination of how close to a straight line a Bezier is
 * Determination of the worst case distance between points on the Bezier and a Bezier reduced simply to a quadratic or cubic Bezier with the same endpoints
+* A lightweight estimation of the distance squared of a point from the Bezier, erring on the side of underestimation
+* Potentially accurately provide the minimum distance squared between a point and the Bezier and the parameter 't' of the point that is this distance.
 
 This is implemented for:
 
@@ -100,6 +109,14 @@ This is implemented for:
 * `[[F; D]; 4]` as a cubic Bezier, with parameter of type F and points of type `[F;D]`
 * `BezierND<F, N, D>` for a Bezier up to degree N with parameter of type F and points of type `[F;D]`
 * `Vec<[F;D]>` as an aribtrary degree Bezier with parameter of type F and points of type `[F;D]`
+
+Bezier curves of degree 2 or less must provide an accurate distance to a point. Higher degree Bezier curves need not (i.e. can return None from such methods). If a high degree Bezier supports [BezierSplit], then the distance of a point from the Bezier can be determined
+to a tolerance - by splitting/reducing the curve to the tolerance into lines, and then determining the
+minimum distance from the point to the lines. If the Bezier supports [BezierReduce] then reduction to quadratics is an option too.
+
+The aim of the distance estimation from a point to the Beizer is that a set of Bezier curves
+(even of high degree) that support [BezierSplit] can be iterated over to find the distance between a point P
+and the curves (and which curve, and where on the curve).
 
 ## [BezierSplit]
 
@@ -189,29 +206,6 @@ A Bezier that supports this trait is normally expected to support reduction; how
 linear Beziers, where a reduction makes no sense, and so there is a 'can_reduce' method here that should be used to gate
 the reduction when required.
 
-## [BezierDistance]
-
-This trait provides two methods: one to estimate the distance squred of a point from the Bezier, erring on the side of underestimation;
-the other to potentially accurately provide the minimum distance squared between a point and the Bezier and the parameter 't' of the point
-that is this distance.
-
-A quadratic Bezier is expected to provide an accurate distance to a point; a linear Bezier (a line segment) *must* provide
-an accurate distance. Higher degree Bezier curves need not (i.e. can return None from such methods).
-
-If a high degree Bezier supports [BezierSplit] and [BezierReduce], then the distance of a point from the Bezier can be determined
-to a tolerance - by splitting/reducing the curve to the tolerance into quadratics or lines, and then determining the
-minimum distance from the point to the quadratics or lines.
-
-The estimation method in this trait should be relatively light-weight; the aim is that a set of Bezier curves
-(even of high degree) that support BezierSplit can be iterated over to find the distance between a point P
-and the curves (and which curve, and where on the curve). This allows extending the distance-to-Bezier algorithm, given
-a current distance to a closest Bezier, to test if *another* Bezier is potentially closer (i.e. its estimation
-method returns a value less than the closest current distance) to see if it should be split (or if it is quadratic or linear
-then a precise determination used).
-
-The estimation method must therefore always provide a result that is less than or equal to the *actual* distance from
-the point to the Bezier.
-
 ## [BezierConstruct] (requires Sized)
 
 The [BezierBuilder] provides a means to describe key points and derivatives of Bezier curves, from which
@@ -239,19 +233,19 @@ and even isize) of length 2 (linear Bezier) to 4 (cubic Bezier).
 
 Simple arrays of twp points, using the two points as the endpoints of the Bezier.
 
-This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierConstruct], [BoxedBezier].
 
 ## `[[F;D]; 3]` - quadratic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of three points for a quadratic Bezier, with the end points being `[0]` and `[2]`.
 
-This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierElevate], [BezierReduce], [BezierConstruct], [BoxedBezier].
 
 ## `[[F;D]; 4]` - cubic Bezier using float arrays, with point `[F;D]`
 
 Simple arrays of four points for a cubic Bezier, with the end points being `[0]` and `[3]`.
 
-This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierDistance], [BezierConstruct], [BoxedBezier].
+This supports [BezierEval], [BezierSplit], [BezierReduce], [BezierConstruct], [BoxedBezier].
 
 For [BezierDistance] this does not provide an accurate 'closest point' estimation - i.e. t_dsq_closest_to_pt returns None.
 
@@ -263,7 +257,7 @@ This provides a single type that can support arbitrary (up to a maximum N) Bezie
 
 This supports [BezierEval], [BezierSplit]
 
-It SHOULD also support [BezierReduce], [BezierDistance], [BoxedBezier].
+It SHOULD also support [BezierReduce], [BoxedBezier].
 
 ## `Vec<[F;D]>` - arbitrary Bezier with point `[F;D]`
 
@@ -272,9 +266,7 @@ when memory allocation is supported and when the application only requires `Clon
 
 This supports [BezierEval], [BezierSplit]
 
-It should support [BezierReduce], [BezierDistance], [BoxedBezier].
-
-For [BezierDistance] this does not provide an accurate 'closest point' estimation - i.e. t_dsq_closest_to_pt returns None.
+It should support [BezierReduce], [BoxedBezier].
 
 ## Note no implementation for `F` as a point
 
@@ -306,38 +298,35 @@ Bezier types may provide construction from a [BezierBuilder].
 An example using 2-dimensional vectors of f32
 
 ```
-type Bezier = bezier_nd::Bezier<f32, 2>;
-use bezier_nd::{BezierEval, BezierSplit};
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit, bernstein_fns, metrics};
 
 let dx = [1.,0.];
 let dy = [0.,1.];
-let line = Bezier::line( &dx, &dy );
+let line = [dx, dy];
 assert_eq!( line.degree(), 1);
-assert!( line.is_straight(0.));
+assert!( line.closeness_sq_to_line() == 0.0);
 
 // A 30-degree arc of radius 3; has length of PI/2,
 // it is fairly close to being a straight line, subjectively...
-let arc = Bezier::arc( 30.0f32.to_radians(), 3.0, &[3.,4.].into(), &dx, &dy, 0.);
+let arc = bernstein_fns::arc::arc( 30.0f32.to_radians(), 3.0, &[3.,4.].into(), &dx, &dy, 0.);
 assert_eq!( arc.degree(), 3);
-assert!(!arc.is_straight(0.));
+assert!( arc.closeness_sq_to_line() > 0.0);
 
 // Breaking the arc with a large value of straightness yields only 3 points:
 assert_eq!( arc.as_points(0.01).count(), 3);
 // This is 1.5662874
-println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
+println!( "Arc length as lines with closeness of 0.1 is {}", metrics::length_of_lines(arc.as_lines(0.01)));
 
 // Breaking the arc with a small value of straightness yields 17 points!
 assert_eq!( arc.as_points(0.00001).count(), 9);
 // This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
-println!( "Arc length when straightened to '0.1' is {}", arc.length(0.1) );
+println!( "Arc length as lines with closeness of 0.01 is {}", metrics::length_of_lines(arc.as_lines(0.0001)));
 
 for (a,b) in arc.as_lines(0.05) {
     println!("Line from {a:?} to {b:?}\n");
 }
 
-let q = Bezier::quadratic( &[2.,6.].into(),
-                           &[3.5,8.].into(),
-                           &[4.,7.].into());
+let q =[[2.,6.],[3.5,8.],[4.,7.]];
 assert_eq!( q.endpoints().0[0], 2., "Start point X of Bezier" );
 assert_eq!( q.endpoints().0[1], 6., "Start point Y of Bezier" );
 assert_eq!( q.endpoints().1[0], 4., "End point X of Bezier" );
@@ -347,20 +336,23 @@ assert_eq!( q.endpoints().1[1], 7., "End point Y of Bezier" );
 An example using 3D vectors of f64
 
 ```
-type Bezier = bezier_nd::Bezier<f64, 3>;
-
-let c = Bezier::cubic( &[1.,0.,0.],
-                           &[2.5,0.,-1.],
-                           &[0.,2.5,1.],
-                           &[0.,1.,0.]);
+use bezier_nd::{BezierFlatIterator, metrics};
+let c = [ [1.0_f64,0.,0.],
+                           [2.5,0.,-1.],
+                           [0.,2.5,1.],
+                           [0.,1.,0.] ];
 // This is just over 3.283
-println!( "3D cubic length when straightened to '0.1' is {}", c.length(0.1) );
+println!( "3D cubic length when straightened to '0.1' is {}", metrics::length_of_lines(c.as_lines(0.1)) );
 // But this is just over 3.29
-println!( "3D cubic length when straightened to '0.01' is {}", c.length(0.01) );
+println!( "3D cubic length when straightened to '0.01' is {}", metrics::length_of_lines(c.as_lines(0.01)) );
 
 ```
 
 # Bezier curve background
+
+Standard Bezier curves, using `N+1` control points for a degree `N` curve.
+
+## Mathematical representation
 
 A linear Bezier has two points, p0 and p1, and provides points
 along the line as:
@@ -432,62 +424,48 @@ polynomial control points, and hence (given the first one has been calculated) t
 
 Hence Bernstein and monomial representations are equivalent - they can both express the same curves.
 
+```text
+p(t) = Sum(t^i * m[i]) = Sum((1-t)^(N-j) * t^j * N!/(j!*(N-j)!) * p[j])
+m[0] = p[0]
+m[1] = N(p[1] - p[0])
+m[i] = Sum[j] ( (N i) (i j) p[i] (-1)^(i+j) )
+```
+
 ## Advantages of Bernstein representation
 
-One of the interesting things about Bernstein polynomials `B[i,n](t)`, for the `i`th polynomial
-in a degree `n` curve, at parameter 't', is that the all of them for `0<=i<n` and 0<=t<=1 are between 0 and 1,
-and the sum of them for all i will be 1. What this means is that, for 0<=t<=1, every point
-on a Bezier (using Bernstein representation, the standard approach) with 0<=t<=1 is a linear combination
-of the control points with coefficients between 0 and 1, and coefficients all summing to 1: hence all the points
-on the curve must lie within the bounding box of the control points (to go outside the bounding box requires negative
-coefficients or coefficent sum greater than 1).
-
-## Legacy
-
-The Bezier type supports construction and interrogation of the type
-instance.  The type utilizes a `num_pts` field, which is 2 for linear
-Beziers, 3 for quadratic, and 4 for cubic.  The type includes an array
-of *four* control points for *every* Bezier - the first two points are
-the endpoints of the Bezier (p0 and p1, in notation). The third
-control point is not used for linear Beziers, and the fourth control
-point is only used for cubic Beziers.
-
-The Bezier can be interrogated, to determine any point along the curve
-given the parameter `t` (from 0 to 1), as can its tangent (which is a
-simple linear combination of the control points - the derivative of
-the Bezier function with respect to `t`).
-
-Any portion of a Bezier curve between two values of `t` is also a
-Bezier curve of the same type; hence a method is supplied to permit
-sectioning of a Bezier into another Bezier.
+One of the interesting things about Bernstein polynomials `B[i,n](t)`, for the
+`i`th polynomial in a degree `n` curve, at parameter 't', is that the all of
+them for `0<=i<n` and 0<=t<=1 are between 0 and 1, and the sum of them for all i
+will be 1. What this means is that, for 0<=t<=1, every point on a Bezier (using
+Bernstein representation, the standard approach) with 0<=t<=1 is a linear
+combination of the control points with coefficients between 0 and 1, and
+coefficients all summing to 1: hence all the points on the curve must lie within
+the bounding box of the control points (to go outside the bounding box requires
+negative coefficients or coefficent sum greater than 1).
 
 ## Straightness and Bisection
 
-The Bezier curve can be bisected in to two Bezier curves of the same
+A Bezier curve can be bisected in to two Bezier curves of the degree
 type (such as cubic); the two halves of a Bezier will be closer
 approximations to a straight line, and hence to render a Bezier it is
 common to bisect a Bezier recursively until the elements are 'straight
-enough'. One can consider a cubic Bezier curve, for example being
-mapped to a list of linear Beziers which join end-to-end, which
-approximate the original Bezier to within a 'straightness' measure.
+enough', or 'close enough' to a straight line. One can consider a cubic Bezier curve, for example being
+mapped to a list of linear Bezier curves which join end-to-end, which
+approximate the original Bezier to within a 'closeness' measure.
 
 This concept can be used not only to render a Bezier as straight line
 segments, but also to approximate the length of a Bezier, or to find a
 value for the parameter `t` for a particular distance along the
 Bezier.
 
-Methods are provided to generate iterators that will yield straight
-line segments or points, which approximate a Bezier curve to a
-particular straightness; further methods are supplied to calculate the
-length of a Bezier, or to find the value of `t` for s distance along
-the Bezier.
-
-The actual straightness measure used for a Bezier curve in this
-library is the sum of the square of the distances of the intermediate
-control points from the straight line between the endpoints.
+The actual straightness measure used for a Bezier curve in this library is
+generally the maximum control point [metric]#(metrics) - which is simply
+calculated bound on the maximum distance squared between the points on the
+Bezier curve and the points on the line between its endpoints. It is a *squared*
+measure.
 
 For example, if the units of the Bezier coordinates are pixels then a
-straightness of 1.0 will produce straight line segments that never
+closeness of 1.0 will produce straight line segments that never
 exceed 1 pixel away from the original Bezier.
 
 ## Circular arcs and rounding
@@ -504,7 +482,7 @@ represents the arc which can replace this corner. This is another
 circular arc, but described by the corner, approach vectors, and
 rounding radius.
 
-# Circular arc algorithm
+## Circular arc algorithm
 
 There are many papers and articles on constructing Bezier curves that
 approximate circular arcs; from an academic perspective these provide
@@ -609,9 +587,10 @@ If the Bezier curve happens to have both endpoints at the origin (as it might if
 between two Bezier curves with the *same* endpoints) then its maximum excursion from the origin
 is less than or equal to the distance from the origin of the furthest control point.
 
-# Metrics (measures) of Bezier curve differences
+# <a name="metrics"></a>Metrics (measures) of Bezier curve differences
 
-A `metric` is a mathematical term that has some rigor; it is a measurement (real number) which has the properties that:
+A `metric` is a mathematical term that has some rigor; it is a measurement (real
+number) of two objects which has the properties that:
 
 * it is non-negative
 * it is zero only for identical Bezier curves (in this case - i.e. the describes the same points for the same 't')
@@ -620,8 +599,8 @@ A `metric` is a mathematical term that has some rigor; it is a measurement (real
 
 A good example is the Euclidean measure of distance between two points in a Euclidean space.
 
-Many metrics of difference might be a metric of the *difference* between the two curves - which itself is as Bezier.
-Thus these metrics are a measure that can be applied to a single Bezier. This is similar to the Euclidean distance between
+Many metrics of difference might be a measure of the *difference* between the two curves - which itself is as Bezier.
+Thus these metrics are a measure that may be applied to a single Bezier. This is similar to the Euclidean distance between
 two points, which is the same as the length of the vector between them (the difference between vectors from the origin to those points).
 
 (To find the difference between two Bezier curves of different
@@ -747,7 +726,7 @@ exists if the matrix T is full rank.
 
 Hence we have `R[n+1,n] = (E[n,n+1].transpose() * E[n,n+1]).inverse() * E[n,n+1].transpose()`
 
-```
+```text
 R[n+1,n]*E[n,n+1] = (E[n,n+1].transpose() * E[n,n+1]).inverse()* E[n,n+1].transpose() * E[n,n+1]
                    = Identity[n,n]
 ```
@@ -799,8 +778,20 @@ Of course, the points used do not have to be equispaced; they could be chosen to
 
 ## Error in reduction
 
-The reduction of a Bezier curve (`B[N](t)`) of degree `N` to degree `M` (`B[N](t)`) (M<N) is lossy; that is, the two
-curves do not nescessarily describe the same set of points.
+The reduction of a Bezier curve (`B[N](t)`) of degree `N` to degree `M`
+(`B[N](t)`) (M<N) is lossy; that is, the two curves do not nescessarily describe
+the same set of points. So, one of the metrics of distance between the original
+Bezier and the reduced Bezier can be used to describe this error.
+
+If the maximum control point distance squared is used as the error metric, then
+it can be calculated quite readily; the reduction is a mapping of the control
+points, and to compare two Beziers of different degrees requires elevating the
+lower to the same degree as the other. Each of these is representable by a
+matrix; the three matrices can be combined, and then the metric applied to the
+result. In this case it means applying the combined matrix to each control point
+with the metric being the maximum of the squares of the resultant vectors.
+
+Hence the [Reduce] trait has a `closeness_sq_to_reduction` method; the constants module contains appropriate matrices for reduction by one degree.
 
 # Testing
 

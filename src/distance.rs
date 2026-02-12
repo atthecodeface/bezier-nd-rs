@@ -1,5 +1,5 @@
 //a Imports
-use crate::{BezierEval, BezierIntoIterator, Float};
+use crate::{BezierEval, BezierFlatIterator, Float};
 
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///
@@ -37,7 +37,7 @@ impl<F: Float> BezierDistance2D<F> {
 
     /// Add a bezier to the path
     pub fn add_bezier<
-        B: BezierEval<F, [F; 2]> + BezierIntoIterator<F, [F; 2]> + Clone + 'static,
+        B: BezierEval<F, [F; 2]> + BezierFlatIterator<F, [F; 2]> + Clone + 'static,
     >(
         &mut self,
         bezier: &B,

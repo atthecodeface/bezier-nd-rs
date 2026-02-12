@@ -10,7 +10,7 @@
 //! * [[f32;N];4] - Cubic Bezier
 
 use bezier_nd::BezierEval;
-use bezier_nd::BezierIntoIterator;
+use bezier_nd::BezierFlatIterator;
 use bezier_nd::BezierSplit;
 use geo_nd::vector;
 mod utils;

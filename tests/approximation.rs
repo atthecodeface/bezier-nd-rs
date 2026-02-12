@@ -11,9 +11,8 @@
 
 //a Imports
 use bezier_nd::Approximation;
-use bezier_nd::Bezier;
 use bezier_nd::BezierEval;
-use bezier_nd::BezierIntoIterator;
+use bezier_nd::BezierFlatIterator;
 use bezier_nd::BezierND;
 use bezier_nd::BezierSplit;
 mod utils;
@@ -148,45 +147,6 @@ fn test_fvec() {
         for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
             test_approximation_closeness_sq(&bezier, closeness_sq);
         }
-    }
-}
-
-#[test]
-fn test_bezier() {
-    let mut rng = utils::make_random("banana");
-    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
-
-    // Test with a linear Bezier with 10 dimensional points
-    let bezier = utils::new_random_point_array::<_, _, _, 2, 10>(&mut rng, &distribution);
-    let bezier_nd: Bezier<_, _> = bezier.into();
-    let tf_bezier: [[f32; 10]; 2] = (&bezier_nd).try_into().unwrap();
-    let opt_tf: Result<[[f32; 10]; 3], _> = (&bezier_nd).try_into();
-    assert!(opt_tf.is_err());
-    test_beziers_approx_eq(&bezier_nd, &tf_bezier);
-    for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
-    }
-
-    // Test with a quadratic Bezier with 10 dimensional points
-    let bezier = utils::new_random_point_array::<_, _, _, 3, 10>(&mut rng, &distribution);
-    let bezier_nd: Bezier<_, _> = bezier.into();
-    let tf_bezier: [[f32; 10]; 3] = (&bezier_nd).try_into().unwrap();
-    let opt_tf: Result<[[f32; 10]; 2], _> = (&bezier_nd).try_into();
-    assert!(opt_tf.is_err());
-    test_beziers_approx_eq(&bezier_nd, &tf_bezier);
-    for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
-    }
-
-    // Test with a degree 7 Bezier with 10 dimensional points
-    let bezier = utils::new_random_point_array::<_, _, _, 4, 10>(&mut rng, &distribution);
-    let bezier_nd: Bezier<_, _> = bezier.into();
-    let tf_bezier: [[f32; 10]; 4] = (&bezier_nd).try_into().unwrap();
-    let opt_tf: Result<[[f32; 10]; 2], _> = (&bezier_nd).try_into();
-    assert!(opt_tf.is_err());
-    test_beziers_approx_eq(&bezier_nd, &tf_bezier);
-    for closeness_sq in [1.0, 0.3, 0.1, 0.01, 0.001, 0.0001] {
-        test_approximation_closeness_sq(&bezier_nd, closeness_sq);
     }
 }
 
