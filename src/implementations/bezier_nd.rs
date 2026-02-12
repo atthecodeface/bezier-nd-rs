@@ -588,21 +588,21 @@ where
     type Quadratic = Self;
     type Cubic = Self;
 
-    fn reduce(&self, method: BezierReduction) -> Self::Reduced {
+    fn reduce(&self, _method: BezierReduction) -> Option<Self::Reduced> {
         todo!()
     }
-    fn can_reduce(&self, method: BezierReduction) -> bool {
+    fn can_reduce(&self, _method: BezierReduction) -> bool {
         self.degree > 1
     }
-    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F> {
-        None
+    fn dc_sq_from_reduction(&self, _method: BezierReduction) -> F {
+        todo!();
     }
 
-    fn closeness_sq_to_quadratic(&self) -> F {
+    fn dc_sq_from_quadratic(&self) -> F {
         todo!()
     }
 
-    fn closeness_sq_to_cubic(&self) -> F {
+    fn dc_sq_from_cubic(&self) -> F {
         todo!()
     }
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {

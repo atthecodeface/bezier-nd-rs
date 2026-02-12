@@ -256,34 +256,89 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     type Reduced = [[F; D]; 3];
     type Quadratic = [[F; D]; 3];
     type Cubic = Self;
-    fn reduce(&self, method: BezierReduction) -> Self::Reduced {
-        todo!();
+    fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
+        match method {
+            BezierReduction::LeastSquares => Some([
+                vector::sum_scaled(
+                    self,
+                    &[
+                        0.95_f32.into(),
+                        0.15_f32.into(),
+                        (-0.15_f32).into(),
+                        0.05_f32.into(),
+                    ],
+                ),
+                vector::sum_scaled(
+                    self,
+                    &[
+                        (-0.25_f32).into(),
+                        0.75_f32.into(),
+                        0.75_f32.into(),
+                        (-0.25_f32).into(),
+                    ],
+                ),
+                vector::sum_scaled(
+                    self,
+                    &[
+                        0.05_f32.into(),
+                        (-0.15_f32).into(),
+                        0.15_f32.into(),
+                        0.95_f32.into(),
+                    ],
+                ),
+            ]),
+            _ => self.reduced_to_quadratic(),
+        }
     }
-    fn can_reduce(&self, method: BezierReduction) -> bool {
+    fn can_reduce(&self, _method: BezierReduction) -> bool {
         true
     }
-    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F> {
-        None
+    fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
+        let dc_sq = self.dc_sq_from_quadratic();
+        if method == BezierReduction::LeastSquares {
+            utils::max(
+                dc_sq,
+                vector::length_sq(&vector::sum_scaled(
+                    self,
+                    &[
+                        0.05_f32.into(),
+                        (-0.15_f32).into(),
+                        0.15_f32.into(),
+                        (-0.05_f32).into(),
+                    ],
+                )),
+            )
+        } else {
+            dc_sq
+        }
     }
 
-    fn closeness_sq_to_quadratic(&self) -> F {
+    fn dc_sq_from_quadratic(&self) -> F {
         let m_half = (-0.5_f32).into();
         let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
         let dc2_0 = vector::length_sq(&dv_0);
         let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
         let dc2_1 = vector::length_sq(&dv_1);
-        if dc2_0 < dc2_1 {
-            dc2_1
-        } else {
-            dc2_0
-        }
-    }
-    fn closeness_sq_to_cubic(&self) -> F {
-        F::ZERO
+        utils::max(dc2_0, dc2_1)
     }
 
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
-        todo!()
+        Some([
+            self[0],
+            vector::sum_scaled(
+                self,
+                &[
+                    (-0.25_f32).into(),
+                    0.75_f32.into(),
+                    0.75_f32.into(),
+                    (-0.25_f32).into(),
+                ],
+            ),
+            self[3],
+        ])
+    }
+    fn dc_sq_from_cubic(&self) -> F {
+        F::ZERO
     }
     fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
         None

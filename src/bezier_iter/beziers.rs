@@ -59,7 +59,7 @@ where
     /// and to leave the top of the stack starting with pb.
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(bezier) = self.split_iter.next() {
-            if bezier.closeness_sq_to_quadratic() < self.closeness_sq {
+            if bezier.dc_sq_from_quadratic() < self.closeness_sq {
                 return bezier.reduced_to_quadratic();
             } else {
                 self.split_iter.add_split(&bezier);

@@ -188,20 +188,20 @@ impl<F: 'static + Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 2] {
     type Reduced = Self;
     type Quadratic = Self;
     type Cubic = Self;
-    fn reduce(&self, method: BezierReduction) -> Self::Reduced {
-        *self
-    }
-    fn can_reduce(&self, method: BezierReduction) -> bool {
-        false
-    }
-    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F> {
+    fn reduce(&self, _method: BezierReduction) -> Option<Self::Reduced> {
         None
     }
-
-    fn closeness_sq_to_quadratic(&self) -> F {
+    fn can_reduce(&self, _method: BezierReduction) -> bool {
+        false
+    }
+    fn dc_sq_from_reduction(&self, _method: BezierReduction) -> F {
         F::ZERO
     }
-    fn closeness_sq_to_cubic(&self) -> F {
+
+    fn dc_sq_from_quadratic(&self) -> F {
+        F::ZERO
+    }
+    fn dc_sq_from_cubic(&self) -> F {
         F::ZERO
     }
 

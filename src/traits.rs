@@ -2,6 +2,7 @@ use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
 /// How to reduce a Bezier curve
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BezierReduction {
     /// Reduce using LeastSquares
     LeastSquares,
@@ -14,6 +15,7 @@ pub enum BezierReduction {
 }
 
 /// Which metric to return
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub enum BezierMetric {
     /// Use sum of distance squared for N uniform `t` values
     SumDistanceSquared(usize),
@@ -484,28 +486,28 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// in units of square meteres
     ///
     /// If this returns None then 'reduce' need not return a sensible reult.
-    fn closeness_sq_to_reduction(&self, method: BezierReduction) -> Option<F>;
+    fn dc_sq_from_reduction(&self, method: BezierReduction) -> F;
 
     /// Return the Bezier reduced by at least one degree
     ///
     /// The reduced Bezier *can* be reduced by more than one degree (such as
     /// a cubic Bezier from a Bezier of degree 10); the reduction *must* have a lower
     /// degree than the original.
-    fn reduce(&self, method: BezierReduction) -> Self::Reduced;
+    fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced>;
 
     /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
     ///
     /// The metric should be quadratic with respect to the units of length of P,
     /// i.e. if P were in reality measured in meters, then this metric should be
     /// in units of square meteres
-    fn closeness_sq_to_quadratic(&self) -> F;
+    fn dc_sq_from_quadratic(&self) -> F;
 
     /// Find how close the Bezier to a Bezier of degree 3 with the same endpoints
     ///
     /// The metric should be quadratic with respect to the units of length of P,
     /// i.e. if P were in reality measured in meters, then this metric should be
     /// in units of square meteres
-    fn closeness_sq_to_cubic(&self) -> F;
+    fn dc_sq_from_cubic(&self) -> F;
 
     /// Return a Bezier of this reduced to a quadratic Bezier
     ///
