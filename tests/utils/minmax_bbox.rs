@@ -1,4 +1,4 @@
-use bezier_nd::{bernstein_fns, BezierEval, BezierMinMax, BezierSection, BezierSplit};
+use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::{Bezier, Num};
@@ -7,7 +7,7 @@ use geo_nd::{matrix, vector};
 pub fn assert_min_max_coords<
     F: bezier_nd::Num,
     const D: usize,
-    B: BezierMinMax<F> + BezierEval<F, [F; D]> + std::fmt::Debug,
+    B: BezierEval<F, [F; D]> + std::fmt::Debug,
 >(
     bezier: &B,
 ) {
@@ -16,8 +16,18 @@ pub fn assert_min_max_coords<
     let bbox = pts.bbox();
     eprintln!("Bbox of BezierPtSet of point_at(0<=t<=1) = {bbox:?}");
     for d in 0..D {
-        let (t_min_d, f_min_d) = bezier.t_coord_at_min_max(false, d).unwrap();
-        let (t_max_d, f_max_d) = bezier.t_coord_at_min_max(true, d).unwrap();
+        let (omin, omax) = bezier.t_coords_at_min_max(d, false, false);
+        assert!(omin.is_none());
+        assert!(omax.is_none());
+        let (omin, omax) = bezier.t_coords_at_min_max(d, true, false);
+        assert!(omin.is_some());
+        assert!(omax.is_none());
+        let (omin, omax) = bezier.t_coords_at_min_max(d, false, true);
+        assert!(omin.is_none());
+        assert!(omax.is_some());
+        let (omin, omax) = bezier.t_coords_at_min_max(d, true, true);
+        let (t_min_d, f_min_d) = omin.unwrap();
+        let (t_max_d, f_max_d) = omax.unwrap();
         eprintln!(
             "BezierMinMax for coord {d} has min {f_min_d} <> max {f_max_d} at {t_min_d} {t_max_d}"
         );

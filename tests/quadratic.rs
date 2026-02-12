@@ -15,9 +15,7 @@ fn test_quadratic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 
     assert_eq!(bezier.degree(), 2);
     assert_eq!(bezier.num_control_points(), 3);
-    for i in 0..bezier.num_control_points() {
-        assert_eq!(bezier.control_point(i), &pts[i]);
-    }
+    utils::bezier_eq(bezier, &pts);
 
     utils::vec_eq(&bezier.endpoints().0, p0);
     utils::vec_eq(&bezier.endpoints().1, p1);

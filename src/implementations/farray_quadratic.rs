@@ -1,7 +1,7 @@
 use crate::utils;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
-    BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps,
+    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 use crate::Num;
@@ -18,8 +18,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         let u = F::ONE - t;
         (two, vector::sum_scaled(self, &[-u, u - t, t]))
     }
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (&self[0], &self[2])
+    fn endpoints(&self) -> ([F; D], [F; D]) {
+        (self[0], self[2])
     }
     fn closeness_sq_to_line(&self) -> F {
         utils::distance_sq_to_line_segment(&self[1], &self[0], &self[2])
@@ -34,11 +34,89 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     fn num_control_points(&self) -> usize {
         3
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self[n]
+    fn control_points(&self) -> &[[F; D]] {
+        self
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
+
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        bernstein_fns::distance::bezier_quad_t_dsq_closest_to_pt(self, pt)
+    }
+
+    /// An estimate of the minimum distance squared from the Bezier to the point
+    /// for 0<=t<=1.
+    ///
+    /// This returns the minimum distance betwen the point and the convex hull of the Bezier,
+    /// which is the triangle of the three control points
+    ///
+    /// If the point projected onto the triangle plane is within the triangle then this is the
+    /// distance squared between the projected point and the point
+    ///
+    /// If the point projected onto the triangle plane is outside the triangle then it cannot
+    /// be closer to the Bezier than it is from the closest edge of the triangle, so the minimum
+    /// distance squared between the Point and the three triangle edges will suffice
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        if let Some((k1, k2)) = utils::barycentric_coordinates(pt, &self[0], &self[1], &self[2]) {
+            let k0 = F::ONE - k1 - k2;
+            if k0 >= F::ZERO
+                && k1 >= F::ZERO
+                && k2 >= F::ZERO
+                && k0 <= F::ONE
+                && k1 <= F::ONE
+                && k2 <= F::ONE
+            {
+                // For 2-dimensional Beziers the point projected *is* the point
+                if D <= 2 {
+                    return F::ZERO;
+                } else {
+                    // pt_on_plane = Sum(ki.self[i])
+                    let pt_on_plane = vector::sum_scaled(self, &[k0, k1, k2]);
+                    return vector::distance_sq(pt, &pt_on_plane);
+                    //let pt_rel = vector::sub(*pt, &self[0], k0);
+                    //let pt_rel = vector::sub(pt_rel, &self[1], k1);
+                    //let pt_rel = vector::sub(pt_rel, &self[2], k2);
+                    //return vector::length_sq(&pt_rel);
+                }
+            }
+        }
+        let d0 = utils::distance_sq_to_line_segment(pt, &self[0], &self[1]);
+        let d1 = utils::distance_sq_to_line_segment(pt, &self[0], &self[2]);
+        let d2 = utils::distance_sq_to_line_segment(pt, &self[1], &self[2]);
+        utils::min(d0, utils::min(d1, d2))
+    }
+
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        // poly is u^2 P0 + 2ut P1 + t^2 P2
+        //
+        // grad/2 is (t-1) P0 + (1-2t) P1 + t P2 = 0 if t(P0-2P1+P2) = P0-P1
+        //
+        // i.e. t = (P0-P1) / (P0-2P1+P2)
+        //
+        // Second differential is P0 -2P1 + P2
+        let p0 = self[0][pt_index];
+        let p1 = self[1][pt_index];
+        let p2 = self[2][pt_index];
+        let d_dt_denom = p0 + p2 - p1 * (2.0_f32).into();
+        let d_dt_numer = p0 - p1;
+        if !d_dt_denom.is_unreliable_divisor() {
+            let t = d_dt_numer / d_dt_denom;
+            if t > F::ZERO && t < F::ONE {
+                let u = F::ONE - t;
+                let c = u * u * p0 + u * t * p1 * (2.0_f32).into() + t * t * p2;
+                return utils::opt_min_and_max_tc(
+                    give_min,
+                    give_max,
+                    (F::ZERO, p0),
+                    (F::ONE, p2),
+                    Some((t, c)),
+                );
+            }
+        }
+        utils::opt_min_and_max_tc(give_min, give_max, (F::ZERO, p0), (F::ONE, p2), None)
     }
 }
 
@@ -65,87 +143,8 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 3] {
             *s = map(i, s);
         }
     }
-}
-
-impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 3] {
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
-        // poly is u^2 P0 + 2ut P1 + t^2 P2
-        //
-        // grad/2 is (t-1) P0 + (1-2t) P1 + t P2 = 0 if t(P0-2P1+P2) = P0-P1
-        //
-        // i.e. t = (P0-P1) / (P0-2P1+P2)
-        //
-        // Second differential is P0 -2P1 + P2
-        let p0 = self[0][pt_index];
-        let p1 = self[1][pt_index];
-        let p2 = self[2][pt_index];
-        let p02_sel = utils::min_or_max(use_max, F::ZERO, p0, F::ONE, p2);
-        let d_dt_denom = p0 + p2 - p1 * (2.0_f32).into();
-        let d_dt_numer = p0 - p1;
-        if d_dt_denom.is_unreliable_divisor() {
-            Some(p02_sel)
-        } else {
-            let t = d_dt_numer / d_dt_denom;
-            if t > F::ZERO && t < F::ONE {
-                let u = F::ONE - t;
-                Some(utils::min_or_max(
-                    use_max,
-                    p02_sel.0,
-                    p02_sel.1,
-                    t,
-                    u * u * p0 + u * t * p1 * (2.0_f32).into() + t * t * p2,
-                ))
-            } else {
-                Some(p02_sel)
-            }
-        }
-    }
-}
-
-impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 3] {
-    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
-        bernstein_fns::distance::bezier_quad_t_dsq_closest_to_pt(self, pt)
-    }
-
-    /// An estimate of the minimum distance squared from the Bezier to the point
-    /// for 0<=t<=1.
-    ///
-    /// This returns the minimum distance betwen the point and the convex hull of the Bezier,
-    /// which is the triangle of the three control points
-    ///
-    /// If the point projected onto the triangle plane is within the triangle then this is the
-    /// distance squared between the projected point and the point
-    ///
-    /// If the point projected onto the triangle plane is outside the triangle then it cannot
-    /// be closer to the Bezier than it is from the closest edge of the triangle, so the minimum
-    /// distance squared between the Point and the three triangle edges will suffice
-    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
-        if let Some((k1, k2)) =
-            crate::utils::barycentric_coordinates(pt, &self[0], &self[1], &self[2])
-        {
-            let k0 = F::ONE - k1 - k2;
-            if k0 >= F::ZERO
-                && k1 >= F::ZERO
-                && k2 >= F::ZERO
-                && k0 <= F::ONE
-                && k1 <= F::ONE
-                && k2 <= F::ONE
-            {
-                // For 2-dimensional Beziers the point projected *is* the point
-                if D <= 2 {
-                    return F::ZERO;
-                } else {
-                    let pt_rel = vector::sub(*pt, &self[0], k0);
-                    let pt_rel = vector::sub(pt_rel, &self[1], k1);
-                    let pt_rel = vector::sub(pt_rel, &self[2], k2);
-                    return vector::length_sq(&pt_rel);
-                }
-            }
-        }
-        let d0 = crate::utils::distance_sq_to_line_segment(pt, &self[0], &self[1]);
-        let d1 = crate::utils::distance_sq_to_line_segment(pt, &self[0], &self[2]);
-        let d2 = crate::utils::distance_sq_to_line_segment(pt, &self[1], &self[2]);
-        crate::utils::min(d0, crate::utils::min(d1, d2))
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+        map(self)
     }
 }
 

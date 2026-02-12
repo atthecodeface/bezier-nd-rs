@@ -240,8 +240,8 @@ where
             )
         }
     }
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (self.points.first().unwrap(), self.points.last().unwrap())
+    fn endpoints(&self) -> ([F; D], [F; D]) {
+        (*self.points.first().unwrap(), *self.points.last().unwrap())
     }
     fn closeness_sq_to_line(&self) -> F {
         self.bezier.closeness_sq_to_line() + self.closeness_sq
@@ -252,14 +252,26 @@ where
     fn num_control_points(&self) -> usize {
         self.bezier.num_control_points()
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        self.bezier.control_point(n)
+    fn control_points(&self) -> &[[F; D]] {
+        self.bezier.control_points()
     }
     fn degree(&self) -> usize {
         self.bezier.degree()
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.bezier.for_each_control_point(map);
+    // Can probably do better
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        self.bezier.t_dsq_closest_to_pt(pt)
+    }
+    fn est_min_distance_sq_to(&self, _p: &[F; D]) -> F {
+        F::ZERO
+    }
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        (None, None)
     }
 }
 

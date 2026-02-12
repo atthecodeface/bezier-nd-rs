@@ -45,10 +45,12 @@ pub fn bezier_quad_t_dsq_closest_to_pt<F: Num, const D: usize, B: BezierEval<F, 
     bezier: &B,
     pt: &[F; D],
 ) -> Option<(F, F)> {
-    assert_eq!(bezier.degree(), 2);
-
-    let (p0, p1) = bezier.endpoints();
-    let pts = [*p0, *bezier.control_point(1), *p1];
+    let pts = bezier.control_points();
+    assert_eq!(
+        pts.len(),
+        3,
+        "bezier_quad_t_dsq_closest_to_pt invoked for a non-quadratic Bezier"
+    );
 
     // First find the closest endpoint in case we have to bail (rather than panic)
     let d0_sq = vector::distance_sq(pt, &pts[0]);
@@ -73,14 +75,18 @@ pub fn bezier_quad_t_dsq_closest_to_pt<F: Num, const D: usize, B: BezierEval<F, 
     ];
     let (opt_t0, opt_t1, opt_t2) = utils::find_root_cubic_num(d_dt_dsq_poly);
     let Some(t0) = opt_t0 else {
-        panic!("Failed to find root for polynomial {d_dt_dsq_poly:?}");
+        // This can happen if a is zero (i.e. we have a quadratic) or potentially
+        // if the curve is near-linear but not being zero within 0..1; possibly
+        // in other extreme cases which are near-linear.
+        //
+        // If it is near linear without crossing zero then choosing an endpoint
+        // is correct; if it does cross zero and it is near linear then the
+        // endpoints are almost equidistant anyway. So chooing the best endpoint is okay
         return Some((t_min, dsq_min));
     };
 
     let t1 = opt_t1.unwrap_or(t0);
     let t2 = opt_t2.unwrap_or(t0);
-    eprintln!("Poly at t1 {t1} - {}", d_dt_dsq_poly.calc(t1));
-    eprintln!("Poly at t2 {t2} - {}", d_dt_dsq_poly.calc(t2));
     // Make t0 < t1; t1 and t2 will be unordered, and t0 and t2 will be unordered
     let (t0, t1) = {
         if t0 < t1 {

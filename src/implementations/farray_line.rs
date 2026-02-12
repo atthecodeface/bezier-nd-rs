@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval, BezierMinMax,
-    BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps, BezierReduce,
+    BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -13,24 +13,75 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
     fn derivative_at(&self, _t: F) -> (F, [F; D]) {
         (F::ONE, vector::add(self[1], &self[0], -F::ONE))
     }
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (&self[0], &self[1])
-    }
     fn closeness_sq_to_line(&self) -> F {
         F::ZERO
     }
     fn dc_sq_from_line(&self) -> F {
         F::ZERO
     }
+    fn endpoints(&self) -> ([F; D], [F; D]) {
+        (self[0], self[1])
+    }
+    fn control_points(&self) -> &[[F; D]] {
+        self
+    }
 
-    fn num_control_points(&self) -> usize {
-        2
+    /// A value of t and distance squared to it, 0<=t<=1, for which the distance between the point
+    ///  P and the line between the two points is a minimum.
+    ///
+    /// The distance between a line (p0, p1) and a point P has a single minimum as one moves along the line.
+    ///
+    /// For every point Q on the line q, (q-p0) = t(p1-p0) for some t; (q-p0).(p1-p0) = t.|p1-p0|^2,
+    /// or t = (q-p0).(p1-p0) / |p1-p0|^2
+    ///
+    /// If this value returns a value 0<=t<=1 then no other point on the Bezier with t in that range
+    /// has a smaller distance to the point P
+    ///
+    /// If this value returns a value t < 0 then the Bezier at t=0 will be the closest point on the
+    /// Bezier with parameter 0<=t<=1 to point P
+    ///
+    /// If this value returns a value t > 1 then the Bezier at t=1 will be the closest point on the
+    /// Bezier with parameter 0<=t<=1 to point P
+    ///
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        let (t_times_len_sq, line_len_sq, valid) = utils::relative_to_line(pt, &self[0], &self[1]);
+        if valid {
+            if t_times_len_sq < F::ZERO {
+                Some((F::ZERO, vector::distance_sq(pt, &self[0])))
+            } else if t_times_len_sq > line_len_sq {
+                Some((F::ONE, vector::distance_sq(pt, &self[1])))
+            } else {
+                Some((
+                    t_times_len_sq / line_len_sq,
+                    vector::length_sq(&vector::sub(self[0], pt, F::ONE)) - t_times_len_sq,
+                ))
+            }
+        } else {
+            Some((F::ZERO, vector::distance_sq(pt, &self[0])))
+        }
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self[n]
+
+    /// An estimate of the minimum distance squared from the Bezier to the point
+    /// for 0<=t<=1.
+    ///
+    /// This returns the *actual* minimum distance to the line segmenr from the point
+    fn est_min_distance_sq_to(&self, p: &[F; D]) -> F {
+        utils::distance_sq_to_line_segment(p, &self[0], &self[1])
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
+
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        utils::opt_min_and_max_tc(
+            give_min,
+            give_max,
+            (F::ZERO, self[0][pt_index]),
+            (F::ONE, self[1][pt_index]),
+            None,
+        )
     }
 }
 
@@ -57,15 +108,8 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 2] {
             *s = map(i, s);
         }
     }
-}
-
-impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 2] {
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
-        if use_max == (self[0][pt_index] > self[1][pt_index]) {
-            Some((F::ZERO, self[0][pt_index]))
-        } else {
-            Some((F::ONE, self[1][pt_index]))
-        }
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+        map(self)
     }
 }
 
@@ -113,53 +157,7 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 2] {
     }
 }
 
-impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 2] {
-    /// A value of t and distance squared to it, 0<=t<=1, for which the distance between the point
-    ///  P and the line between the two points is a minimum.
-    ///
-    /// The distance between a line (p0, p1) and a point P has a single minimum as one moves along the line.
-    ///
-    /// For every point Q on the line q, (q-p0) = t(p1-p0) for some t; (q-p0).(p1-p0) = t.|p1-p0|^2,
-    /// or t = (q-p0).(p1-p0) / |p1-p0|^2
-    ///
-    /// If this value returns a value 0<=t<=1 then no other point on the Bezier with t in that range
-    /// has a smaller distance to the point P
-    ///
-    /// If this value returns a value t < 0 then the Bezier at t=0 will be the closest point on the
-    /// Bezier with parameter 0<=t<=1 to point P
-    ///
-    /// If this value returns a value t > 1 then the Bezier at t=1 will be the closest point on the
-    /// Bezier with parameter 0<=t<=1 to point P
-    ///
-    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
-        let (t_times_len_sq, line_len_sq, valid) =
-            crate::utils::relative_to_line(pt, &self[0], &self[1]);
-        if valid {
-            if t_times_len_sq < F::ZERO {
-                Some((F::ZERO, vector::distance_sq(pt, &self[0])))
-            } else if t_times_len_sq > line_len_sq {
-                Some((F::ONE, vector::distance_sq(pt, &self[1])))
-            } else {
-                Some((
-                    t_times_len_sq / line_len_sq,
-                    vector::length_sq(&vector::sub(self[0], pt, F::ONE)) - t_times_len_sq,
-                ))
-            }
-        } else {
-            Some((F::ZERO, vector::distance_sq(pt, &self[0])))
-        }
-    }
-
-    /// An estimate of the minimum distance squared from the Bezier to the point
-    /// for 0<=t<=1.
-    ///
-    /// This returns the *actual* minimum distance to the line segmenr from the point
-    fn est_min_distance_sq_to(&self, p: &[F; D]) -> F {
-        crate::utils::distance_sq_to_line_segment(p, &self[0], &self[1])
-    }
-}
-
-impl<F: 'static + Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 2] {
+impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 2] {
     type ElevatedByOne = [[F; D]; 3];
     // Full elevation is not supported
     type Elevated = Self;

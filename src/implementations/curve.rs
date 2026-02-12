@@ -2,10 +2,7 @@
 use crate::Float;
 use geo_nd::vector;
 
-use crate::{
-    BezierDistance, BezierElevate, BezierEval, BezierMinMax,
-    BezierOps, BezierReduce, BezierSection, BezierSplit,
-};
+use crate::{BezierElevate, BezierEval, BezierOps, BezierReduce, BezierSection, BezierSplit};
 
 //a Bezier
 //tp Bezier
@@ -192,11 +189,11 @@ where
         }
     }
 
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
+    fn endpoints(&self) -> ([F; D], [F; D]) {
         match self.num {
-            2 => (&self.pts[0], &self.pts[1]),
-            3 => (&self.pts[0], &self.pts[2]),
-            _ => (&self.pts[0], &self.pts[3]),
+            2 => (self.pts[0], self.pts[1]),
+            3 => (self.pts[0], self.pts[2]),
+            _ => (self.pts[0], self.pts[3]),
         }
     }
 
@@ -217,17 +214,45 @@ where
     fn num_control_points(&self) -> usize {
         self.num
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self.pts[n]
+    fn control_points(&self) -> &[[F; D]] {
+        &self.pts[0..self.num]
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.pts
-            .iter()
-            .take(self.num)
-            .enumerate()
-            .for_each(|(i, pt)| map(i, pt))
+
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        match self.num {
+            2 => self
+                .as_array_2()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+            3 => self
+                .as_array_3()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+            _ => self
+                .as_array_4()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+        }
+    }
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        match self.num {
+            2 => self.as_array_2().t_dsq_closest_to_pt(pt),
+            3 => self.as_array_3().t_dsq_closest_to_pt(pt),
+            _ => self.as_array_4().t_dsq_closest_to_pt(pt),
+        }
+    }
+
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        match self.num {
+            2 => self.as_array_2().est_min_distance_sq_to(pt),
+            3 => self.as_array_3().est_min_distance_sq_to(pt),
+            _ => self.as_array_4().est_min_distance_sq_to(pt),
+        }
     }
 }
+
 impl<F, const D: usize> BezierSplit for Bezier<F, D>
 where
     F: Float,
@@ -292,33 +317,8 @@ impl<F: Float, const D: usize> BezierOps<F, [F; D]> for Bezier<F, D> {
             *p = map(i, p);
         }
     }
-}
-
-impl<F: Float, const D: usize> BezierMinMax<F> for Bezier<F, D> {
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
-        match self.num {
-            2 => self.as_array_2().t_coord_at_min_max(use_max, pt_index),
-            3 => self.as_array_3().t_coord_at_min_max(use_max, pt_index),
-            _ => self.as_array_4().t_coord_at_min_max(use_max, pt_index),
-        }
-    }
-}
-
-impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for Bezier<F, D> {
-    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
-        match self.num {
-            2 => self.as_array_2().t_dsq_closest_to_pt(pt),
-            3 => self.as_array_3().t_dsq_closest_to_pt(pt),
-            _ => self.as_array_4().t_dsq_closest_to_pt(pt),
-        }
-    }
-
-    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
-        match self.num {
-            2 => self.as_array_2().est_min_distance_sq_to(pt),
-            3 => self.as_array_3().est_min_distance_sq_to(pt),
-            _ => self.as_array_4().est_min_distance_sq_to(pt),
-        }
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+        map(&mut self.pts[0..self.num])
     }
 }
 

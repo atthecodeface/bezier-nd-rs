@@ -1,29 +1,27 @@
 //! This library provides functions that return *Metrics* for Bezier curves or the difference between
 //! them and other curves or lines.
 //!
-use crate::{utils, BezierDistance, BezierEval, Float, Num};
+use crate::{utils, BezierEval, Float, Num};
 use geo_nd::vector;
 
 /// Maximum of the squared length of the control points
 ///
 /// This provides a bound on the maximum distance (squared) from the origin of every point on the Bezier curve
 pub fn c_sq<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bezier: &B) -> F {
-    let mut result = F::ZERO;
-    bezier.for_each_control_point(&mut |_i, pt| {
-        result = utils::max(result, vector::length_sq(pt));
-    });
-    result
+    bezier
+        .control_points()
+        .iter()
+        .fold(F::ZERO, |acc, pt| utils::max(acc, vector::length_sq(pt)))
 }
 
 /// Total of the squared length of the control points
 ///
 /// This is guaranteed to be at least as large as c_sq
 pub fn f_sq<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bezier: &B) -> F {
-    let mut result = F::ZERO;
-    bezier.for_each_control_point(&mut |_i, pt| {
-        result += vector::length_sq(pt);
-    });
-    result
+    bezier
+        .control_points()
+        .iter()
+        .fold(F::ZERO, |acc, pt| acc + vector::length_sq(pt))
 }
 
 /// The L2 norm between two beziers given a step dt
@@ -100,15 +98,13 @@ pub fn dc_sq<F: Num, const D: usize, B: BezierEval<F, [F; D]>, B2: BezierEval<F,
     bezier: &B,
     other: &B2,
 ) -> Option<F> {
-    if bezier.num_control_points() != other.num_control_points() {
-        None
-    } else {
-        let mut result = F::ZERO;
-        bezier.for_each_control_point(&mut |i, pt| {
-            result = utils::max(result, vector::distance_sq(pt, other.control_point(i)));
-        });
-        Some(result)
-    }
+    let b = bezier.control_points();
+    let c = other.control_points();
+    (b.len() == c.len()).then(|| {
+        b.iter().zip(c.iter()).fold(F::ZERO, |acc, (b, o)| {
+            utils::max(acc, vector::distance_sq(b, o))
+        })
+    })
 }
 
 /// Total of the squared length of the difference in control points between two Bezier curves
@@ -124,15 +120,13 @@ pub fn df_sq<F: Num, const D: usize, B: BezierEval<F, [F; D]>, B2: BezierEval<F,
     bezier: &B,
     other: &B2,
 ) -> Option<F> {
-    if bezier.num_control_points() != other.num_control_points() {
-        None
-    } else {
-        let mut result = F::ZERO;
-        bezier.for_each_control_point(&mut |i, pt| {
-            result += vector::distance_sq(pt, other.control_point(i));
-        });
-        Some(result)
-    }
+    let b = bezier.control_points();
+    let c = other.control_points();
+    (b.len() == c.len()).then(|| {
+        b.iter()
+            .zip(c.iter())
+            .fold(F::ZERO, |acc, (b, o)| acc + vector::distance_sq(b, o))
+    })
 }
 
 /// Maximum of the squared length of the difference in control points between a bezier and the straight line between its endpoints
@@ -140,28 +134,32 @@ pub fn df_sq<F: Num, const D: usize, B: BezierEval<F, [F; D]>, B2: BezierEval<F,
 /// This provides a metric of how far from a straight line the curve is; all points on the
 /// Bezier curve will be no further from the straight line than this distance squared
 pub fn dc_sq_from_line<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bezier: &B) -> F {
-    let mut result = F::ZERO;
-    let mut iter = utils::float_iter(bezier.num_control_points());
-    let (l0, l1) = bezier.endpoints();
-    bezier.for_each_control_point(&mut |_i, pt| {
-        let l = vector::mix(l0, l1, iter.next().unwrap());
-        result = utils::max(result, vector::distance_sq(pt, &l));
-    });
-    result
+    let b = bezier.control_points();
+    assert!(b.len() > 1);
+    let l0 = b.first().unwrap();
+    let l1 = b.last().unwrap();
+    b.iter()
+        .zip(utils::float_iter(b.len()))
+        .fold(F::ZERO, |acc, (b, t)| {
+            let l = vector::mix(l0, l1, t);
+            utils::max(acc, vector::distance_sq(b, &l))
+        })
 }
 
 /// Total of the squared length of the difference in control points between a bezier and the straight line between its endpoints
 ///
 /// This is guaranteed to be at least as large as `dc_sq_from_line`
 pub fn df_sq_from_line<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bezier: &B) -> F {
-    let mut result = F::ZERO;
-    let mut iter = utils::float_iter(bezier.num_control_points());
-    let (l0, l1) = bezier.endpoints();
-    bezier.for_each_control_point(&mut |_i, pt| {
-        let l = vector::mix(l0, l1, iter.next().unwrap());
-        result += vector::distance_sq(pt, &l);
-    });
-    result
+    let b = bezier.control_points();
+    assert!(b.len() > 1);
+    let l0 = b.first().unwrap();
+    let l1 = b.last().unwrap();
+    b.iter()
+        .zip(utils::float_iter(b.len()))
+        .fold(F::ZERO, |acc, (b, t)| {
+            let l = vector::mix(l0, l1, t);
+            acc + vector::distance_sq(b, &l)
+        })
 }
 
 /// Calculates the length of the Bezier when it is rendered down
@@ -177,10 +175,7 @@ pub fn length_of_lines<F: Float, const D: usize, I: Iterator<Item = ([F; D], [F;
 }
 
 /// Find the closest point and parameter t on a Bezier to a give point
-pub fn t_dsq_closest_to_pt<F: Float, const D: usize>(
-    pts: &[[F; D]],
-    pt: &[F; D],
-) -> Option<(F, F)> {
+pub fn t_dsq_closest_to_pt<F: Num, const D: usize>(pts: &[[F; D]], pt: &[F; D]) -> Option<(F, F)> {
     match pts.len() {
         1 => Some((F::ZERO, vector::distance_sq(&pts[0], pt))),
         2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&pts[0..2])
@@ -211,16 +206,6 @@ pub fn est_min_distance_sq_to<F: Num, const D: usize>(pts: &[[F; D]], pt: &[F; D
         F::ZERO
     } else {
         // dout <= min possible distance = sqrt(d_sq) - sqrt(dc_sq)
-
-        // Get min estimate for d_sq (i.e. d_est = d_sq.sqrt() - eps)
-        let d_est = utils::sqrt_est::<_, 4>(d_sq, true);
-        // Get max estimate for dc_sq (i.e. dc_est = dc_sq.sqrt() + eps)
-        let dc_est = utils::sqrt_est::<_, 4>(dc_sq, false);
-
-        if d_est > dc_est {
-            F::ZERO
-        } else {
-            d_est - dc_est
-        }
+        utils::est_d_m_c_from_dsq_m_dcsq(d_sq, dc_sq)
     }
 }

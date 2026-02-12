@@ -1,8 +1,8 @@
 use crate::utils;
 use crate::Num;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate, BezierEval,
-    BezierMinMax, BezierOps, BezierReduce, BezierSection, BezierSplit, BoxedBezier,
+    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps,
+    BezierReduce, BezierSection, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -24,8 +24,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
             vector::sum_scaled(self, &[-u * u, u * (u - t - t), t * (u + u - t), t * t]),
         )
     }
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (&self[0], &self[3])
+    fn endpoints(&self) -> ([F; D], [F; D]) {
+        (self[0], self[3])
     }
     fn closeness_sq_to_line(&self) -> F {
         self.dc_sq_from_line()
@@ -46,11 +46,66 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn num_control_points(&self) -> usize {
         4
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self[n]
+    fn control_points(&self) -> &[[F; D]] {
+        self
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        // poly is u^3 P0 + 3u^2t P1 +  3ut^2 P2 + t^3 P3
+        //
+        // grad/3 is -u^2 P0 + u(1-3t)P1 + t(2-3t).P2 + t^2 P3 = 0
+        //
+        // i.e. (-1 + 2t - t^2)P0 + (1 + 3t^2 -4t)P1 + (2t - 3t^2)P2 + t^2P3 = 0
+        // (-P0 + 3P1 -3P2 + P3)t^2 + 2(P0 -2P1 + P2)t + P1-P0 = 0
+        //
+        // t = (-(P0 -2P1 + P2) +- sqrt((P0 -2P1 + P2)*(P0 -2P1 + P2)-(P1-P0)(-P0 + 3P1 -3P2 + P3))) / (-P0 + 3P1 -3P2 + P3)
+        //
+        // If this has real roots then find one with NR; then other is -b/a - first root
+        // t = -b/2a +- sqrt()/2a => t0+t1 = -b/a =>
+        let p0 = self[0][pt_index];
+        let p1 = self[1][pt_index];
+        let p2 = self[2][pt_index];
+        let p3 = self[3][pt_index];
+        let (mut opt_min, mut opt_max) =
+            utils::opt_min_and_max_tc(give_min, give_max, (F::ZERO, p0), (F::ONE, p3), None);
+        let a = p3 - p0 + (p1 - p2) * (3.0_f32).into();
+        let b = (p0 + p2 - p1 - p1) * 2.0_f32.into();
+        let c = p1 - p0;
+        let (opt_t0, opt_t1) = utils::find_real_roots_quad_num(&[c, b, a]);
+        if let Some(t0) = opt_t0 {
+            if t0 > F::ZERO && t0 < F::ONE {
+                let c0 = self.point_at(t0)[pt_index];
+                opt_min = opt_min.map(|t_c| utils::min_tc(t_c, (t0, c0)));
+                opt_max = opt_max.map(|t_c| utils::max_tc(t_c, (t0, c0)));
+            }
+        }
+        if let Some(t1) = opt_t1 {
+            if t1 > F::ZERO && t1 < F::ONE {
+                let c1 = self.point_at(t1)[pt_index];
+                opt_min = opt_min.map(|t_c| utils::min_tc(t_c, (t1, c1)));
+                opt_max = opt_max.map(|t_c| utils::max_tc(t_c, (t1, c1)));
+            }
+        }
+        (opt_min, opt_max)
+    }
+
+    /// The closest point on a cubic bezier to a point is not analytically determinable
+    fn t_dsq_closest_to_pt(&self, _pt: &[F; D]) -> Option<(F, F)> {
+        None
+    }
+
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        let d_sq = utils::distance_sq_to_line_segment(pt, &self[0], &self[3]);
+        let dc_sq = utils::straightness_sq_of_cubic(self);
+        if d_sq < dc_sq {
+            F::ZERO
+        } else {
+            utils::est_d_m_c_from_dsq_m_dcsq(d_sq, dc_sq)
+        }
     }
 }
 
@@ -77,93 +132,8 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 4] {
             *s = map(i, s);
         }
     }
-}
-
-impl<F: Num, const D: usize> BezierMinMax<F> for [[F; D]; 4] {
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
-        // poly is u^3 P0 + 3u^2t P1 +  3ut^2 P2 + t^3 P3
-        //
-        // grad/3 is -u^2 P0 + u(1-3t)P1 + t(2-3t).P2 + t^2 P3 = 0
-        //
-        // i.e. (-1 + 2t - t^2)P0 + (1 + 3t^2 -4t)P1 + (2t - 3t^2)P2 + t^2P3 = 0
-        // (-P0 + 3P1 -3P2 + P3)t^2 + 2(P0 -2P1 + P2)t + P1-P0 = 0
-        //
-        // t = (-(P0 -2P1 + P2) +- sqrt((P0 -2P1 + P2)*(P0 -2P1 + P2)-(P1-P0)(-P0 + 3P1 -3P2 + P3))) / (-P0 + 3P1 -3P2 + P3)
-        //
-        // If this has real roots then find one with NR; then other is -b/a - first root
-        // t = -b/2a +- sqrt()/2a => t0+t1 = -b/a =>
-        let p0 = self[0][pt_index];
-        let p1 = self[1][pt_index];
-        let p2 = self[2][pt_index];
-        let p3 = self[3][pt_index];
-        let a = p3 - p0 + (p1 - p2) * (3.0_f32).into();
-        let p02_sel = utils::min_or_max(use_max, F::ZERO, p0, F::ONE, p3);
-        if a.is_unreliable_divisor() {
-            todo!();
-        }
-        let half_b = p0 + p2 - p1 - p1;
-        let c = p1 - p0;
-        // eprintln!("t_coord_min_max for cubic: a.t^2 + 2b.t + c = 0 for a:{a} b:{half_b} c:{c} discriminant {}", half_b*half_b -a*c);
-        if half_b * half_b < a * c {
-            Some(p02_sel)
-        } else {
-            let b = half_b + half_b;
-            let poly = [c, b, a];
-            use crate::PolyNewtonRaphson;
-            let Some(t0) = poly.find_root_nr(F::ZERO, (1E-6_f32).into()) else {
-                eprintln!("t_coord_min_max for cubic: failed to find root of {poly:?}...!");
-                return Some(p02_sel);
-            };
-            let t1 = -(b / a + t0);
-            // eprintln!("t_coord_min_max for cubic: t = {t0} or {t1}");
-            let p02_sel = {
-                if t0 > F::ZERO && t0 < F::ONE {
-                    let u0 = F::ONE - t0;
-                    utils::min_or_max(
-                        use_max,
-                        p02_sel.0,
-                        p02_sel.1,
-                        t0,
-                        u0 * u0 * u0 * p0
-                            + u0 * t0 * (3.0_f32).into() * (u0 * p1 + t0 * p2)
-                            + t0 * t0 * t0 * p3,
-                    )
-                } else {
-                    p02_sel
-                }
-            };
-            if t1 > F::ZERO && t1 < F::ONE {
-                let u1 = F::ONE - t1;
-                Some(utils::min_or_max(
-                    use_max,
-                    p02_sel.0,
-                    p02_sel.1,
-                    t1,
-                    u1 * u1 * u1 * p0
-                        + u1 * t1 * (3.0_f32).into() * (u1 * p1 + t1 * p2)
-                        + t1 * t1 * t1 * p3,
-                ))
-            } else {
-                Some(p02_sel)
-            }
-        }
-    }
-}
-
-impl<F: Num, const D: usize> BezierDistance<F, [F; D]> for [[F; D]; 4] {
-    /// The closest point on a cubic bezier to a point is not analytically determinable
-    fn t_dsq_closest_to_pt(&self, _pt: &[F; D]) -> Option<(F, F)> {
-        None
-    }
-
-    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
-        let d_sq = crate::utils::distance_sq_to_line_segment(pt, &self[0], &self[3]);
-        let dc_sq = crate::utils::straightness_sq_of_cubic(self);
-        if d_sq < dc_sq {
-            F::ZERO
-        } else {
-            d_sq - dc_sq
-        }
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+        map(self)
     }
 }
 

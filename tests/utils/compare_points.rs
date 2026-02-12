@@ -1,4 +1,4 @@
-use bezier_nd::{bernstein_fns, BezierEval, BezierMinMax, BezierSection, BezierSplit};
+use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::{Bezier, Num};
@@ -41,13 +41,6 @@ pub fn approx_eq<F: Num, I: Into<F>>(a: F, b: F, tolerance: I, msg: &str) {
         diff < tolerance,
         "{msg}: a {a:?} != b {b:?}: difference {diff} tolerance {tolerance}"
     );
-}
-
-#[track_caller]
-pub fn bezier_eq<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bez: &B, v: &[[F; D]]) {
-    for (i, v) in v.iter().enumerate() {
-        vec_eq(bez.control_point(i), v);
-    }
 }
 
 /// Assert that a matrix is near the identity matrix

@@ -25,11 +25,48 @@ pub fn abs<F: Num>(a: F) -> F {
         a
     }
 }
+
 pub fn min_or_max<F: Num>(use_max: bool, ta: F, a: F, tb: F, b: F) -> (F, F) {
     if use_max == (a < b) {
         (tb, b)
     } else {
         (ta, a)
+    }
+}
+
+pub fn min_tc<F: Num, T: Copy>((ta, a): (T, F), (tb, b): (T, F)) -> (T, F) {
+    if a < b {
+        (ta, a)
+    } else {
+        (tb, b)
+    }
+}
+
+pub fn max_tc<F: Num, T: Copy>((ta, a): (T, F), (tb, b): (T, F)) -> (T, F) {
+    if a > b {
+        (ta, a)
+    } else {
+        (tb, b)
+    }
+}
+
+pub fn opt_min_and_max_tc<F: Num, T: Copy>(
+    give_min: bool,
+    give_max: bool,
+    ta_a: (T, F),
+    tb_b: (T, F),
+    opt_tc_c: Option<(T, F)>,
+) -> (Option<(T, F)>, Option<(T, F)>) {
+    if let Some(tc_c) = opt_tc_c {
+        (
+            give_min.then(|| min_tc(tc_c, min_tc(ta_a, tb_b))),
+            give_max.then(|| max_tc(tc_c, max_tc(ta_a, tb_b))),
+        )
+    } else {
+        (
+            give_min.then(|| min_tc(ta_a, tb_b)),
+            give_max.then(|| max_tc(ta_a, tb_b)),
+        )
     }
 }
 
@@ -289,6 +326,19 @@ pub fn sqrt_est<F: Num, const N: usize>(sq: F, min: bool) -> F {
         } else {
             est2
         }
+    }
+}
+
+pub fn est_d_m_c_from_dsq_m_dcsq<F: Num>(d_sq: F, dc_sq: F) -> F {
+    // Get min estimate for d_sq (i.e. d_est = d_sq.sqrt() - eps)
+    let d_est = sqrt_est::<_, 4>(d_sq, true);
+    // Get max estimate for dc_sq (i.e. dc_est = dc_sq.sqrt() + eps)
+    let dc_est = sqrt_est::<_, 4>(dc_sq, false);
+
+    if d_est > dc_est {
+        F::ZERO
+    } else {
+        d_est - dc_est
     }
 }
 

@@ -15,25 +15,20 @@ fn test_bezier_ops<
     bezier: &B,
     pts: [[F; D]; NP],
 ) {
-    fn sum_pts<'a, F: Num, const D: usize>(
-        total: &'a mut [F; D],
-    ) -> impl FnMut(usize, &[F; D]) + 'a {
-        *total = [F::ZERO; D];
-        move |_n, p| {
-            *total = vector::add(*total, p, F::ONE);
-        }
-    }
-
     eprintln!("Sum points of b");
-    let mut b_pts_total = [F::ZERO; D];
-    bezier.for_each_control_point(&mut sum_pts(&mut b_pts_total));
+    let b_pts_total = bezier
+        .control_points()
+        .iter()
+        .fold([F::ZERO; D], |acc, p| vector::add(acc, p, F::ONE));
 
     let mut b2 = bezier.clone();
     b2.scale(2.0_f32.into());
 
     eprintln!("Sum points of 2*b");
-    let mut b2_pts_total = [F::ZERO; D];
-    b2.for_each_control_point(&mut sum_pts(&mut b2_pts_total));
+    let b2_pts_total = b2
+        .control_points()
+        .iter()
+        .fold([F::ZERO; D], |acc, p| vector::add(acc, p, F::ONE));
     assert_near_equal_scale(&b_pts_total, &b2_pts_total, 2.0_f32);
 
     eprintln!("b3 = b2 + b; b1 = b3 - b2");
@@ -43,13 +38,17 @@ fn test_bezier_ops<
     b1.sub(&b2);
 
     eprintln!("Sum b3");
-    let mut b3_pts_total = [F::ZERO; D];
-    b3.for_each_control_point(&mut sum_pts(&mut b3_pts_total));
+    let b3_pts_total = b3
+        .control_points()
+        .iter()
+        .fold([F::ZERO; D], |acc, p| vector::add(acc, p, F::ONE));
     assert_near_equal_scale(&b_pts_total, &b3_pts_total, 3.0_f32);
 
     eprintln!("Sum b1");
-    let mut b1_pts_total = [F::ZERO; D];
-    b1.for_each_control_point(&mut sum_pts(&mut b1_pts_total));
+    let b1_pts_total = b1
+        .control_points()
+        .iter()
+        .fold([F::ZERO; D], |acc, p| vector::add(acc, p, F::ONE));
     assert_near_equal_scale(&b_pts_total, &b1_pts_total, 1.0_f32);
 
     eprintln!("Compare b and b1");
@@ -57,9 +56,9 @@ fn test_bezier_ops<
 
     eprintln!("b -= b1, compare with zero");
     b1.map_pts(&|i, p| vector::sub(pts[i], p, F::ONE));
-    b1.for_each_control_point(&mut |_, p| {
+    for p in b1.control_points() {
         assert_near_equal(p, &[F::ZERO; D]);
-    });
+    }
 }
 
 fn test_ops<

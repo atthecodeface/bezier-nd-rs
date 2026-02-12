@@ -1,8 +1,21 @@
-use bezier_nd::{bernstein_fns, BezierEval, BezierMinMax, BezierSection, BezierSplit};
+use bezier_nd::{bernstein_fns, BezierEval, BezierSection, BezierSplit};
 
 use bezier_nd::Float;
 use bezier_nd::{Bezier, Num};
 use geo_nd::{matrix, vector};
+
+#[track_caller]
+pub fn bezier_eq<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bez: &B, v: &[[F; D]]) {
+    let c = bez.control_points();
+    assert_eq!(
+        c.len(),
+        v.len(),
+        "Expected same number of control points for beziers to be equal"
+    );
+    for (p, v) in c.iter().zip(v.iter()) {
+        super::vec_eq(p, v);
+    }
+}
 
 #[track_caller]
 /// Find the maximum distance between `b0` for t0<=t<=t1 and `b1` for 0<=t<=1 in 'steps' intervals

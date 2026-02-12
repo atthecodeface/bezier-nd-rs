@@ -19,9 +19,7 @@ fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 
     assert_eq!(bezier.degree(), 1);
     assert_eq!(bezier.num_control_points(), 2);
-    for i in 0..bezier.num_control_points() {
-        assert_eq!(bezier.control_point(i), &pts[i]);
-    }
+    utils::bezier_eq(bezier, &pts);
 
     assert_eq!(bezier.closeness_sq_to_line(), F::ZERO);
     assert_eq!(bezier.dc_sq_from_line(), F::ZERO);

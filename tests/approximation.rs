@@ -33,7 +33,7 @@ fn test_approximation_closeness_sq<
     assert_eq!(a.num_control_points(), bezier.num_control_points());
     assert_eq!(a.degree(), bezier.degree());
     for i in 0..a.num_control_points() {
-        assert_eq!(a.control_point(i), bezier.control_point(i));
+        assert_eq!(a.control_points()[i], bezier.control_points()[i]);
     }
     assert!(a.closeness_sq_to_line() > bezier.closeness_sq_to_line());
     assert!(
@@ -64,7 +64,7 @@ fn test_approximation_closeness_sq<
         assert_eq!(a.points()[i + 1], *p1);
     }
 
-    let mut a_pt = *a.endpoints().0;
+    let mut a_pt = a.endpoints().0;
     let mut b_pt = a_pt;
     let steps = 1000;
     let dt = 1.0 / ((steps + 1) as f32);
@@ -117,8 +117,6 @@ fn test_approximation_closeness_sq<
             "Distance between point at {t1} {p1:?} and actual bezier at t {bp:?} is too big {d_sq}"
         );
     }
-
-    a.for_each_control_point(&mut |n, pt| assert_eq!(bezier.control_point(n), pt));
 }
 
 #[test]

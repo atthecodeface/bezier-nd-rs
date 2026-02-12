@@ -1,7 +1,7 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierDistance, BezierElevate,
-    BezierEval, BezierMinMax, BezierOps, BezierSection, BezierSplit, Float,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierOps,
+    BezierSection, BezierSplit,
 };
 use geo_nd::{matrix, vector};
 
@@ -12,24 +12,50 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
         bernstein_fns::values::derivative_at(self, t)
     }
-    fn endpoints(&self) -> (&[F; D], &[F; D]) {
-        (self.first().unwrap(), self.last().unwrap())
-    }
     fn closeness_sq_to_line(&self) -> F {
-        self.dc_sq_from_line()
+        metrics::dc_sq_from_line(self)
     }
     fn dc_sq_from_line(&self) -> F {
         metrics::dc_sq_from_line(self)
     }
+    fn control_points(&self) -> &[[F; D]] {
+        self
+    }
 
-    fn num_control_points(&self) -> usize {
-        self.len()
+    fn t_coords_at_min_max(
+        &self,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        match self.len() {
+            1 => (
+                give_min.then_some((F::ZERO, self[0][pt_index])),
+                give_max.then_some((F::ZERO, self[0][pt_index])),
+            ),
+            2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&self[0..2])
+                .unwrap()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
+                .unwrap()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
+                .unwrap()
+                .t_coords_at_min_max(pt_index, give_min, give_max),
+            _ => (None, None),
+        }
     }
-    fn control_point(&self, n: usize) -> &[F; D] {
-        &self[n]
+
+    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
+        metrics::t_dsq_closest_to_pt(&self, pt)
     }
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &[F; D])) {
-        self.iter().enumerate().for_each(|(i, pt)| map(i, pt))
+
+    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
+        if self.len() == 0 {
+            F::ZERO
+        } else {
+            metrics::est_min_distance_sq_to(self, pt)
+        }
     }
 }
 
@@ -65,38 +91,8 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for Vec<[F; D]> {
             *s = map(i, s);
         }
     }
-}
-
-impl<F: Num, const D: usize> BezierMinMax<F> for Vec<[F; D]> {
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)> {
-        match self.len() {
-            1 => Some((F::ZERO, self[0][pt_index])),
-            2 => <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&self[0..2])
-                .unwrap()
-                .t_coord_at_min_max(use_max, pt_index),
-            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
-                .unwrap()
-                .t_coord_at_min_max(use_max, pt_index),
-            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
-                .unwrap()
-                .t_coord_at_min_max(use_max, pt_index),
-            _ => None,
-        }
-    }
-}
-
-// Note this requires *Float*
-impl<F: Float, const D: usize> BezierDistance<F, [F; D]> for Vec<[F; D]> {
-    fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
-        metrics::t_dsq_closest_to_pt(&self, pt)
-    }
-
-    fn est_min_distance_sq_to(&self, pt: &[F; D]) -> F {
-        if self.len() == 0 {
-            F::ZERO
-        } else {
-            metrics::est_min_distance_sq_to(self, pt)
-        }
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+        map(self)
     }
 }
 

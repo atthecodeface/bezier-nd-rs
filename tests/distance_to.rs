@@ -1,9 +1,6 @@
 //a Imports
-use bezier_nd::{
-    Approximation, BasicBezier, Bezier, BezierDistance, BezierEval, BezierMinMax, BezierND,
-    BezierSplit,
-};
 use bezier_nd::Float;
+use bezier_nd::{Approximation, BasicBezier, Bezier, BezierEval, BezierND, BezierSplit};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
@@ -11,30 +8,25 @@ use rand::prelude::*;
 fn test_distance_to<
     F: Float,
     const D: usize,
-    B: BezierEval<F, [F; D]>
-        + BezierDistance<F, [F; D]>
-        + BezierMinMax<F>
-        + BezierSplit
-        + Clone
-        + std::fmt::Debug,
+    B: BezierEval<F, [F; D]> + BezierSplit + Clone + std::fmt::Debug,
 >(
     bezier: &B,
     test_pts: &[[F; D]],
 ) {
     let mut bbox_min = [F::ZERO; D];
     let mut bbox_max = [F::ZERO; D];
-    bezier.for_each_control_point(&mut |i, pt| {
+    for (i, pt) in bezier.control_points().iter().enumerate() {
         if i == 0 {
             vector::set_bbox(&[*pt], &mut bbox_min, &mut bbox_max);
         } else {
             vector::update_bbox(&[*pt], &mut bbox_min, &mut bbox_max);
         }
-    });
+    }
     for n in 0..D {
-        if let Some((_t, c)) = bezier.t_coord_at_min_max(true, n) {
+        if let (None, Some((_t, c))) = bezier.t_coords_at_min_max(n, false, true) {
             bbox_max[n] = c;
         }
-        if let Some((_t, c)) = bezier.t_coord_at_min_max(false, n) {
+        if let (Some((_t, c)), None) = bezier.t_coords_at_min_max(n, true, false) {
             bbox_min[n] = c;
         }
     }
@@ -95,7 +87,7 @@ fn test_bezier<
     D: Distribution<f32>,
     const N: usize,
     const FD: usize,
-    B: BasicBezier<F, [F; FD]> + BezierDistance<F, [F; FD]> + BezierSplit + Clone + std::fmt::Debug,
+    B: BasicBezier<F, [F; FD]> + BezierSplit + Clone + std::fmt::Debug,
     M: Fn([[F; FD]; N]) -> B,
 >(
     rng: &mut R,

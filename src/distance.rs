@@ -1,5 +1,5 @@
 //a Imports
-use crate::{BezierDistance, BezierEval, BezierIntoIterator, Float};
+use crate::{BezierEval, BezierIntoIterator, Float};
 
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///

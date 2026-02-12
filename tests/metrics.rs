@@ -51,8 +51,6 @@ fn check_metrics_of_beziers<
 
     let mut b0_relative_to_line = b0.clone();
     let (l0, l1) = b0.endpoints();
-    let l0 = *l0;
-    let l1 = *l1;
     b0_relative_to_line.map_pts(&|n, pt| {
         let t = (n as f32) / (b0.degree() as f32);
         vector::sum_scaled(&[*pt, l0, l1], &[1.0, t - 1.0, -t])

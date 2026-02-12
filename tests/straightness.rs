@@ -90,8 +90,8 @@ fn test_straight_as() {
     let mut b: Bezier<_, _> = [p0, p1].into();
     let sb: Bezier<_, _> = [sp0, sp1].into();
     b.scale(10.);
-    utils::vec_eq(b.control_point(0), sb.control_point(0));
-    utils::vec_eq(b.control_point(1), sb.control_point(1));
+    utils::bezier_eq(&b, sb.control_points());
+    utils::bezier_eq(&sb, b.control_points());
 
     bezier_straight_as(&[p0, p1].into(), 1E-10);
     bezier_straight_as(&[p0, p2].into(), 1E-10);
@@ -124,10 +124,8 @@ fn test_straight_as() {
     let sb = [sp0, sp1, sp2, sp4];
 
     b.scale(10.);
-    utils::vec_eq(b.control_point(0), sb.control_point(0));
-    utils::vec_eq(b.control_point(1), sb.control_point(1));
-    utils::vec_eq(b.control_point(2), sb.control_point(2));
-    utils::vec_eq(b.control_point(3), sb.control_point(3));
+    utils::bezier_eq(&b, sb.control_points());
+    utils::bezier_eq(&sb, b.control_points());
 
     bezier_straight_as(&[p0, p1, p2, p4].into(), 0.6);
     bezier_straight_as(&[sp0, sp1, sp2, sp4].into(), 6.0);

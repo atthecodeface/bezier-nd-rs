@@ -1,6 +1,22 @@
 use crate::BezierBuilder;
 use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
 
+/// Blah
+pub enum BezierReduction {
+    LeastSquares,
+    UniformT,
+    Preserving(u8),
+}
+
+/// Blah
+pub enum BezierMetric {
+    SumDistanceSquared(usize),
+    MaxControl,
+    SumControl,
+    MaxControlSquared,
+    SumControlSquared,
+}
+
 /// A trait that is the basic requirement for the 't' parameter for Beziers; it
 /// requires basic arithmetic operations, and conversion from f32.
 ///
@@ -58,28 +74,12 @@ where
     }
 }
 
-/// A set of traits that modify the control points of a Bezier
-pub trait BezierOps<F: Num, P: Clone> {
-    /// Add this Bezier to another
-    fn add(&mut self, other: &Self) -> bool;
-
-    /// Subtract another Bezier from this
-    fn sub(&mut self, other: &Self) -> bool;
-
-    /// Scale the points
-    fn scale(&mut self, scale: F);
-
-    /// Map the points
-    fn map_pts(&mut self, map: &dyn Fn(usize, &P) -> P);
-}
-
 pub trait BasicBezier<F: Num, P: Clone>:
     BezierEval<F, P>
     + BezierOps<F, P>
     + BezierSplit
     + BezierSection<F>
     + BezierIntoIterator<F, P>
-    + BezierMinMax<F>
     + Clone
 {
 }
@@ -90,7 +90,6 @@ impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
         + BezierSplit
         + BezierSection<F>
         + BezierIntoIterator<F, P>
-        + BezierMinMax<F>
         + Clone
 {
 }
@@ -103,7 +102,14 @@ impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
 /// It also provides access to the points and first derivative at a parameter 't' of the Bezier,
 /// given 0<=t<=1
 ///
-/// This is explicitly dyn-compatible.
+/// Precise calculation of distances and parameters of `t` relative to points are not always analytically feasible for higher degree Beziers, and so some methods return
+/// Option for these precise calculations. Some additional methods are then provided for cheaper estimations, allowing (for example) a Bezier to be refined (and split, reduced etc) *only* if the point
+/// *might* be closer than a specific distance
+///
+/// An *estimate* of the bounding box can always be obtained by: finding the endpoints of the Bezier, and finding
+/// the closeness of the Bezier to a line segment; find the BBox of the endpoints, and expand by the closeness.
+///
+/// This is explicitly dyn-compatible, and supported by `Approximation`
 pub trait BezierEval<F: Num, P: Clone> {
     /// Evaluate the point on the Bezier at parameter 't'
     fn point_at(&self, t: F) -> P;
@@ -112,8 +118,37 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// value and a scale factor (i.e. the actual deriviative is F*P)
     fn derivative_at(&self, t: F) -> (F, P);
 
-    /// Borrow the endpoints of the Bezier
-    fn endpoints(&self) -> (&P, &P);
+    /// Get the endpoints of the Bezier
+    fn endpoints(&self) -> (P, P) {
+        (
+            self.control_points().first().unwrap().clone(),
+            self.control_points().last().unwrap().clone(),
+        )
+    }
+
+    /// Borrow the control points
+    ///
+    /// The endpoints are at n=0 and n=self.degree()
+    fn control_points(&self) -> &[P];
+
+    /// Return the number of control points in the Bezier
+    ///
+    /// The minimum number of control points is 2 (the end points); further control
+    /// points increase the degree of the Bezier.
+    fn num_control_points(&self) -> usize {
+        self.control_points().len()
+    }
+
+    /// Returns degree of the Bezier.
+    ///
+    /// This is one fewer than the number of control points on the Bezier, and refers
+    /// to the largest power of the parameter 't' in the Bezier evaluation.
+    ///
+    /// Hence cubic Beziers return 3, quadratic 2, and lines return 1
+    #[inline]
+    fn degree(&self) -> usize {
+        self.num_control_points() - 1
+    }
 
     /// Find how close the Bezier is to a line segment with the same endpoints
     ///
@@ -157,42 +192,6 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// `t` to a point as the original Bezier, to within the closeness squared
     fn dc_sq_from_line(&self) -> F;
 
-    /// Return the number of control points in the Bezier
-    ///
-    /// The minimum number of control points is 2 (the end points); further control
-    /// points increase the degree of the Bezier.
-    fn num_control_points(&self) -> usize;
-
-    /// Borrow the nth control point (in 0..num_control_points())
-    ///
-    /// The endpoints are at n=0 and n=self.degree()
-    fn control_point(&self, n: usize) -> &P;
-
-    /// Returns degree of the Bezier.
-    ///
-    /// This is one fewer than the number of control points on the Bezier, and refers
-    /// to the largest power of the parameter 't' in the Bezier evaluation.
-    ///
-    /// Hence cubic Beziers return 3, quadratic 2, and lines return 1
-    #[inline]
-    fn degree(&self) -> usize {
-        self.num_control_points() - 1
-    }
-
-    /// Apply a mutable closure to the control points
-    fn for_each_control_point(&self, map: &mut dyn FnMut(usize, &P));
-}
-
-/// A trait that provides for measurement of distance from a point to the Bezier, and closest
-/// point on a Bezier to an actual point.
-///
-/// This is dyn-compatible.
-///
-/// Precise calculation is not analytically feasible for higher degree Beziers, and so has methods that return
-/// Option. A method is included to help determine if a point is potentially closer than a specific
-/// distance, which allows that Bezier to be refined (and split, reduced etc) *only* if the point
-/// *might* b closer than a specific distance
-pub trait BezierDistance<F: Num, P> {
     /// A value of t, 0<=t<=1, for which the distance between the point P and the Bezier at that parameter t
     /// (point Q) is D, and where D is the minimum distance between the point B and any point on
     /// the Bezier with 0<=t<=1.
@@ -247,26 +246,50 @@ pub trait BezierDistance<F: Num, P> {
     fn est_min_distance_sq_to(&self, _p: &P) -> F {
         F::ZERO
     }
-}
 
-/// A trait that provides for estimating and calcuating the bounding box for a Bezier.
-///
-/// This is dyn-compatible.
-///
-/// Precise calculation is not analytically feasible for higher degree Beziers, and so the method returns
-/// Option.
-///
-/// An *estimate* of the bounding box can always be obtained by finding the endpoints of the Bezier, and finding
-/// the closeness of the Bezier to a line segment; find the BBox of the endpoints, and expand by the closeness.
-pub trait BezierMinMax<F: Num> {
-    /// Find a value of t, 0<=t<=1 and the associated point coordinate value where the point coordinate
-    /// value is the minimum (or maximum if 'use_max' is true).
+    /// Find the values of t, 0<=t<=1 and the associated point coordinate values where the point coordinate
+    /// values are at a minimum and maximum (return None for min if give_min is false, and None for max if give_max is false)
+    ///
+    /// If *only* the minimum is required then `give_max` should be false; this might enable an optimized implementation which
+    /// does not bother to calculate the maximum value. Similarly if the maximum only is required.
     ///
     /// This enables finding the bounding box of a Bezier by requesting the minimum and maximum for each
     /// index in the dimensions of the point coordinate space.
     ///
     /// The value may not be analytically calculatable, in which case None can be returned.
-    fn t_coord_at_min_max(&self, use_max: bool, pt_index: usize) -> Option<(F, F)>;
+    fn t_coords_at_min_max(
+        &self,
+        _pt_index: usize,
+        _give_min: bool,
+        _give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>) {
+        (None, None)
+    }
+}
+
+/// A set of traits that modify the control points of a Bezier
+///
+/// Not supported by `Approximation`
+pub trait BezierOps<F: Num, P: Clone> {
+    /// Add this Bezier to another
+    fn add(&mut self, other: &Self) -> bool;
+
+    /// Subtract another Bezier from this
+    fn sub(&mut self, other: &Self) -> bool;
+
+    /// Scale the points
+    fn scale(&mut self, scale: F);
+
+    /// Map the points one at a time
+    fn map_pts(&mut self, map: &dyn Fn(usize, &P) -> P);
+
+    /// Map the points
+    ///
+    /// The mapping function takes a mutable slice of all the control points,
+    /// and returns `true` if a modification was made
+    ///
+    /// Returns the value returned by `map`
+    fn map_all_pts(&mut self, map: &dyn Fn(&mut [P]) -> bool) -> bool;
 }
 
 /// A trait provided by a Bezier to allow it to be split into two
@@ -280,6 +303,8 @@ pub trait BezierMinMax<F: Num> {
 /// The [BezierIntoIterator] trait provides methods to iterate over a Bezier
 /// curve as points or lines; it is implemented for any type that provides
 /// *this* trait [BezierSplit] and [BezierEval] (plus [Clone])
+///
+/// This is not dyn-compatible, and not supported by `Approximation`
 pub trait BezierSplit: Sized {
     /// Bisect the Bezier into two of the same degree
     fn split(&self) -> (Self, Self);
@@ -290,13 +315,132 @@ pub trait BezierSplit: Sized {
 ///
 /// This is separate from bisection, as to split at an arbitrary point requires
 /// a generic 'F'
+///
+/// This is not dyn-compatible, and not supported by `Approximation`
 pub trait BezierSection<F: Num>: Sized {
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self);
 
     /// Generate the Bezier with parameter t' where 0<=t'<=1 provides the same points
-    /// as the original Bezier with t0<=t<=1
+    /// as the original Bezier with t0<=t<=t1
+    ///
+    /// Note that t0 and t1 can be outside of the range `[0,1]`
     fn section(&self, t0: F, t1: F) -> Self;
+}
+
+/// Implementing BezierIntoIterator provides a Bezier with the ability
+/// to be iterated as a list of points or line segments, where all the points
+/// on the returned (potentially implied) lines are within a 'closeness_sq' of
+/// the Bezier
+///
+/// This trait is frequently used to, for example, render a Bezier as lines which
+/// can then be drawn on a canvas; if the closeness_sq is set to be half the width
+/// of a pixel then the Bezier is rendered to within a pixel (which is the best possible approximation).
+///
+/// There is a *blanket* implementation of this trait for any Bezier that supports
+/// the required traits of [BezierSplit], [BezierEval] and [Clone]
+///
+/// This is not dyn-compatible
+///
+/// This is supported by `Approximation`
+pub trait BezierIntoIterator<F, P>
+where
+    F: crate::Num,
+    P: Clone,
+{
+    /// Return an iterator of line segments represented by a pair of points,
+    /// where the line segments approximate the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)>;
+
+    /// Return an iterator of points,
+    /// where the points are the start/end points of line segments that approximate
+    ///  the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    fn as_points(&self, closeness_sq: F) -> impl Iterator<Item = P> {
+        BezierPointIter::new(self.as_lines(closeness_sq))
+    }
+
+    /// Return an iterator of line segments represented by a pair of points,
+    /// where the line segments approximate the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The line points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    ///
+    /// Do not attempt to preserve the closeness of points on the individual line
+    /// segments map linearly with the t values they associate with to within the
+    /// closeness_sq of the Bezier (but they will to a different t value)
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
+
+    /// Return an iterator of points,
+    /// where the points are the start/end points of line segments that approximate
+    ///  the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    ///
+    /// Do not attempt to preserve the closeness of points on the individual line
+    /// segments map linearly with the t values they associate with to within the
+    /// closeness_sq of the Bezier (but they will to a different t value)
+    fn as_t_points(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
+        BezierPointTIter::new(self.as_t_lines(closeness_sq))
+    }
+
+    /// Return an iterator of line segments represented by a pair of points,
+    /// where the line segments approximate the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The line points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    ///
+    /// Preserve the mapping of 't' such that the point on the original Bezier at
+    /// a parameter `t` will be within closeness_sq of the point on the line segment
+    /// provided here with a linear `t` mapping given its endpoints
+    ///
+    /// This may require more line segments to be returned than a regular as_t_lines iterator would return
+    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
+
+    /// Return an iterator of points,
+    /// where the points are the start/end points of line segments that approximate
+    ///  the Bezier such that all points
+    /// on the Bezier are approximated by points on the line segments within a
+    /// distance squared of 'closeness_sq'
+    ///
+    /// The points are indicated by the actual point value and the parameter
+    /// 't' of the original Bezier that the point is from
+    ///
+    /// Preserve the mapping of 't' such that the point on the original Bezier at
+    /// a parameter `t` will be within closeness_sq of the point on the line segment
+    /// provided here with a linear `t` mapping given its endpoints
+    ///
+    /// This may require more points to be returned than a regular as_t_points iterator would return
+    fn as_t_points_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
+        BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
+    }
+}
+
+impl<F, B, P> BezierIntoIterator<F, P> for B
+where
+    F: crate::Num,
+    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
+    P: Clone,
+{
+    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)> {
+        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
+        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
+    }
+    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
+        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+    }
 }
 
 /// A trait provided by a Bezier to allow it to be elevated with unchanged locus
@@ -452,128 +596,6 @@ pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
     /// A Bezier of degree 3 or lower (a cubic, quadratic or linear Bezier) should return None
     fn boxed_reduce_to_cubic(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
         None
-    }
-}
-
-/// Implementing BezierIntoIterator provides a Bezier with the ability
-/// to be iterated as a list of points or line segments, where all the points
-/// on the returned (potentially implied) lines are within a 'closeness_sq' of
-/// the Bezier
-///
-/// This trait is frequently used to, for example, render a Bezier as lines which
-/// can then be drawn on a canvas; if the closeness_sq is set to be half the width
-/// of a pixel then the Bezier is rendered to within a pixel (which is the best possible approximation).
-///
-/// There is a *blanket* implementation of this trait for any Bezier that supports
-/// the required traits of [BezierSplit], [BezierEval] and [Clone]
-pub trait BezierIntoIterator<F, P>
-where
-    F: crate::Num,
-    P: Clone,
-{
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)>;
-
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    fn as_points(&self, closeness_sq: F) -> impl Iterator<Item = P> {
-        BezierPointIter::new(self.as_lines(closeness_sq))
-    }
-
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The line points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Do not attempt to preserve the closeness of points on the individual line
-    /// segments map linearly with the t values they associate with to within the
-    /// closeness_sq of the Bezier (but they will to a different t value)
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
-
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Do not attempt to preserve the closeness of points on the individual line
-    /// segments map linearly with the t values they associate with to within the
-    /// closeness_sq of the Bezier (but they will to a different t value)
-    fn as_t_points(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
-        BezierPointTIter::new(self.as_t_lines(closeness_sq))
-    }
-
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The line points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Preserve the mapping of 't' such that the point on the original Bezier at
-    /// a parameter `t` will be within closeness_sq of the point on the line segment
-    /// provided here with a linear `t` mapping given its endpoints
-    ///
-    /// This may require more line segments to be returned than a regular as_t_lines iterator would return
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
-
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Preserve the mapping of 't' such that the point on the original Bezier at
-    /// a parameter `t` will be within closeness_sq of the point on the line segment
-    /// provided here with a linear `t` mapping given its endpoints
-    ///
-    /// This may require more points to be returned than a regular as_t_points iterator would return
-    fn as_t_points_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
-        BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
-    }
-
-    // Calculates the length of the Bezier when it is rendered down
-    // to the given a straightness
-    //
-    // `straightness` is independent of the length of the Bezier
-    //fn length(&self, straightness: F) -> F {
-    //    self.as_lines(straightness * straightness)
-    //        .fold(F::ZERO, |acc, (p0, p1)| {
-    //            acc + geo_nd::vector::distance(&p0, &p1)
-    //        })
-    //}
-}
-
-impl<F, B, P> BezierIntoIterator<F, P> for B
-where
-    F: crate::Num,
-    B: crate::BezierSplit + crate::BezierEval<F, P> + Clone,
-    P: Clone,
-{
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
     }
 }
 
