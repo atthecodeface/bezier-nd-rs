@@ -1,6 +1,6 @@
 //! A collection of functions for use with Bernstein polynomial Beziers
 
-use crate::constants::BINOMIALS_U;
+use crate::constants::BINOMIAL_N_I;
 use crate::{Float, Num};
 use geo_nd::vector;
 
@@ -13,16 +13,16 @@ use geo_nd::vector;
 #[track_caller]
 pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
     assert!(
-        degree < BINOMIALS_U.len(),
+        degree < BINOMIAL_N_I.len(),
         "Maximum degree of Bezier supported is {}",
-        BINOMIALS_U.len()
+        BINOMIAL_N_I.len()
     );
     let u = F::ONE - t;
-    let coeffs = BINOMIALS_U[degree];
+    let coeffs = BINOMIAL_N_I[degree];
     (0..=degree).map(move |i| {
         (
             i,
-            t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap(),
+            t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_u64(coeffs[1 + i]).unwrap(),
         )
     })
 }
@@ -36,14 +36,14 @@ pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (
 #[inline]
 pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
     assert!(
-        degree < BINOMIALS_U.len(),
+        degree < BINOMIAL_N_I.len(),
         "Maximum degree of Bezier supported is {}",
-        BINOMIALS_U.len()
+        BINOMIAL_N_I.len()
     );
     let u = F::ONE - t;
-    let coeffs = BINOMIALS_U[degree];
+    let coeffs = BINOMIAL_N_I[degree];
     (0..=degree).map(move |i| {
-        let mut x = F::from_usize(coeffs[1 + i]).unwrap();
+        let mut x = F::from_u64(coeffs[1 + i]).unwrap();
         for _ in 0..i {
             x *= t;
         }
@@ -171,14 +171,14 @@ fn test_bernstein_dt_coeffs() {
 #[track_caller]
 pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
     assert!(
-        degree < BINOMIALS_U.len(),
+        degree < BINOMIAL_N_I.len(),
         "Maximum degree of Bezier supported is {}",
-        BINOMIALS_U.len()
+        BINOMIAL_N_I.len()
     );
 
     let u = F::one() - t;
-    let coeffs = BINOMIALS_U[degree];
-    t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_usize(coeffs[1 + i]).unwrap()
+    let coeffs = BINOMIAL_N_I[degree];
+    t.powi(i as i32) * u.powi((degree - i) as i32) * F::from_u64(coeffs[1 + i]).unwrap()
 }
 
 /// Calculate the control points of the nth derivative of a Bernstein Bezier
@@ -203,8 +203,8 @@ pub fn nth_derivative<F: Num, const D: usize>(pts: &[[F; D]], n: usize, d_pts: &
     }
     for (i, sp) in d_pts.iter_mut().take(degree + 1 - n).enumerate() {
         let mut m1_n_positive = (n & 1) == 0;
-        for (c, p) in BINOMIALS_U[n][1..].iter().zip(pts[i..].iter()) {
-            let mut c = F::from_usize(*c).unwrap();
+        for (c, p) in BINOMIAL_N_I[n][1..].iter().zip(pts[i..].iter()) {
+            let mut c = F::from_u64(*c).unwrap();
             if !m1_n_positive {
                 c = -c;
             }

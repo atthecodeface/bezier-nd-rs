@@ -116,7 +116,7 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 2] {
             *s = map(i, s);
         }
     }
-    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+    fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [[F; D]]) -> bool) -> bool {
         map(self)
     }
 }

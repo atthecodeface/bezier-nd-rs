@@ -3,7 +3,7 @@
 /// i.e. (n i) is in `BINOMIALS[n][i+1]`
 ///
 /// As a check, (6 2) = 6!/(2!.4!) = 6*5/2 = 15 = BINOMIALS\[6\]\[2+1\]
-pub const BINOMIALS_U: &[&[usize]] = &[
+pub const BINOMIAL_N_I: &[&[u64]] = &[
     &[1, 1],
     &[2, 1, 1],
     &[4, 1, 2, 1],

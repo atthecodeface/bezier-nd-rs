@@ -1,8 +1,8 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduction,
-    BezierSplit,
+    bernstein_fns, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
+    BezierReduction, BezierSplit,
 };
 
 use geo_nd::{matrix, vector};
@@ -100,7 +100,7 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for Vec<[F; D]> {
             *s = map(i, s);
         }
     }
-    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+    fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [[F; D]]) -> bool) -> bool {
         map(self)
     }
 }
@@ -177,6 +177,81 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
             }
             bezier
         }
+    }
+}
+
+impl<F, const D: usize> BezierReduce<F, [F; D]> for Vec<[F; D]>
+where
+    F: Num,
+{
+    type Reduced = Self;
+    type Quadratic = Self;
+    type Cubic = Self;
+
+    fn reduce(&self, method: BezierReduction) -> Option<Self> {
+        match self.len() {
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
+                .unwrap()
+                .reduce(method)
+                .map(|a| a.into()),
+            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
+                .unwrap()
+                .reduce(method)
+                .map(|a| a.into()),
+            _ => None,
+        }
+    }
+    fn can_reduce(&self, _method: BezierReduction) -> bool {
+        self.len() == 4 || self.len() == 3
+    }
+    fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
+        match self.len() {
+            3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
+                .unwrap()
+                .dc_sq_from_reduction(method),
+            4 => self.dc_sq_from_quadratic(),
+            _ => F::ZERO,
+        }
+    }
+
+    fn dc_sq_from_quadratic(&self) -> F {
+        if self.len() != 4 {
+            F::ZERO
+        } else {
+            let m_half = (-0.5_f32).into();
+            let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
+            let dc2_0 = vector::length_sq(&dv_0);
+            let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
+            let dc2_1 = vector::length_sq(&dv_1);
+            utils::max(dc2_0, dc2_1)
+        }
+    }
+
+    fn reduced_to_quadratic(&self) -> Option<Self> {
+        if self.len() != 4 {
+            None
+        } else {
+            Some(vec![
+                self[0],
+                vector::sum_scaled(
+                    self,
+                    &[
+                        (-0.25_f32).into(),
+                        0.75_f32.into(),
+                        0.75_f32.into(),
+                        (-0.25_f32).into(),
+                    ],
+                ),
+                self[3],
+            ])
+        }
+    }
+
+    fn dc_sq_from_cubic(&self) -> F {
+        todo!()
+    }
+    fn reduced_to_cubic(&self) -> Option<Self> {
+        None
     }
 }
 

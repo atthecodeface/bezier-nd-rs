@@ -312,7 +312,7 @@ pub trait BezierOps<F: Num, P: Clone> {
     /// and returns `true` if a modification was made
     ///
     /// Returns the value returned by `map`
-    fn map_all_pts(&mut self, map: &dyn Fn(&mut [P]) -> bool) -> bool;
+    fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [P]) -> bool) -> bool;
 }
 
 /// A trait provided by a Bezier to allow it to be split into two

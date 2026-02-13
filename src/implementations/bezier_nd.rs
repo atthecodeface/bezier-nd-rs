@@ -452,7 +452,7 @@ where
             *p = map(i, p);
         }
     }
-    fn map_all_pts(&mut self, map: &dyn Fn(&mut [[F; D]]) -> bool) -> bool {
+    fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [[F; D]]) -> bool) -> bool {
         map(&mut self.pts[0..self.degree + 1])
     }
 }

@@ -1,7 +1,10 @@
 mod utils;
 use bezier_nd::bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix;
 use bezier_nd::bignum::RationalN;
-use bezier_nd::{metrics, BezierEval, BezierND, BezierReduce, BezierReduction, BezierSplit, Num};
+use bezier_nd::{
+    metrics, BezierElevate, BezierEval, BezierMetric, BezierND, BezierReduce, BezierReduction,
+    BezierSplit, Num,
+};
 use geo_nd::{matrix, vector};
 use utils::*;
 
@@ -471,9 +474,68 @@ where
         bezier.can_reduce(BezierReduction::LeastSquares),
         "Must be able to reduce by least squares"
     );
+    let reduced = bezier
+        .reduce(BezierReduction::LeastSquares)
+        .expect("Must be able to reduce as it committed to it");
+    let r_vec: Vec<_> = reduced.control_points().into();
+    let e = r_vec.elevate_by_one().unwrap();
+    let d_sq = bezier
+        .metric_from(
+            Some(e.control_points()),
+            BezierMetric::SumDistanceSquared(1000),
+        )
+        .unwrap();
+    let m_sq = bezier
+        .metric_from(
+            Some(e.control_points()),
+            BezierMetric::MaxDistanceSquared(1000),
+        )
+        .unwrap();
+    for i in 0..r_vec.len() {
+        let mut mr = r_vec.clone();
+        if vector::length_sq(&mr[i]).is_unreliable_divisor() {
+            continue;
+        }
+        mr[i] = vector::scale(mr[i], 1.01_f32.into());
+        let me = mr.elevate_by_one().unwrap();
+        let md_sq = bezier
+            .metric_from(
+                Some(me.control_points()),
+                BezierMetric::SumDistanceSquared(1000),
+            )
+            .unwrap();
+        let mm_sq = bezier
+            .metric_from(
+                Some(me.control_points()),
+                BezierMetric::MaxDistanceSquared(1000),
+            )
+            .unwrap();
+        assert!(md_sq*1.01_f32.into() > d_sq, "Expected tweaking to least-squared reduction to have a larger total distance {md_sq} than the actual least squared reduction {d_sq}");
+        assert!(mm_sq*1.01_f32.into() > m_sq, "Expected tweaking to least-squared reduction to have a larger max distance {mm_sq} than the actual least squared reduction {m_sq}");
+    }
 }
 
 #[test]
 fn least_squares() {
-    test_reduce_least_squares(&[[1.0_f32], [1.0_f32], [1.0_f32]]);
+    let mut rng = utils::make_random("test_cubics_seed");
+    let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
+
+    // Cannot reduce linear beziers - nor points
+    for _ in 0..10 {
+        let mut pts = [[0.0_f32; 2]; 3];
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_least_squares(&pts);
+
+        let mut pts = [[0.0_f32; 2]; 4];
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_least_squares(&pts);
+
+        let mut pts = vec![[0.0_f32; 2]; 3];
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_least_squares(&pts);
+
+        let mut pts = vec![[0.0_f32; 2]; 4];
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_least_squares(&pts);
+    }
 }

@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use bezier_nd::Num;
+use bezier_nd::{BezierOps, Num};
 
 use rand::prelude::*;
 use rand_chacha::ChaCha8Rng;
@@ -52,6 +52,25 @@ pub fn set_random_point_array<R: Rng, F: Copy + From<f32>, D: Distribution<f32>,
     for p in pts.iter_mut() {
         *p = random_point(rng, dist);
     }
+}
+
+/// Update a Bezier with a set of random points
+pub fn set_random_bezier<
+    R: Rng,
+    F: Num,
+    D: Distribution<f32>,
+    const N: usize,
+    B: BezierOps<F, [F; N]>,
+>(
+    rng: &mut R,
+    dist: &D,
+    bezier: &mut B,
+) {
+    let mut f = |pts| {
+        set_random_point_array(rng, dist, pts);
+        true
+    };
+    bezier.map_all_pts(&mut f);
 }
 
 /// Make an array of random points
