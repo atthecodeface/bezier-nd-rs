@@ -1,7 +1,7 @@
 mod utils;
 use bezier_nd::bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix;
 use bezier_nd::bignum::RationalN;
-use bezier_nd::{metrics, BezierEval, BezierND, BezierSplit, Num};
+use bezier_nd::{metrics, BezierEval, BezierND, BezierReduce, BezierReduction, BezierSplit, Num};
 use geo_nd::{matrix, vector};
 use utils::*;
 
@@ -370,9 +370,15 @@ fn reduce_and_elevate_cubic_in_parts() {
             "Uniform reduction to quadratic has same point for t {t} in {ts:?}"
         );
     }
-    let dm = metrics::dm_sq_est(&b, &nb, 1000).unwrap().sqrt();
-    let df = metrics::df_sq(&b, &nb).unwrap().sqrt();
-    let dc = metrics::dc_sq(&b, &nb).unwrap().sqrt();
+    let dm = metrics::dm_sq_est(b.control_points(), nb.control_points(), 1000)
+        .unwrap()
+        .sqrt();
+    let df = metrics::df_sq(b.control_points(), nb.control_points())
+        .unwrap()
+        .sqrt();
+    let dc = metrics::dc_sq(b.control_points(), nb.control_points())
+        .unwrap()
+        .sqrt();
     eprintln!("Metrics for b/nb: dm {dm} < dc {dc} < df {df}");
     assert!(dm < dc);
     assert!(dc < df);
@@ -393,9 +399,15 @@ fn reduce_and_elevate_cubic_in_parts() {
     }
 
     let nb0 = b0.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
-    let dm0 = metrics::dm_sq_est(&b0, &nb0, 1000).unwrap().sqrt();
-    let df0 = metrics::df_sq(&b0, &nb0).unwrap().sqrt();
-    let dc0 = metrics::dc_sq(&b0, &nb0).unwrap().sqrt();
+    let dm0 = metrics::dm_sq_est(b0.control_points(), nb0.control_points(), 1000)
+        .unwrap()
+        .sqrt();
+    let df0 = metrics::df_sq(b0.control_points(), nb0.control_points())
+        .unwrap()
+        .sqrt();
+    let dc0 = metrics::dc_sq(b0.control_points(), nb0.control_points())
+        .unwrap()
+        .sqrt();
     eprintln!("Metrics for b0/nb0: dm {dm0} < dc {dc0} < df {df0}");
     assert!(dm0 < dc0);
     assert!(dc0 < df0);
@@ -448,4 +460,20 @@ fn reduce_and_elevate_cubic() {
         }
         t = t1;
     }
+}
+
+fn test_reduce_least_squares<F, const D: usize, B>(bezier: &B)
+where
+    B: BezierReduce<F, [F; D]>,
+    F: Num,
+{
+    assert!(
+        bezier.can_reduce(BezierReduction::LeastSquares),
+        "Must be able to reduce by least squares"
+    );
+}
+
+#[test]
+fn least_squares() {
+    test_reduce_least_squares(&[[1.0_f32], [1.0_f32], [1.0_f32]]);
 }

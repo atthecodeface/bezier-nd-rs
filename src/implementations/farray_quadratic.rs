@@ -1,8 +1,8 @@
 use crate::utils;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierLineIter, BezierLineTIter, BezierOps, BezierReduce, BezierReduction, BezierSplit,
-    BoxedBezier,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
+    BezierReduction, BezierSplit, BoxedBezier,
 };
 
 use crate::Num;
@@ -37,6 +37,13 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     }
     fn control_points(&self) -> &[[F; D]] {
         self
+    }
+    fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
+        if let Some(other) = other {
+            metrics::metric_from(self, other, metric)
+        } else {
+            Some(metrics::metric_from_line(self, metric))
+        }
     }
 
     fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {

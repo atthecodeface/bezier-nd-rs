@@ -27,6 +27,33 @@ pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (
     })
 }
 
+/// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
+///
+/// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
+///
+/// This requires F:Float as it uses 'powi', which is not available if only F:Num
+#[track_caller]
+#[inline]
+pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
+    assert!(
+        degree < BINOMIALS_U.len(),
+        "Maximum degree of Bezier supported is {}",
+        BINOMIALS_U.len()
+    );
+    let u = F::ONE - t;
+    let coeffs = BINOMIALS_U[degree];
+    (0..=degree).map(move |i| {
+        let mut x = F::from_usize(coeffs[1 + i]).unwrap();
+        for _ in 0..i {
+            x *= t;
+        }
+        for _ in i..degree {
+            x *= u;
+        }
+        (i, x)
+    })
+}
+
 /// Calculate the coefficient for the first derivative of the ith Bernstein polynomial at 't' for a given degree.
 ///
 /// This is (i^2)/n.B[i-1,n-1](t) - (n-i)^2/n.B[i,n-1](t)
@@ -133,33 +160,6 @@ fn test_bernstein_dt_coeffs() {
             );
         }
     }
-}
-
-/// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
-///
-/// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
-///
-/// This requires F:Float as it uses 'powi', which is not available if only F:Num
-#[track_caller]
-#[inline]
-pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
-    assert!(
-        degree < BINOMIALS_U.len(),
-        "Maximum degree of Bezier supported is {}",
-        BINOMIALS_U.len()
-    );
-    let u = F::ONE - t;
-    let coeffs = BINOMIALS_U[degree];
-    (0..=degree).map(move |i| {
-        let mut x = F::from_usize(coeffs[1 + i]).unwrap();
-        for _ in 0..i {
-            x *= t;
-        }
-        for _ in i..degree {
-            x *= u;
-        }
-        (i, x)
-    })
 }
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.

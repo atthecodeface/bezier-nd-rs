@@ -121,10 +121,9 @@
 //!
 //! i.e. the reduction chosen has the property that elevate(reduce) is the identity, which we need for a reduction
 
-use crate::{bernstein_fns, BezierBuilder, BezierConstruct};
-use crate::{metrics, BezierEval};
 use crate::{
-    BezierElevate, BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierOps, BezierReduce,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
     BezierReduction, BezierSplit, Num,
 };
 
@@ -347,11 +346,11 @@ where
     }
 
     fn closeness_sq_to_line(&self) -> F {
-        metrics::dc_sq_from_line(self)
+        metrics::dc_sq_from_line(&self.pts[0..=self.degree])
     }
 
     fn dc_sq_from_line(&self) -> F {
-        metrics::dc_sq_from_line(self)
+        metrics::dc_sq_from_line(&self.pts[0..=self.degree])
     }
 
     fn num_control_points(&self) -> usize {
@@ -364,6 +363,16 @@ where
 
     fn degree(&self) -> usize {
         self.degree
+    }
+    fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
+        if let Some(other) = other {
+            metrics::metric_from(&self.pts[0..=self.degree], other, metric)
+        } else {
+            Some(metrics::metric_from_line(
+                &self.pts[0..=self.degree],
+                metric,
+            ))
+        }
     }
 
     fn t_coords_at_min_max(

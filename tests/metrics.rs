@@ -27,10 +27,10 @@ fn check_metrics_of_beziers<
         b1.point_at(max_t)
     );
 
-    let dl_sq = metrics::dl_sq_est(b0, b1, 10000).unwrap();
-    let dm_sq = metrics::dm_sq_est(b0, b1, 10000).unwrap();
-    let dc_sq = metrics::dc_sq(b0, b1).unwrap();
-    let df_sq = metrics::df_sq(b0, b1).unwrap();
+    let dl_sq = metrics::dl_sq_est(b0.control_points(), b1.control_points(), 10000).unwrap();
+    let dm_sq = metrics::dm_sq_est(b0.control_points(), b1.control_points(), 10000).unwrap();
+    let dc_sq = metrics::dc_sq(b0.control_points(), b1.control_points()).unwrap();
+    let df_sq = metrics::df_sq(b0.control_points(), b1.control_points()).unwrap();
     eprintln!("b0-b1 l2 {dl_sq} dm {dm_sq} dc {dc_sq} df {df_sq}",);
 
     assert!(dl_sq <= dm_sq * 1.1, "dl_sq < dm_sq (with margin)");
@@ -41,7 +41,7 @@ fn check_metrics_of_beziers<
         "df_sq < N*dc_sq (with margin)"
     );
 
-    let df_sq = metrics::df_sq_from_line(b0);
+    let df_sq = metrics::df_sq_from_line(b0.control_points());
     let dc_sq = b0.closeness_sq_to_line();
     assert!(dc_sq <= df_sq * 1.01, "dc_sq < df_sq (with margin)");
     assert!(
@@ -56,8 +56,8 @@ fn check_metrics_of_beziers<
         vector::sum_scaled(&[*pt, l0, l1], &[1.0, t - 1.0, -t])
     });
     eprintln!("B0 {b0:?} relative {b0_relative_to_line:?}");
-    let f_sq = metrics::f_sq(&b0_relative_to_line);
-    let c_sq = metrics::c_sq(&b0_relative_to_line);
+    let f_sq = metrics::f_sq(&b0_relative_to_line.control_points());
+    let c_sq = metrics::c_sq(&b0_relative_to_line.control_points());
 
     utils::approx_eq(
         f_sq,

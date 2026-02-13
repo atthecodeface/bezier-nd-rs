@@ -1,9 +1,9 @@
 use crate::utils;
 use crate::Num;
 use crate::{
-    bernstein_fns, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierLineIter, BezierLineTIter, BezierOps, BezierReduce, BezierReduction, BezierSplit,
-    BoxedBezier,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
+    BezierReduction, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -50,6 +50,14 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
     fn control_points(&self) -> &[[F; D]] {
         self
     }
+    fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
+        if let Some(other) = other {
+            metrics::metric_from(self, other, metric)
+        } else {
+            Some(metrics::metric_from_line(self, metric))
+        }
+    }
+
     fn t_coords_at_min_max(
         &self,
         pt_index: usize,

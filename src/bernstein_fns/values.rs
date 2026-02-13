@@ -11,6 +11,16 @@ pub fn point_at<F: Num, const D: usize>(pts: &[[F; D]], t: F) -> [F; D] {
         })
 }
 
+/// Calculate the vector between points on two Bezier curves with the same `t`
+pub fn vector_between_at<F: Num, const D: usize>(pts: &[[F; D]], other: &[[F; D]], t: F) -> [F; D] {
+    let degree = pts.len() - 1;
+    super::basis_coeff_enum_num(degree, t)
+        .zip(pts.iter().zip(other.iter()))
+        .fold([F::ZERO; D], |acc, ((_i, coeff), (p, o))| {
+            vector::sum_scaled(&[acc, *p, *o], &[F::ONE, coeff, -coeff])
+        })
+}
+
 /// Calculate the first derivative of a Bernstein Bezier at parameter t
 pub fn derivative_at<F: Num, const D: usize>(pts: &[[F; D]], t: F) -> (F, [F; D]) {
     let degree = pts.len() - 1;

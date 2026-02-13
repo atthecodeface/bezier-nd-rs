@@ -1,8 +1,9 @@
 use crate::BezierBuilder;
-use crate::{BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter};
+use crate::{metrics, BezierPointIter, BezierPointTIter};
 
 /// How to reduce a Bezier curve
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BezierReduction {
     /// Reduce using LeastSquares
     LeastSquares,
@@ -16,8 +17,21 @@ pub enum BezierReduction {
 
 /// Which metric to return
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum BezierMetric {
-    /// Use sum of distance squared for N uniform `t` values
+    /// The maximum of the distance squared between each point
+    /// at the same t. This is a simple estimate using summation over `n` points.
+    ///
+    /// This is an approximation meant for testing/analysis - do not use if
+    /// performance is required!
+    /// Use maximim of distance squared for N uniform `t` values
+    MaxDistanceSquared(usize),
+
+    /// The integral of the distance squared between each point
+    /// at the same t. This is a simple estimate using summation over `n` points.
+    ///
+    /// This is an approximation meant for testing/analysis - do not use if
+    /// performance is required!
     SumDistanceSquared(usize),
 
     /// Maximum squared control point distance
@@ -192,6 +206,15 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// `t` to a point as the original Bezier, to within the closeness squared
     fn dc_sq_from_line(&self) -> F;
 
+    /// Calculate the chosen metric of this Bezier from another given by its control points
+    ///
+    /// If `other` is None then calculate the metric relative to a linear Bezier with the same endpoints
+    ///
+    /// Must return Some if `other` has the same degree as this Bezier; should return None if not
+    fn metric_from(&self, other: Option<&[P]>, metric: BezierMetric) -> Option<F> {
+        None
+    }
+
     /// A value of t, 0<=t<=1, for which the distance between the point P and the Bezier at that parameter t
     /// (point Q) is D, and where D is the minimum distance between the point B and any point on
     /// the Bezier with 0<=t<=1.
@@ -341,9 +364,9 @@ pub trait BezierSplit<F: Num>: Sized {
 /// This is not dyn-compatible
 ///
 /// This is supported by `Approximation`
-pub trait BezierFlatIterator<F, P>
+pub trait BezierFlatIterator<F, P>: BezierEval<F, P>
 where
-    F: crate::Num,
+    F: Num,
     P: Clone,
 {
     /// Return an iterator of line segments represented by a pair of points,

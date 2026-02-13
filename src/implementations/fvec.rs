@@ -1,7 +1,8 @@
 use crate::Num;
 use crate::{
     bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierOps, BezierReduction, BezierSplit,
+    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduction,
+    BezierSplit,
 };
 
 use geo_nd::{matrix, vector};
@@ -21,6 +22,13 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     }
     fn control_points(&self) -> &[[F; D]] {
         self
+    }
+    fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
+        if let Some(other) = other {
+            metrics::metric_from(self, other, metric)
+        } else {
+            Some(metrics::metric_from_line(self, metric))
+        }
     }
 
     fn t_coords_at_min_max(
