@@ -26,14 +26,6 @@ pub fn abs<F: Num>(a: F) -> F {
     }
 }
 
-pub fn min_or_max<F: Num>(use_max: bool, ta: F, a: F, tb: F, b: F) -> (F, F) {
-    if use_max == (a < b) {
-        (tb, b)
-    } else {
-        (ta, a)
-    }
-}
-
 pub fn min_tc<F: Num, T: Copy>((ta, a): (T, F), (tb, b): (T, F)) -> (T, F) {
     if a < b {
         (ta, a)

@@ -1,4 +1,4 @@
-use crate::{utils, BezierEval, BezierFlatIterator, BezierSplit, Float, Num};
+use crate::{utils, BezierEval, BezierFlatIterator, BezierMetric, BezierSplit, Float, Num};
 use geo_nd::vector;
 
 /// An approximation to a Bezier of potentially high degree,
@@ -257,6 +257,9 @@ where
     }
     fn degree(&self) -> usize {
         self.bezier.degree()
+    }
+    fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
+        self.bezier.metric_from(other, metric)
     }
     // Can probably do better
     fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {

@@ -13,16 +13,6 @@ pub fn c_sq<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
         .fold(F::ZERO, |acc, pt| utils::max(acc, vector::length_sq(pt)))
 }
 
-fn vector_transformed_by_f64s<F: Num, const D: usize>(bezier: &[[F; D]], m: &[f64]) -> [F; D] {
-    bezier
-        .iter()
-        .zip(m.iter())
-        .fold([F::ZERO; D], |acc, (p, c)| {
-            let c: F = (*c as f32).into();
-            vector::add(acc, p, c)
-        })
-}
-
 /// Maximum of the squared length of the control points mapped by the mapping matrix
 ///
 /// This provides a bound on the maximum distance (squared) from the origin of every point on the Bezier curve

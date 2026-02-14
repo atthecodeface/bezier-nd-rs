@@ -186,9 +186,7 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// `t` to a point as the original Bezier.
     ///
     /// This value must never be greater than that returned by dc_sq_from_line
-    fn closeness_sq_to_line(&self) -> F {
-        self.dc_sq_from_line()
-    }
+    fn closeness_sq_to_line(&self) -> F;
 
     /// Get the 'dc_sq' difference metric between the Bezier and a line segment with the same endpoints
     ///
@@ -213,9 +211,7 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// If `other` is None then calculate the metric relative to a linear Bezier with the same endpoints
     ///
     /// Must return Some if `other` has the same degree as this Bezier; should return None if not
-    fn metric_from(&self, _other: Option<&[P]>, _metric: BezierMetric) -> Option<F> {
-        None
-    }
+    fn metric_from(&self, other: Option<&[P]>, metric: BezierMetric) -> Option<F>;
 
     /// A value of t, 0<=t<=1, for which the distance between the point P and the Bezier at that parameter t
     /// (point Q) is D, and where D is the minimum distance between the point B and any point on
@@ -268,9 +264,7 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// = d_line_sq - dc_sq - 2D.dc < d_sq - d_line_sq
     ///
     /// So a value of d_line_sq - dc_sq can be returned, or 0. if this is negative.
-    fn est_min_distance_sq_to(&self, _p: &P) -> F {
-        F::ZERO
-    }
+    fn est_min_distance_sq_to(&self, pt: &P) -> F;
 
     /// Find the values of t, 0<=t<=1 and the associated point coordinate values where the point coordinate
     /// values are at a minimum and maximum (return None for min if give_min is false, and None for max if give_max is false)
@@ -284,12 +278,10 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// The value may not be analytically calculatable, in which case None can be returned.
     fn t_coords_at_min_max(
         &self,
-        _pt_index: usize,
-        _give_min: bool,
-        _give_max: bool,
-    ) -> (Option<(F, F)>, Option<(F, F)>) {
-        (None, None)
-    }
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
+    ) -> (Option<(F, F)>, Option<(F, F)>);
 }
 
 /// A set of traits that modify the control points of a Bezier
