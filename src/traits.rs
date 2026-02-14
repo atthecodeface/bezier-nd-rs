@@ -1,5 +1,5 @@
 use crate::BezierBuilder;
-use crate::{metrics, BezierPointIter, BezierPointTIter};
+use crate::{BezierPointIter, BezierPointTIter};
 
 /// How to reduce a Bezier curve
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -213,7 +213,7 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// If `other` is None then calculate the metric relative to a linear Bezier with the same endpoints
     ///
     /// Must return Some if `other` has the same degree as this Bezier; should return None if not
-    fn metric_from(&self, other: Option<&[P]>, metric: BezierMetric) -> Option<F> {
+    fn metric_from(&self, _other: Option<&[P]>, _metric: BezierMetric) -> Option<F> {
         None
     }
 

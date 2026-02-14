@@ -2,8 +2,7 @@ mod utils;
 use bezier_nd::bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix;
 use bezier_nd::bignum::RationalN;
 use bezier_nd::{
-    metrics, BezierElevate, BezierEval, BezierMetric, BezierND, BezierReduce, BezierReduction,
-    BezierSplit, Num,
+    BezierElevate, BezierEval, BezierMetric, BezierND, BezierReduce, BezierReduction, Num,
 };
 use geo_nd::{matrix, vector};
 use utils::*;

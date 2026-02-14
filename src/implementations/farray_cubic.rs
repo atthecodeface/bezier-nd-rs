@@ -325,12 +325,6 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     }
 
     fn dc_sq_from_quadratic(&self) -> F {
-        let m_half = (-0.5_f32).into();
-        let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
-        let dc2_0 = vector::length_sq(&dv_0);
-        let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
-        let dc2_1 = vector::length_sq(&dv_1);
-
         let sixth = (0.166666666_f32).into();
         let half = (0.5_f32).into();
         let dc2_0 = vector::length_sq(&vector::sum_scaled(self, &[sixth, half, half, -sixth]));

@@ -1,5 +1,5 @@
 mod utils;
-use bezier_nd::{bernstein_fns, bignum::RationalN, constants};
+use bezier_nd::{bernstein_fns, constants};
 
 /// Generate a Bernstein reduction matrix *to* degree (using ts provided)
 ///

@@ -9,7 +9,7 @@
 //! * [[f32;N];3] - Quadratic Bezier
 //! * [[f32;N];4] - Cubic Bezier
 
-use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit, Num};
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit};
 use geo_nd::vector;
 mod utils;
 

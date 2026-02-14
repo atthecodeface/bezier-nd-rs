@@ -17,7 +17,6 @@ use bezier_nd::BezierND;
 use bezier_nd::BezierSplit;
 mod utils;
 use geo_nd::vector;
-use utils::test_beziers_approx_eq;
 
 fn test_approximation_closeness_sq<
     B: BezierEval<f32, [f32; D]>
