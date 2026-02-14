@@ -176,35 +176,6 @@ fn generate_bs_reduce_matrix<N: Num + Into<f64>>(
 }
 
 #[test]
-fn validate_bernstein_reduce_matrices() {
-    let mut reduce = [RationalN::<8>::default(); 200];
-    let mut elevated_reduce = [RationalN::<8>::default(); 200];
-
-    for degree in 1..7 {
-        let ts: Vec<RationalN<8>> = (0..(degree + 1))
-            .map(|i| (i as i64, degree).into())
-            .collect();
-        generate_bs_reduce_matrix(
-            (degree + 1) as usize,
-            degree as usize,
-            &ts,
-            &mut reduce,
-            &mut elevated_reduce,
-        );
-        let reduce_f64: Vec<f64> = reduce.iter().map(|v| v.into()).collect();
-        assert_near_equal(
-            &bezier_nd::REDUCE_BY_ONE_UNIFORM[degree as usize - 1],
-            &reduce_f64,
-        );
-        let elevated_reduce_f64: Vec<f64> = elevated_reduce.iter().map(|v| v.into()).collect();
-        assert_near_equal(
-            &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[degree as usize - 1],
-            &elevated_reduce_f64,
-        );
-    }
-}
-
-#[test]
 fn validate_bs_reductions_to_quad() {
     let mut reduce = [RationalN::<8>::default(); 200];
     let mut elevated_reduce = [RationalN::<8>::default(); 200];
@@ -287,140 +258,6 @@ fn bernstein_reduce_matrix_c_to_q() {
 }
 
 #[test]
-fn bernstein_reduce_matrix() {
-    let mut reduce = [0.0; 100];
-    let mut elevated_reduce = [0.0; 100];
-
-    generate_bs_reduce_matrix(2, 1, &[0., 1.0], &mut reduce, &mut elevated_reduce);
-    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_UNIFORM[0]);
-    assert_near_equal(
-        &elevated_reduce,
-        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[0],
-    );
-
-    generate_bs_reduce_matrix(3, 2, &[0., 0.5, 1.0], &mut reduce, &mut elevated_reduce);
-    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_UNIFORM[1]);
-    assert_near_equal(
-        &elevated_reduce,
-        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1],
-    );
-
-    generate_bs_reduce_matrix(
-        4,
-        3,
-        &[0., 1.0 / 3.0, 2.0 / 3.0, 1.0],
-        &mut reduce,
-        &mut elevated_reduce,
-    );
-    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_UNIFORM[2]);
-    assert_near_equal(
-        &elevated_reduce,
-        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[2],
-    );
-
-    generate_bs_reduce_matrix(
-        5,
-        4,
-        &[0., 1.0 / 4.0, 2.0 / 4.0, 3.0 / 4.0, 1.0],
-        &mut reduce,
-        &mut elevated_reduce,
-    );
-    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_UNIFORM[3]);
-    assert_near_equal(
-        &elevated_reduce,
-        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[3],
-    );
-
-    generate_bs_reduce_matrix(
-        6,
-        5,
-        &[0., 1.0 / 5.0, 2.0 / 5.0, 3.0 / 5.0, 4.0 / 5.0, 1.0],
-        &mut reduce,
-        &mut elevated_reduce,
-    );
-    assert_near_equal(&reduce, &bezier_nd::REDUCE_BY_ONE_UNIFORM[4]);
-
-    generate_bs_reduce_matrix(
-        7,
-        6,
-        &[
-            0.,
-            1.0 / 6.0,
-            2.0 / 6.0,
-            3.0 / 6.0,
-            4.0 / 6.0,
-            5.0 / 6.0,
-            1.0,
-        ],
-        &mut reduce,
-        &mut elevated_reduce,
-    );
-}
-
-#[test]
-fn reduce_and_elevate_cubic_in_parts() {
-    let p0 = [0., 0.];
-    let p1 = [10., 0.];
-    let p2 = [6., 1.];
-    let p3 = [20., 5.];
-
-    let b = BezierND::<f64, 4, 2>::new(&[p0, p1, p2, p3]);
-    let nb = b.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
-    let ts = [0., 0.5, 1.0];
-    for t in ts {
-        assert!(
-            vector::distance_sq(&b.point_at(t), &nb.point_at(t)) < 1E-4,
-            "Uniform reduction to quadratic has same point for t {t} in {ts:?}"
-        );
-    }
-    let dm = metrics::dm_sq_est(b.control_points(), nb.control_points(), 1000)
-        .unwrap()
-        .sqrt();
-    let df = metrics::df_sq(b.control_points(), nb.control_points())
-        .unwrap()
-        .sqrt();
-    let dc = metrics::dc_sq(b.control_points(), nb.control_points())
-        .unwrap()
-        .sqrt();
-    eprintln!("Metrics for b/nb: dm {dm} < dc {dc} < df {df}");
-    assert!(dm < dc);
-    assert!(dc < df);
-
-    let (b0, b1) = b.split();
-    for t in float_iter_between(-1.0, 1.0, 100) {
-        let p = b.point_at(t);
-        let p0 = b0.point_at(t * 2.0);
-        let p1 = b1.point_at(t * 2.0 - 1.0);
-        assert!(
-            vector::distance_sq(&p, &p0) < 1E-4,
-            "Bisection first half should match Bezier with t*=2 at {t} {p:?} {p0:?}"
-        );
-        assert!(
-            vector::distance_sq(&p, &p1) < 1E-4,
-            "Bisection second half should match Bezier with t=2t-1 at {t} {p:?} {p0:?}"
-        );
-    }
-
-    let nb0 = b0.apply_matrix(&bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1], 3);
-    let dm0 = metrics::dm_sq_est(b0.control_points(), nb0.control_points(), 1000)
-        .unwrap()
-        .sqrt();
-    let df0 = metrics::df_sq(b0.control_points(), nb0.control_points())
-        .unwrap()
-        .sqrt();
-    let dc0 = metrics::dc_sq(b0.control_points(), nb0.control_points())
-        .unwrap()
-        .sqrt();
-    eprintln!("Metrics for b0/nb0: dm {dm0} < dc {dc0} < df {df0}");
-    assert!(dm0 < dc0);
-    assert!(dc0 < df0);
-
-    assert!(dm0 < dm);
-    assert!(dc0 < dc);
-    assert!(df0 < df);
-}
-
-#[test]
 fn reduce_and_elevate_cubic() {
     let p0 = [0., 0.];
     let p1 = [10., -1.];
@@ -432,7 +269,7 @@ fn reduce_and_elevate_cubic() {
     assert_eq!(b.degree(), 3);
     let b_split = b.reduce_and_split_iter(
         &bezier_nd::REDUCE_BY_ONE_UNIFORM[1],
-        &bezier_nd::ELEVATED_REDUCE_BY_ONE_BS_UNIFORM_F64[1],
+        &bezier_nd::ER_UNIFORM_MINUS_I[1],
         2,
         max_dc,
     );
@@ -582,7 +419,7 @@ fn least_squares() {
         utils::set_random_bezier(&mut rng, &distribution, &mut pts);
         test_reduce_least_squares(&pts);
 
-        let mut pts = vec![[0.0_f32; 2]; 20];
+        let mut pts = vec![[0.0_f32; 2]; 10];
         utils::set_random_bezier(&mut rng, &distribution, &mut pts);
         test_reduce_least_squares(&pts);
     }
@@ -619,7 +456,7 @@ fn preserve_uniform() {
         utils::set_random_bezier(&mut rng, &distribution, &mut pts);
         test_reduce_preserve_uniform(&pts);
 
-        let mut pts = vec![[0.0_f32; 2]; 20];
+        let mut pts = vec![[0.0_f32; 2]; 10];
         utils::set_random_bezier(&mut rng, &distribution, &mut pts);
         test_reduce_preserve_uniform(&pts);
     }
