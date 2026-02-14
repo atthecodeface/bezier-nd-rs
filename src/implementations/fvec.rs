@@ -1,8 +1,8 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
-    BezierReduction, BezierSplit,
+    bernstein_fns, constants, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate,
+    BezierEval, BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps,
+    BezierReduce, BezierReduction, BezierSplit,
 };
 
 use geo_nd::{matrix, vector};
@@ -188,6 +188,16 @@ where
     type Quadratic = Self;
     type Cubic = Self;
 
+    fn can_reduce(&self, method: BezierReduction) -> bool {
+        let table = {
+            match method {
+                BezierReduction::LeastSquares => constants::REDUCE_BY_ONE_LSQ,
+                _ => constants::REDUCE_BY_ONE_UNIFORM,
+            }
+        };
+        self.len() > 2 && self.len() <= table.len() + 3
+    }
+
     fn reduce(&self, method: BezierReduction) -> Option<Self> {
         match self.len() {
             3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
@@ -198,19 +208,51 @@ where
                 .unwrap()
                 .reduce(method)
                 .map(|a| a.into()),
-            _ => None,
+            _ => {
+                let table = {
+                    match method {
+                        BezierReduction::LeastSquares => constants::REDUCE_BY_ONE_LSQ,
+                        _ => constants::REDUCE_BY_ONE_UNIFORM,
+                    }
+                };
+                if self.len() > table.len() + 3 {
+                    None
+                } else {
+                    let mut result = vec![[F::ZERO; D]; self.len() - 1];
+                    crate::lazy_constants::use_constants_table(
+                        |table| bernstein_fns::transform::transform_pts(table, self, &mut result),
+                        table,
+                        self.len() - 3,
+                    );
+                    Some(result)
+                }
+            }
         }
     }
-    fn can_reduce(&self, _method: BezierReduction) -> bool {
-        self.len() == 4 || self.len() == 3
-    }
+
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         match self.len() {
             3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
                 .unwrap()
                 .dc_sq_from_reduction(method),
             4 => self.dc_sq_from_quadratic(),
-            _ => F::ZERO,
+            _ => {
+                let table = {
+                    match method {
+                        BezierReduction::LeastSquares => constants::ER_LSQ_MINUS_I,
+                        _ => constants::ER_LSQ_MINUS_I,
+                    }
+                };
+                if self.len() > table.len() + 3 {
+                    F::ZERO
+                } else {
+                    crate::lazy_constants::use_constants_table(
+                        |table| metrics::mapped_c_sq(self, table),
+                        table,
+                        self.len() - 3,
+                    )
+                }
+            }
         }
     }
 

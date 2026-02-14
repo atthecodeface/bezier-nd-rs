@@ -59,6 +59,15 @@ pub fn assert_near_identity<N: geo_nd::Num>(n: usize, m: &[N]) {
     }
 }
 
+/// Assert that a matrix is equal to another
+#[track_caller]
+pub fn assert_equal<N: Num>(m0: &[N], m1: &[N]) {
+    for (i, (v0, v1)) in m0.iter().zip(m1.iter()).enumerate() {
+        let dv = *v0 - *v1;
+        assert!(dv == N::ZERO, "Data {i} is mismatch in {m0:?} <> {m1:?}");
+    }
+}
+
 /// Assert that a matrix is nearly equal to another
 #[track_caller]
 pub fn assert_near_equal<N: Num>(m0: &[N], m1: &[N]) {

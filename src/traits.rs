@@ -49,6 +49,7 @@ pub enum BezierMetric {
 /// This is also readily supported by rational number types (with some good approximation of From f32).
 pub trait Num:
     Copy
+    + std::any::Any
     + PartialEq
     + PartialOrd
     + std::fmt::Display
@@ -80,6 +81,7 @@ impl<T> Float for T where T: Num + num_traits::Float + num_traits::FloatConst {}
 impl<T> Num for T
 where
     T: Copy
+        + std::any::Any
         + PartialEq
         + PartialOrd
         + std::fmt::Display

@@ -293,7 +293,7 @@ impl<const N: usize> UIntN<N> {
         (0..64).rev().find(|i| ((v >> i) & 1) != 0)
     }
 
-    /// Return n where `self.value[n]` is nonzero
+    /// Return most significant n where `self.value[n]` is nonzero
     ///
     /// Returns None if self is zero
     pub fn most_significant_n(&self) -> Option<u32> {
@@ -338,21 +338,33 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
-    /// Most significant 128 bits
+    /// Find the most significant 128 bits and the shift
+    /// to apply
     ///
+    /// The result is:
+    /// * (0,0) for zero
+    /// * (0x80000000_00000000_00000000_00000000,0) for one
+    /// * (0x80000000_00000000_00000000_00000000,64) for 1<<64
+    /// * (0xc0000000_00000000_00000000_00000000,1) for 3
     pub fn most_significant_u128(&self) -> (u128, u32) {
         let Some(i) = self.most_significant_n() else {
             return (0, 0);
         };
         let i = i as usize;
         let bit = Self::find_top_bit(self.value[i]).unwrap() as usize;
-        let top_bit = 64 * (N - 1) + bit;
+        // If self==1 then i=N-1 and bit=0
+        let top_bit = 64 * (N - 1 - i) + bit;
         let mut top_bits = self.value[i] as u128;
+        // top_bits is all the bits in value[i], throwing away the top '127-bit' zeros
+        //
+        // top_bits will have bits[127-bit..127] valid
         top_bits <<= 127 - bit;
         if i + 1 < N {
+            // If there are more bits, shift them up and or them in to make [63-bit..127] valid
             top_bits |= (self.value[i + 1] as u128) << (63 - bit);
         }
         if i + 2 < N && bit < 63 {
+            // If there are even more bits, shift them up by -1-bit (i.e. right by bit+1) to make [0..127] valid
             top_bits |= (self.value[i + 2] as u128) >> (bit + 1);
         }
         (top_bits, top_bit as u32)
@@ -617,4 +629,30 @@ impl<const N: usize> num_traits::Num for UIntN<N> {
             Err("".parse::<i32>().unwrap_err())
         }
     }
+}
+
+#[test]
+fn test_most_significant_u128() {
+    let x = UIntN::<2>::from(u64::MAX);
+    assert_eq!(UIntN::<2>::from(0_u64).most_significant_u128(), (0, 0));
+    assert_eq!(
+        UIntN::<2>::from(1_u64).most_significant_u128(),
+        (0x80000000_00000000_00000000_00000000_u128, 0)
+    );
+    assert_eq!(
+        UIntN::<2>::from(2_u64).most_significant_u128(),
+        (0x80000000_00000000_00000000_00000000_u128, 1)
+    );
+    assert_eq!(
+        UIntN::<2>::from(3_u64).most_significant_u128(),
+        (0xc0000000_00000000_00000000_00000000_u128, 1)
+    );
+    assert_eq!(
+        UIntN::<2>::from(u64::MAX).most_significant_u128(),
+        (0xffffffff_ffffffff_00000000_00000000_u128, 63)
+    );
+    assert_eq!(
+        (x + x).most_significant_u128(),
+        (0xffffffff_ffffffff_00000000_00000000_u128, 64)
+    );
 }

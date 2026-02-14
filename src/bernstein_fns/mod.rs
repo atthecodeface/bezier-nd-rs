@@ -16,3 +16,6 @@ pub mod values;
 pub mod distance;
 
 pub use coeffs::*;
+
+/// Transform sets of control points
+pub mod transform;

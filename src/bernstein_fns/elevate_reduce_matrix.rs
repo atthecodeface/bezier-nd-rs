@@ -1,4 +1,6 @@
-use crate::Num;
+use geo_nd::matrix;
+
+use crate::{utils, Num};
 
 /// Calculate the Mij element of the elevation matrix to elevate by one degree
 /// given the current degree. The elevation matrix is (degree+2)x(degree+1)
@@ -43,6 +45,62 @@ pub fn generate_elevate_by_one_matrix<N: Num>(degree: usize) -> (N, Vec<N>) {
         .map(|(i, j)| elevation_by_one_matrix_ele::<N>(degree, i, j).0)
         .collect();
     (scale, matrix)
+}
+
+/// Generate reduce-by-one matrix with minimum squared distance of all points
+#[track_caller]
+#[must_use]
+pub fn reduce_uniform_matrix<F: Num>(reduce_from_degree: usize, degree: usize) -> Vec<F> {
+    let r = reduce_from_degree + 1;
+    let n = degree + 1;
+
+    let ts: Vec<F> = utils::float_iter(n).collect();
+
+    // bern_n is the matrix that can be applied to a Bezier of 'degree' to
+    // generate the points at the values of t given in 'ts'
+    //
+    // bern_n is (degree+1) * (degree+1)
+    let mut bern_n = vec![F::ZERO; n * n];
+    crate::bernstein_fns::coeffs::generate_bernstein_matrix(&mut bern_n, degree, &ts);
+
+    // bern_np1 is the matrix that can be applied to a Bezier of 'reduce_from_degree' to
+    // generate the points at the values of t given in 'ts'
+    //
+    // bern_np1 is (degree+1) * (reduce_from_degree+1)
+    let mut bern_np1 = vec![F::ZERO; r * n];
+    crate::bernstein_fns::coeffs::generate_bernstein_matrix(&mut bern_np1, reduce_from_degree, &ts);
+
+    // bern_n_inverse is such that bern_n_inverse * bern_n == Identity
+    //
+    // bern_n_inverse is (degree+1) * (degree+1)
+    let mut bern_n_inverse = bern_n.clone();
+    let mut lu = vec![F::ZERO; n * n];
+    let mut pivot = vec![0; n];
+    assert_ne!(
+        matrix::lup_decompose(n, &bern_n, &mut lu, &mut pivot),
+        F::ZERO,
+        "Matrix is invertible"
+    );
+    assert!(
+        matrix::lup_invert(
+            n,
+            &lu,
+            &pivot,
+            &mut bern_n_inverse,
+            &mut vec![F::ZERO; n],
+            &mut vec![F::ZERO; n],
+        ),
+        "Matrix is invertible"
+    );
+
+    // reduce = bern_n_inverse * bern_np1
+    //
+    // (degree+1) * (degree+1) times (degree+1) * (reduce_from_degree+1) yields...
+    //
+    // reduce is (degree+1) *(reduce_from_degree+1)
+    let mut reduce = vec![F::ZERO; n * r];
+    matrix::multiply_dyn(n, n, r, &bern_n_inverse, &bern_np1, &mut reduce);
+    reduce
 }
 
 /// Generate reduce-by-one matrix with minimum squared distance of all points

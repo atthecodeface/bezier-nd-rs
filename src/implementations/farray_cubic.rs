@@ -264,6 +264,11 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     type Reduced = [[F; D]; 3];
     type Quadratic = [[F; D]; 3];
     type Cubic = Self;
+
+    fn can_reduce(&self, _method: BezierReduction) -> bool {
+        true
+    }
+
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
         match method {
             BezierReduction::LeastSquares => Some([
@@ -298,9 +303,7 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
             _ => self.reduced_to_quadratic(),
         }
     }
-    fn can_reduce(&self, _method: BezierReduction) -> bool {
-        true
-    }
+
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         let dc_sq = self.dc_sq_from_quadratic();
         if method == BezierReduction::LeastSquares {
@@ -327,6 +330,12 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
         let dc2_0 = vector::length_sq(&dv_0);
         let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
         let dc2_1 = vector::length_sq(&dv_1);
+
+        let sixth = (0.166666666_f32).into();
+        let half = (0.5_f32).into();
+        let dc2_0 = vector::length_sq(&vector::sum_scaled(self, &[sixth, half, half, -sixth]));
+        let dc2_1 = vector::length_sq(&vector::sum_scaled(self, &[-sixth, half, half, sixth]));
+
         utils::max(dc2_0, dc2_1)
     }
 

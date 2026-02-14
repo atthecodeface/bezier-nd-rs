@@ -250,7 +250,7 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
                     vector::sum_scaled(self, &[-one, two, five]),
                 ])
             }
-            _ => Some([self[0], self[1]]),
+            _ => Some([self[0], self[2]]),
         }
     }
 

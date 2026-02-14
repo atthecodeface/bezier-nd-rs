@@ -23,6 +23,12 @@ impl<const N: usize> std::default::Default for RationalN<N> {
     }
 }
 
+impl<const N: usize> std::convert::From<(IntN<N>, UIntN<N>)> for RationalN<N> {
+    fn from((numer, denom): (IntN<N>, UIntN<N>)) -> Self {
+        Self { numer, denom }
+    }
+}
+
 impl<const N: usize> std::convert::From<u64> for RationalN<N> {
     fn from(value: u64) -> Self {
         Self {
@@ -405,8 +411,12 @@ impl<const N: usize> RationalN<N> {
         } else if !(-1022..=1023).contains(&exp) {
             None
         } else {
+            let mut rounded_mantissa = mantissa >> 11;
+            if (mantissa & ((1 << 11) - 1)) >= (1 << 10) {
+                rounded_mantissa += 1;
+            }
             result |= (((exp + 1023) & 0x7ff) as u64) << 52;
-            result |= (mantissa >> 11) & ((1 << 52) - 1);
+            result |= rounded_mantissa & ((1 << 52) - 1);
             Some(result)
         }
     }
@@ -425,8 +435,12 @@ impl<const N: usize> RationalN<N> {
         } else if !(-126..=127).contains(&exp) {
             None
         } else {
+            let mut rounded_mantissa = mantissa >> 40;
+            if (mantissa & ((1 << 40) - 1)) >= (1 << 39) {
+                rounded_mantissa += 1;
+            }
             result |= (((exp + 127) & 0xff) as u32) << 23;
-            result |= ((mantissa >> 40) & ((1 << 23) - 1)) as u32;
+            result |= (rounded_mantissa & ((1 << 23) - 1)) as u32;
             Some(result)
         }
     }

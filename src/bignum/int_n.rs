@@ -318,6 +318,38 @@ impl<const N: usize> IntN<N> {
             is_neg: self.is_neg != other.is_neg,
         }
     }
+
+    /// Calculate the mantissa and exponent. Ignores sign.
+    ///
+    /// For zero, return (0,0); for 1 return (1<<63,0); 2 returns (1<<63,1)
+    pub fn to_mantissa64_exp(&self) -> (u64, u32) {
+        // (1,0) for 1; (0,0) for 0; (u128::MAX, 127) for u128::MAX
+        let (numer, exponent) = self.value.most_significant_u128();
+        if numer == 0 {
+            return (0, 0);
+        };
+        ((numer >> 64) as u64, exponent)
+    }
+
+    /// Get the bit-value of this IntN as an f64
+    ///
+    /// This can be converted to an f64 with f64::from_bits()
+    pub fn as_f64_bits(&self) -> Option<u64> {
+        let mut result = 0;
+        if self.is_neg() {
+            result |= 1 << 63;
+        }
+        let (mantissa, exp) = self.to_mantissa64_exp();
+        if mantissa == 0 {
+            Some(0)
+        } else if exp > 1023 {
+            None
+        } else {
+            result |= (((exp + 1023) & 0x7ff) as u64) << 52;
+            result |= (mantissa >> 11) & ((1 << 52) - 1);
+            Some(result)
+        }
+    }
 }
 
 impl<const N: usize> num_traits::Num for IntN<N> {

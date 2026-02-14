@@ -31,6 +31,18 @@ def sqrt_est(sq):
     return count
 
 
+total = 0
+n = 0
+for i in [-5, -4, -3, -1, 0, 1, 2, 3, 4, 5, 6]:
+    for j in range(0, 8, 2):
+        k = (j + 1) * math.pow(10, i)
+        total += sqrt_est(k)
+        n += 1
+        pass
+    pass
+print(total, total / n)
+
+
 def cbrt_est(cb):
     # Optimal at scale=3.6 probably
     scale = 4
@@ -70,25 +82,11 @@ n = 0
 for i in [-5, -4, -3, -1, 0, 1, 2, 3, 4, 5, 6]:
     for j in range(0, 8, 2):
         k = (j + 1) * math.pow(10, i)
-        total += sqrt_est(k)
-        n += 1
-        pass
-    pass
-print(total, total / n)
-
-
-total = 0
-n = 0
-for i in [-5, -4, -3, -1, 0, 1, 2, 3, 4, 5, 6]:
-    for j in range(0, 8, 2):
-        k = (j + 1) * math.pow(10, i)
         total += cbrt_est(k)
         n += 1
         pass
     pass
 print(total, total / n)
-
-di
 
 
 class Quadratic:
@@ -366,7 +364,7 @@ def calc_bernoulli(i, n):
     return bernoulli(i - 1, n - 1) + bernoulli(i, n - 1)
 
 
-print("pub const BINOMIALS_U: &[&[usize]] = &[")
+print("pub const BINOMIALS_U: &[&[u64]] = &[")
 for n in range(1, 40):
     result = f"{1 << (n - 1)}"
     for i in range(n):

@@ -5,7 +5,9 @@
 /*a Imports
 */
 mod builder;
-pub(crate) mod constants;
+/// Constants used for Bezier curves and their elevation/reduction
+pub mod constants;
+pub mod lazy_constants;
 pub(crate) mod utils;
 
 mod traits;

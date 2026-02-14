@@ -149,7 +149,7 @@ fn assert_bits_almost_eq<const N: usize>(a: RationalN<N>, v: f64) {
     assert_eq!(
         a_bits & !1,
         v_bits & !1,
-        "Mismatch for {a} {a_bits} to {v_bits}",
+        "Mismatch for {a} {v} : {a_bits:x} to {v_bits:x}",
     );
 
     let a_f64: f64 = a.into();
@@ -201,7 +201,7 @@ fn test_mantissa_exp() {
     mantissa_exp::<4>();
     mantissa_exp::<16>();
 
-    let f = 1.0_f64 / 12.0 ;
+    let f = 1.0_f64 / 12.0;
     let value: RationalN<8> = f.try_into().unwrap();
     eprintln!("Value {value}");
     let value_f: f64 = value.into();

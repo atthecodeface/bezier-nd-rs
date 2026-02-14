@@ -13,6 +13,9 @@ categories = ["graphics"]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/atthecodeface/bezier-nd-rs"
 
+[dependencies]
+lazy_static = "1.5.0"
+
 [dependencies.geo-nd]
 version="0.6"
 path = "../geo-nd-rs"
