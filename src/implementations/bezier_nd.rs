@@ -123,8 +123,8 @@
 
 use crate::{
     bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
-    BezierReduction, BezierSplit, Num,
+    BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
+    BezierReduce, BezierReduction, BezierSplit, Num,
 };
 
 use geo_nd::matrix;
@@ -334,6 +334,9 @@ impl<F, const N: usize, const D: usize> BezierEval<F, [F; D]> for BezierND<F, N,
 where
     F: Num,
 {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
     fn point_at(&self, t: F) -> [F; D] {
         bernstein_fns::values::point_at(self.pts(), t)
     }
@@ -487,14 +490,15 @@ impl<F, const N: usize, const D: usize> BezierFlatIterator<F, [F; D]> for Bezier
 where
     F: Num,
 {
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        match iter_type {
+            BezierIterationType::ClosenessSq(f) => BezierLineTIter::new(self, f, false),
+            BezierIterationType::DcClosenessSq(f) => BezierLineTIter::new(self, f, true),
+            BezierIterationType::Uniform(_) => BezierLineTIter::new(self, F::ONE, true),
+        }
     }
 }
 

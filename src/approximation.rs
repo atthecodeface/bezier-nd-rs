@@ -1,4 +1,6 @@
-use crate::{utils, BezierEval, BezierFlatIterator, BezierMetric, BezierSplit, Float, Num};
+use crate::{
+    utils, BezierEval, BezierFlatIterator, BezierIterationType, BezierMetric, BezierSplit, Num,
+};
 use geo_nd::vector;
 
 /// An approximation to a Bezier of potentially high degree,
@@ -9,12 +11,6 @@ use geo_nd::vector;
 ///
 /// The type needs to contain a clone of the original Bezier,
 /// to provide correct values for some of the evaulation methods.
-///
-/// This type should provide implementations of
-///
-/// BezierEval
-/// BezierDistance
-/// BezierMinMax
 #[derive(Debug, Clone)]
 pub struct Approximation<B, F, const D: usize>
 where
@@ -53,7 +49,7 @@ where
     /// approximation, and so may use more line segments than are required
     /// just to approximate for simple straightness
     pub fn new(bezier: &B, closeness_sq: F) -> Self {
-        let points_and_ts = bezier.as_t_points_dc(closeness_sq);
+        let points_and_ts = bezier.as_t_points(BezierIterationType::DcClosenessSq(closeness_sq));
         let mut points = vec![];
         let mut ts = vec![];
         for (t, p) in points_and_ts {
@@ -141,70 +137,14 @@ where
     }
 }
 
-impl<B, F, const D: usize> Approximation<B, F, D>
-where
-    B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
-    F: Float,
-{
-    /// Calculates the length of a setion of the Bezier
-    pub fn section_length(&self, mut t0: F, mut t1: F) -> F {
-        if t0 < F::ZERO {
-            t0 = F::ZERO;
-        }
-        if t1 > F::ONE {
-            t1 = F::ONE;
-        }
-
-        if t0 > t1 {
-            self.section_length(t1, t0)
-        } else if t0 == t1 {
-            F::ZERO
-        } else {
-            let (pt_0, _, _) = self.find_pts(t0);
-            let (pt_1, _, _) = self.find_pts(t1);
-            let mut t = t0;
-            let mut total = F::ZERO;
-            for i in pt_0..=pt_1 {
-                if i + 1 >= self.points.len() {
-                    break;
-                }
-                if self.ts[i] > t1 {
-                    break;
-                }
-                if t < self.ts[i] {
-                    t = self.ts[i];
-                }
-                let dt = self.ts[i + 1] - self.ts[i];
-                let fract = (self.ts[i + 1] - t) / dt;
-                total += vector::distance(&self.points[i], &self.points[i + 1]) * fract
-            }
-            total
-        }
-    }
-
-    /// Calculates the length of a setion of the Bezier
-    pub fn t_of_distance(&self, mut distance: F) -> Option<F> {
-        for (i, (p0, p1)) in self
-            .points
-            .iter()
-            .zip(self.points.iter().skip(1))
-            .enumerate()
-        {
-            let dp = vector::distance(p0, p1);
-            if distance <= dp {
-                return Some(self.ts[i] + (self.ts[1] - self.ts[0]) * distance / dp);
-            }
-            distance -= dp;
-        }
-        None
-    }
-}
-
 impl<B, F, const D: usize> BezierEval<F, [F; D]> for Approximation<B, F, D>
 where
     B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
     fn point_at(&self, t: F) -> [F; D] {
         if t <= F::ZERO {
             self.points[0]
@@ -283,31 +223,12 @@ where
     B: BezierEval<F, [F; D]> + BezierSplit<F> + BezierFlatIterator<F, [F; D]> + Clone,
     F: Num,
 {
-    fn as_lines(&self, _closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        self.points
-            .iter()
-            .copied()
-            .zip(self.points.iter().copied().skip(1))
-    }
-
-    fn as_points(&self, _closeness_sq: F) -> impl Iterator<Item = [F; D]> {
-        self.points.iter().copied()
-    }
-
-    fn as_t_lines(&self, _closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
         self.iter_t_pts()
             .zip(self.iter_t_pts().skip(1))
             .map(|((a, b), (c, d))| (a, b, c, d))
-    }
-
-    fn as_t_points(&self, _closeness_sq: F) -> impl Iterator<Item = (F, [F; D])> {
-        self.iter_t_pts()
-    }
-
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        self.as_t_lines(closeness_sq)
-    }
-    fn as_t_points_dc(&self, _closeness_sq: F) -> impl Iterator<Item = (F, [F; D])> {
-        self.iter_t_pts()
     }
 }

@@ -35,6 +35,7 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 
 !*/
 
+use std::f32;
 
 //a Imports
 use crate::{Float, Num};
@@ -279,12 +280,12 @@ pub fn find_real_roots_linear<F: Num>(poly: &[F]) -> Option<F> {
     }
 }
 
-pub fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
+pub fn find_real_roots_quad<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
     assert!(
         poly.len() >= 3,
         "Root of a quadratic polynomial requires at least three coefficients (and [3..] should be zero)"
     );
-    if poly[2].abs() < F::epsilon() {
+    if poly[2].is_unreliable_divisor() {
         (find_real_roots_linear(poly), None)
     } else {
         let a = poly[2];
@@ -295,7 +296,7 @@ pub fn find_real_roots_quad<F: Float>(poly: &[F]) -> (Option<F>, Option<F>) {
         if disc < F::zero() {
             (None, None)
         } else {
-            let disc_sq = disc.sqrt();
+            let disc_sq = disc.sqrt_est(f32::EPSILON, true);
             (
                 Some((-b + disc_sq) / two / a),
                 Some((-b - disc_sq) / two / a),
@@ -309,7 +310,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
         poly.len() >= 4,
         "Root of a cubic polynomial requires at least four coefficients (and [4..] should be zero)"
     );
-    if poly[3].abs() < F::epsilon() {
+    if poly[3].is_unreliable_divisor() {
         let (root_a, root_b) = find_real_roots_quad(poly);
         (root_a, root_b, None)
     } else {
@@ -327,13 +328,13 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             b * b * b * two - a * b * c * (9.0_f32.into()) + a * a * d * (27.0_f32.into());
         let disc = delta_1 * delta_1 - delta_0 * delta_0 * delta_0 * (4.0_f32.into());
         // dbg!(delta_0, delta_1, disc);
-        if delta_0.abs() < F::epsilon() {
+        if delta_0.is_unreliable_divisor() {
             // three identical roots if delta_1 is zero
             //
             // If delta_1 is nonzero then one real root (?)
             let big_c = (delta_1 / two).cbrt();
             let x = (b + big_c) / (-a * (3.0_f32.into()));
-            if delta_1.abs() < F::epsilon() {
+            if delta_1.is_unreliable_divisor() {
                 (Some(x), Some(x), Some(x))
             } else {
                 (Some(x), None, None)
@@ -373,7 +374,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             // Note that / big_C is the same as * big_C comp / |C|^2
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.abs() < 0.001_f32.into() {
+            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
                 // eprintln!("Value at {x} {}", poly.calc(x));
@@ -385,7 +386,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.abs() < 0.001_f32.into() {
+            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
                 // eprintln!("Value at {x} {}", poly.calc(x));
@@ -397,7 +398,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.abs() < 0.001_f32.into() {
+            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
                     / (-a * (3.0_f32.into()));
                 // eprintln!("Value at {x} {}", poly.calc(x));

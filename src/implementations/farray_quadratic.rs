@@ -1,14 +1,17 @@
-use crate::utils;
 use crate::{
     bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
-    BezierReduction, BezierSplit, BoxedBezier,
+    BezierFlatIterator, BezierLineTIter, BezierMetric, BezierOps, BezierReduce, BezierReduction,
+    BezierSplit, BoxedBezier,
 };
+use crate::{utils, BezierIterationType};
 
 use crate::Num;
 use geo_nd::vector;
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
     fn point_at(&self, t: F) -> [F; D] {
         let two: F = (2.0_f32).into();
         let u = F::ONE - t;
@@ -89,7 +92,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         let d0 = utils::distance_sq_to_line_segment(pt, &self[0], &self[1]);
         let d1 = utils::distance_sq_to_line_segment(pt, &self[0], &self[2]);
         let d2 = utils::distance_sq_to_line_segment(pt, &self[1], &self[2]);
-        utils::min(d0, utils::min(d1, d2))
+        d0.min(d1.min(d2))
     }
 
     fn t_coords_at_min_max(
@@ -191,14 +194,15 @@ impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for [[F; D]; 3]
 where
     F: Num,
 {
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        match iter_type {
+            BezierIterationType::ClosenessSq(f) => BezierLineTIter::new(self, f, false),
+            BezierIterationType::DcClosenessSq(f) => BezierLineTIter::new(self, f, true),
+            BezierIterationType::Uniform(_) => BezierLineTIter::new(self, F::ONE, true),
+        }
     }
 }
 
@@ -266,7 +270,7 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
                 let four: F = (4.0_f32 / 6.0_f32).into();
                 let dc_sq_0 = vector::length_sq(&vector::sum_scaled(self, &[-one, two, -one]));
                 let dc_sq_1 = vector::length_sq(&vector::sum_scaled(self, &[two, -four, two]));
-                utils::max(dc_sq_0, dc_sq_1)
+                dc_sq_0.max(dc_sq_1)
             }
             _ => self.dc_sq_from_line(),
         }

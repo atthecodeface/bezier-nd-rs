@@ -286,17 +286,26 @@ impl<const N: usize> UIntN<N> {
         self.value.iter().all(|s| *s == 0)
     }
 
+    /// Find top bit set + 1
+    pub(crate) fn find_top_bit_set(&self) -> u32 {
+        if let Some(n) = self.most_significant_n() {
+            ((N as u32) - n - 1) * 64 + Self::find_top_bit(self.value[n as usize]).unwrap()
+        } else {
+            0
+        }
+    }
+
     /// Find top bit of u64
     ///
     /// Return false if v is zero
-    pub fn find_top_bit(v: u64) -> Option<u32> {
+    fn find_top_bit(v: u64) -> Option<u32> {
         (0..64).rev().find(|i| ((v >> i) & 1) != 0)
     }
 
     /// Return most significant n where `self.value[n]` is nonzero
     ///
     /// Returns None if self is zero
-    pub fn most_significant_n(&self) -> Option<u32> {
+    fn most_significant_n(&self) -> Option<u32> {
         self.value
             .iter()
             .enumerate()

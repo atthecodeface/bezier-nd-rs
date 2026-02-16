@@ -1,13 +1,17 @@
 use crate::Num;
 use crate::{
     bernstein_fns, constants, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate,
-    BezierEval, BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps,
+    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
     BezierReduce, BezierReduction, BezierSplit,
 };
 
 use geo_nd::{matrix, vector};
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
+
     fn point_at(&self, t: F) -> [F; D] {
         bernstein_fns::values::point_at(self, t)
     }
@@ -136,14 +140,15 @@ impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for Vec<[F; D]>
 where
     F: Num,
 {
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        match iter_type {
+            BezierIterationType::ClosenessSq(f) => BezierLineTIter::new(self, f, false),
+            BezierIterationType::DcClosenessSq(f) => BezierLineTIter::new(self, f, true),
+            BezierIterationType::Uniform(_) => BezierLineTIter::new(self, F::ONE, true),
+        }
     }
 }
 
@@ -246,7 +251,7 @@ where
             let dc2_0 = vector::length_sq(&dv_0);
             let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
             let dc2_1 = vector::length_sq(&dv_1);
-            utils::max(dc2_0, dc2_1)
+            dc2_0.max(dc2_1)
         }
     }
 

@@ -2,7 +2,13 @@
 
 Adder BuilderError to BezierBuilder, to provide feedback on why a build fails
 
-Change Reduce to just reduce by one, and provide matrix of [F] to reduce, and apply matrix to produce a Option<Mapped>
+* Remove BezierLineIter, bezierPointIter
+* Remove use of abs/min/max from utils
+* Change Reduce to just reduce by one
+* Make arc and round etc explicit public functions
+* Move BezierOps (all dyn compatible) to BezierEval If Approxmiation can do them
+* Add BezierMap trait apply matrix to produce a Option<Mapped>
+* Add pubic function to fill Option<matrix> for 'reduce by N given method', 'elevate by N'
 
 Add tests for:
 * t_closest
@@ -14,13 +20,7 @@ Add tests for:
 * Approximation derivative_at of t<0 or t>1
 * Approximation into iterator
 * Appromixation for_each_control_point
-* metrics of any kind from line or bezier
-
-* add 'BezierCubic' trait? - support arc
-* add 'BezierQuadratic' trait?
-* Amalgamate BezierSplit and BezierSection
-* Move BezierOps, Distance, MinMax, etc (all dyn compatible) to BezierEval If Approxmiation can do them
-* Add c_sq, f_sq, df_sq_from_line to BezierEval
+* metric_from s of any kind from line or bezier
 
 # Bezier curve library
 
@@ -300,7 +300,7 @@ Bezier types may provide construction from a [BezierBuilder].
 An example using 2-dimensional vectors of f32
 
 ```
-use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit, bernstein_fns, metrics};
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit, BezierIterationType, bernstein_fns};
 
 let dx = [1.,0.];
 let dy = [0.,1.];
@@ -315,16 +315,16 @@ assert_eq!( arc.degree(), 3);
 assert!( arc.closeness_sq_to_line() > 0.0);
 
 // Breaking the arc with a large value of straightness yields only 3 points:
-assert_eq!( arc.as_points(0.01).count(), 3);
+assert_eq!( arc.as_t_points(BezierIterationType::ClosenessSq(0.01)).count(), 3);
 // This is 1.5662874
-println!( "Arc length as lines with closeness of 0.1 is {}", metrics::length_of_lines(arc.as_lines(0.01)));
+println!( "Arc length as lines with closeness of 0.1 is {}", arc.iter_length(BezierIterationType::ClosenessSq(0.01)));
 
 // Breaking the arc with a small value of straightness yields 17 points!
-assert_eq!( arc.as_points(0.00001).count(), 9);
+assert_eq!( arc.as_t_points(BezierIterationType::ClosenessSq(0.00001)).count(), 9);
 // This is 1.5707505 - a lot closer to PI/2 = 1.57079632679
-println!( "Arc length as lines with closeness of 0.01 is {}", metrics::length_of_lines(arc.as_lines(0.0001)));
+println!( "Arc length as lines with closeness of 0.01 is {}", arc.iter_length(BezierIterationType::ClosenessSq(0.0001)));
 
-for (a,b) in arc.as_lines(0.05) {
+for (_,a,_,b) in arc.as_t_lines(BezierIterationType::ClosenessSq(0.05)) {
     println!("Line from {a:?} to {b:?}\n");
 }
 
@@ -338,15 +338,15 @@ assert_eq!( q.endpoints().1[1], 7., "End point Y of Bezier" );
 An example using 3D vectors of f64
 
 ```
-use bezier_nd::{BezierFlatIterator, metrics};
+use bezier_nd::{BezierFlatIterator, BezierIterationType};
 let c = [ [1.0_f64,0.,0.],
                            [2.5,0.,-1.],
                            [0.,2.5,1.],
                            [0.,1.,0.] ];
 // This is just over 3.283
-println!( "3D cubic length when straightened to '0.1' is {}", metrics::length_of_lines(c.as_lines(0.1)) );
+println!( "3D cubic length when straightened to '0.1' is {}", c.iter_length(BezierIterationType::ClosenessSq(0.1)));
 // But this is just over 3.29
-println!( "3D cubic length when straightened to '0.01' is {}", metrics::length_of_lines(c.as_lines(0.01)) );
+println!( "3D cubic length when straightened to '0.01' is {}", c.iter_length(BezierIterationType::ClosenessSq(0.01)));
 
 ```
 

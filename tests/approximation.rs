@@ -12,9 +12,9 @@
 //a Imports
 use bezier_nd::Approximation;
 use bezier_nd::BezierEval;
-use bezier_nd::BezierFlatIterator;
 use bezier_nd::BezierND;
 use bezier_nd::BezierSplit;
+use bezier_nd::{BezierFlatIterator, BezierIterationType};
 mod utils;
 use geo_nd::vector;
 
@@ -53,7 +53,10 @@ fn test_approximation_closeness_sq<
         "Approximation not close enough to original Bezier (max {max_dist_sq}, closeness_sq {closeness_sq})"
     );
 
-    for (i, (t, p)) in a.as_t_points(0.0).enumerate() {
+    for (i, (t, p)) in a
+        .as_t_points(BezierIterationType::ClosenessSq(0.0))
+        .enumerate()
+    {
         assert!(
             vector::distance_sq(&bezier.point_at(t), &p) < 1E-6,
             "Approximation should have same points for values of t"
@@ -81,31 +84,29 @@ fn test_approximation_closeness_sq<
     assert!(d_sq < (steps as f32)*closeness_sq, "Expected Sum(derivatives) for closeness {closeness_sq} to be about equal but was {d_sq} distance sq apart {a_pt:?} <> {b_pt:?}");
 
     for ((t, p), (t1, p1)) in a
-        .as_t_points(closeness_sq)
-        .zip(a.as_t_points_dc(closeness_sq))
+        .as_t_points(BezierIterationType::ClosenessSq(closeness_sq))
+        .zip(a.as_t_points(BezierIterationType::DcClosenessSq(closeness_sq)))
     {
         assert_eq!(t, t1);
         assert_eq!(p, p1);
     }
 
-    for ((p0, p1), (_t0, pt0, _t1, pt1)) in a.as_lines(closeness_sq).zip(a.as_t_lines(closeness_sq))
+    for ((_, p0, _, p1), (_t0, pt0, _t1, pt1)) in a
+        .as_t_lines(BezierIterationType::ClosenessSq(closeness_sq))
+        .zip(a.as_t_lines(BezierIterationType::DcClosenessSq(closeness_sq)))
     {
         assert_eq!(p0, pt0);
         assert_eq!(p1, pt1);
     }
 
-    for ((p0, p1), (_t0, pt0, _t1, pt1)) in
-        a.as_lines(closeness_sq).zip(a.as_t_lines_dc(closeness_sq))
+    for ((_, p), (_, p1)) in a
+        .as_t_points(BezierIterationType::ClosenessSq(closeness_sq))
+        .zip(a.as_t_points(BezierIterationType::ClosenessSq(closeness_sq)))
     {
-        assert_eq!(p0, pt0);
-        assert_eq!(p1, pt1);
-    }
-
-    for ((_, p), p1) in a.as_t_points(closeness_sq).zip(a.as_points(closeness_sq)) {
         assert_eq!(p, p1);
     }
 
-    for (t0, p0, t1, p1) in a.as_t_lines(closeness_sq) {
+    for (t0, p0, t1, p1) in a.as_t_lines(BezierIterationType::ClosenessSq(closeness_sq)) {
         let bp = bezier.point_at(t0);
         let d_sq = vector::distance_sq(&bp, &p0);
         assert!(

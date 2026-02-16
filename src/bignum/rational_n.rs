@@ -549,3 +549,24 @@ impl<const N: usize> num_traits::Num for RationalN<N> {
         }
     }
 }
+
+impl<const N: usize> crate::NumOps for RationalN<N> {
+    fn is_unreliable_divisor(self) -> bool {
+        self.numer.magnitude().find_top_bit_set() + 32 < self.denom.find_top_bit_set()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        self.numer.is_neg()
+    }
+
+    /// Return an estimate of the square root to within a precision
+    fn sqrt_est(self, _accuracy: f32, min: bool) -> Self {
+        crate::utils::sqrt_est::<_, 5>(self, min)
+    }
+
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn cbrt_est(self, _accuracy: f32) -> Self {
+        crate::utils::cbrt_est::<_, 5>(self)
+    }
+}

@@ -10,7 +10,7 @@ use geo_nd::vector;
 pub fn c_sq<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
     bezier
         .iter()
-        .fold(F::ZERO, |acc, pt| utils::max(acc, vector::length_sq(pt)))
+        .fold(F::ZERO, |acc, pt| acc.max(vector::length_sq(pt)))
 }
 
 /// Maximum of the squared length of the control points mapped by the mapping matrix
@@ -19,7 +19,7 @@ pub fn c_sq<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
 pub fn mapped_c_sq<F: Num, const D: usize>(bezier: &[[F; D]], mapping: &[F]) -> F {
     assert_eq!(mapping.len(), bezier.len() * bezier.len());
     mapping.chunks_exact(bezier.len()).fold(F::ZERO, |acc, m| {
-        utils::max(acc, vector::length_sq(&vector::sum_scaled(bezier, m)))
+        acc.max(vector::length_sq(&vector::sum_scaled(bezier, m)))
     })
 }
 
@@ -72,10 +72,9 @@ pub fn dm_sq_est<F: Num, const D: usize>(
         None
     } else {
         Some(utils::float_iter(num_steps).fold(F::ZERO, |acc, t| {
-            utils::max(
-                acc,
-                vector::length_sq(&bernstein_fns::values::vector_between_at(bezier, other, t)),
-            )
+            acc.max(vector::length_sq(
+                &bernstein_fns::values::vector_between_at(bezier, other, t),
+            ))
         }))
     }
 }
@@ -98,9 +97,7 @@ pub fn dc_sq<F: Num, const D: usize>(bezier: &[[F; D]], other: &[[F; D]]) -> Opt
         bezier
             .iter()
             .zip(other.iter())
-            .fold(F::ZERO, |acc, (b, o)| {
-                utils::max(acc, vector::distance_sq(b, o))
-            })
+            .fold(F::ZERO, |acc, (b, o)| acc.max(vector::distance_sq(b, o)))
     })
 }
 
@@ -135,7 +132,7 @@ pub fn dc_sq_from_line<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
         .zip(utils::float_iter(bezier.len()))
         .fold(F::ZERO, |acc, (b, t)| {
             let l = vector::mix(l0, l1, t);
-            utils::max(acc, vector::distance_sq(b, &l))
+            acc.max(vector::distance_sq(b, &l))
         })
 }
 
@@ -224,7 +221,7 @@ pub fn est_min_distance_sq_to<F: Num, const D: usize>(pts: &[[F; D]], pt: &[F; D
     let d_sq = crate::utils::distance_sq_to_line_segment(pt, l0, l1);
     let t_iter = utils::float_iter(pts.len());
     let dc_sq = pts.iter().zip(t_iter).fold(F::ZERO, |acc, (pt, t)| {
-        utils::max(acc, vector::distance_sq(pt, &vector::mix(l0, l1, t)))
+        acc.max(vector::distance_sq(pt, &vector::mix(l0, l1, t)))
     });
     // min possible distance to Bezier = sqrt(d_sq) - sqrt(dc_sq)
     if d_sq < dc_sq {

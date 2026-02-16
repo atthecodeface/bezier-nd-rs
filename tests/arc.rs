@@ -1,6 +1,6 @@
 //a Imports
 use bezier_nd::BezierEval;
-use bezier_nd::{bernstein_fns, metrics, BezierFlatIterator};
+use bezier_nd::{bernstein_fns, metrics, BezierFlatIterator, BezierIterationType};
 mod utils;
 use geo_nd::{vector, FArray};
 
@@ -19,7 +19,7 @@ fn test_cubic_arc() {
     use std::f32::consts::PI;
     utils::approx_eq(
         0.5,
-        metrics::length_of_lines(x.as_lines(1E-6)) / PI,
+        x.iter_length(BezierIterationType::ClosenessSq(1E-6)) / PI,
         0.001,
         "Length of 90-degree arc of circle radius 1 should be PI/2",
     );

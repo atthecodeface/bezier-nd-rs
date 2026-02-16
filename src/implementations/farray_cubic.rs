@@ -2,13 +2,16 @@ use crate::utils;
 use crate::Num;
 use crate::{
     bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
-    BezierReduction, BezierSplit, BoxedBezier,
+    BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
+    BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
     fn point_at(&self, t: F) -> [F; D] {
         let three: F = (3.0_f32).into();
         let u = F::ONE - t;
@@ -223,14 +226,15 @@ impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for [[F; D]; 4]
 where
     F: Num,
 {
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        match iter_type {
+            BezierIterationType::ClosenessSq(f) => BezierLineTIter::new(self, f, false),
+            BezierIterationType::DcClosenessSq(f) => BezierLineTIter::new(self, f, true),
+            BezierIterationType::Uniform(_) => BezierLineTIter::new(self, F::ONE, true),
+        }
     }
 }
 
@@ -307,18 +311,15 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         let dc_sq = self.dc_sq_from_quadratic();
         if method == BezierReduction::LeastSquares {
-            utils::max(
-                dc_sq,
-                vector::length_sq(&vector::sum_scaled(
-                    self,
-                    &[
-                        0.05_f32.into(),
-                        (-0.15_f32).into(),
-                        0.15_f32.into(),
-                        (-0.05_f32).into(),
-                    ],
-                )),
-            )
+            dc_sq.max(vector::length_sq(&vector::sum_scaled(
+                self,
+                &[
+                    0.05_f32.into(),
+                    (-0.15_f32).into(),
+                    0.15_f32.into(),
+                    (-0.05_f32).into(),
+                ],
+            )))
         } else {
             dc_sq
         }
@@ -330,7 +331,7 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
         let dc2_0 = vector::length_sq(&vector::sum_scaled(self, &[sixth, half, half, -sixth]));
         let dc2_1 = vector::length_sq(&vector::sum_scaled(self, &[-sixth, half, half, sixth]));
 
-        utils::max(dc2_0, dc2_1)
+        dc2_0.max(dc2_1)
     }
 
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {

@@ -11,7 +11,7 @@ pub mod lazy_constants;
 pub(crate) mod utils;
 
 mod traits;
-pub use traits::{Float, Num};
+pub use traits::{Float, Num, NumOps};
 
 mod approximation;
 mod distance;
@@ -31,13 +31,11 @@ pub mod metrics;
 /*a Exports
 */
 pub use approximation::Approximation;
-pub use bezier_iter::{
-    BezierLineIter, BezierLineTIter, BezierPointIter, BezierPointTIter, BezierQuadIter,
-    BezierSplitIter, BezierSplitTIter,
-};
+pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitIter, BezierSplitTIter};
 pub use traits::{
-    BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierMetric,
-    BezierOps, BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
+    BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
+    BezierIterationType, BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
+    BoxedBezier,
 };
 
 pub use builder::BezierBuilder;

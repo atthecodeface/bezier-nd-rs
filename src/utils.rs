@@ -2,30 +2,6 @@ use crate::polynomial::{PolyNewtonRaphson, Polynomial};
 use crate::Num;
 use geo_nd::vector;
 
-pub fn max<F: Num>(a: F, b: F) -> F {
-    if a < b {
-        b
-    } else {
-        a
-    }
-}
-
-pub fn min<F: Num>(a: F, b: F) -> F {
-    if a < b {
-        a
-    } else {
-        b
-    }
-}
-
-pub fn abs<F: Num>(a: F) -> F {
-    if a < F::ZERO {
-        -a
-    } else {
-        a
-    }
-}
-
 pub fn min_tc<F: Num, T: Copy>((ta, a): (T, F), (tb, b): (T, F)) -> (T, F) {
     if a < b {
         (ta, a)
@@ -64,13 +40,14 @@ pub fn opt_min_and_max_tc<F: Num, T: Copy>(
 
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter_between<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
-    assert!(
-        n >= 2,
-        "Float iterator must have at least two steps for begin and end"
-    );
-    let r = t1 - t0;
-    assert!(r >= N::zero(), "Float range must be positive");
-    (0..n).map(move |i: usize| t0 + r * N::from_usize(i).unwrap() / N::from_usize(n - 1).unwrap())
+    let step = {
+        match n {
+            0 => N::ZERO,
+            1 => N::ZERO,
+            n => (t1 - t0) / N::from_usize(n - 1).unwrap(),
+        }
+    };
+    (0..n).map(move |i: usize| t0 + step * (N::from_usize(i).unwrap()))
 }
 
 /// Iterate in 'n' steps from 0 to 1 inclusive
@@ -248,13 +225,13 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         let mut p_t0: F = 1E8_f32.into();
         for t in [0.0_f32, 1.0, 2.0, -1.0] {
             let (root_est, _root_dt) = poly.find_root_nr_with_err(t.into(), 1E-6_f32.into(), 20);
-            let p_t = abs(poly.calc(root_est));
+            let p_t = poly.calc(root_est).nabs();
             if p_t < p_t0 {
                 t0 = root_est;
                 p_t0 = p_t;
             }
         }
-        if abs(p_t0) > 1E-4_f32.into() {
+        if p_t0.nabs() > 1E-4_f32.into() {
             panic!("Failed to find root for polynomial {poly:?}");
             return (None, None, None);
         }

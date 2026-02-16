@@ -34,15 +34,15 @@ impl<F: Num, const D: usize> BezierPtSet<F, D> {
         Self { pts }
     }
 
-    pub fn of_point_iter<I: Iterator<Item = [F; D]>>(iter: I) -> Self {
-        let pts = iter.collect();
+    pub fn of_point_iter<I: Iterator<Item = (F, [F; D])>>(iter: I) -> Self {
+        let pts = iter.map(|(_t, p)| p).collect();
         Self { pts }
     }
 
-    pub fn of_line_iter<I: Iterator<Item = ([F; D], [F; D])>>(mut iter: I) -> Self {
+    pub fn of_line_iter<I: Iterator<Item = (F, [F; D], F, [F; D])>>(mut iter: I) -> Self {
         let l0 = iter.next().unwrap();
-        let mut pts = vec![l0.0, l0.1];
-        for (_, p) in iter {
+        let mut pts = vec![l0.1, l0.3];
+        for (_, _, _, p) in iter {
             pts.push(p);
         }
         Self { pts }

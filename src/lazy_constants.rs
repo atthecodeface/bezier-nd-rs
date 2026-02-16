@@ -1,12 +1,13 @@
 use crate::Num;
-use std::any::TypeId;
+use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
-enum Table {
-    StaticF64(&'static [f64]),
-    FVec(TypeId, Vec<u8>),
+struct Table {
+    type_id: TypeId,
+    table: Box<dyn Any + Send + Sync>,
 }
+
 static CONSTANTS_TABLE_HASHMAP: OnceLock<RwLock<HashMap<(usize, TypeId), Table>>> = OnceLock::new();
 
 fn create_f_table<F: Num>(table: &'static [f64]) -> Table {
@@ -17,21 +18,21 @@ fn create_f_table<F: Num>(table: &'static [f64]) -> Table {
             f
         })
         .collect();
-    Table::FVec(TypeId::of::<F>(), unsafe {
-        std::mem::transmute::<Vec<F>, Vec<u8>>(x)
-    })
-}
-fn invoke_f<F: Num, R, FN: FnMut(&[F]) -> R>(mut f: FN, table: &Table) -> R {
-    match table {
-        Table::StaticF64(table) => {
-            assert!(TypeId::of::<F>() == TypeId::of::<f64>());
-            f(unsafe { std::mem::transmute::<&[f64], &[F]>(table) })
-        }
-        Table::FVec(t, table) => {
-            assert!(TypeId::of::<F>() == *t);
-            return f(unsafe { std::mem::transmute::<&[u8], &[F]>(table) });
-        }
+    Table {
+        type_id: TypeId::of::<F>(),
+        table: Box::new(x),
     }
+}
+
+fn invoke_f<F: Num, R, FN: FnMut(&[F]) -> R>(mut f: FN, table: &Table) -> R {
+    assert!(TypeId::of::<F>() == table.type_id);
+    return f(table.table.downcast_ref::<Vec<F>>().unwrap());
+}
+
+fn invoke_f_of_f64s<F: Num, R, FN: FnMut(&[F]) -> R>(mut f: FN, table: &&'static [f64]) -> R {
+    assert!(TypeId::of::<F>() == TypeId::of::<f64>());
+    let table = (table as &dyn Any).downcast_ref::<&[F]>().unwrap();
+    f(table)
 }
 
 fn add_constants_table<F: Num>(table: &'static [f64]) {
@@ -45,11 +46,12 @@ fn add_constants_table<F: Num>(table: &'static [f64]) {
         .entry(key)
         .or_insert_with(|| create_f_table::<F>(table));
 }
+
 pub fn use_constants_table<F: Num, R, FN: FnMut(&[F]) -> R>(f: FN, table: &'static [f64]) -> R {
     let f_type = TypeId::of::<F>();
     let f64_type = TypeId::of::<f64>();
     if f_type == f64_type {
-        invoke_f(f, &Table::StaticF64(table))
+        invoke_f_of_f64s(f, &table)
     } else {
         let table_address: *const [f64] = table;
         let table_address = table_address.addr();

@@ -1,5 +1,7 @@
 //a Imports
-use bezier_nd::{Approximation, BasicBezier, BezierEval, BezierND};
+use bezier_nd::{
+    Approximation, BasicBezier, BezierEval, BezierFlatIterator, BezierIterationType, BezierND,
+};
 use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
@@ -112,27 +114,40 @@ fn test_arc<F: Float>() {
     eprintln!("{:?}", approx);
     utils::approx_eq(
         F::PI() * 0.5_f32.into(),
-        approx.section_length(F::ZERO, F::ONE),
+        approx.iter_length(BezierIterationType::ClosenessSq(F::ZERO)),
         0.001_f32,
         "Length of 90-degree arc of circle radius 1 should be PI/2",
     );
 
     utils::approx_eq(
         0.5_f32.into(),
-        approx.t_of_distance(F::PI() / 4.0_f32.into()).unwrap(),
+        approx
+            .iter_t_of_distance(
+                BezierIterationType::ClosenessSq(F::ZERO),
+                F::PI() / 4.0_f32.into(),
+            )
+            .unwrap(),
         0.001,
         "t of half-way round 90-degree arc of circle radius 1",
     );
     utils::approx_eq(
         0.245_f32.into(),
-        approx.t_of_distance(F::PI() / 8.0_f32.into()).unwrap(),
+        approx
+            .iter_t_of_distance(
+                BezierIterationType::ClosenessSq(F::ZERO),
+                F::PI() / 8.0_f32.into(),
+            )
+            .unwrap(),
         0.001,
         "t of quarter-way round 90-degree arc of circle radius 1",
     );
     utils::approx_eq(
         0.755_f32.into(),
         approx
-            .t_of_distance(F::PI() * (3.0_f32 / 8.0).into())
+            .iter_t_of_distance(
+                BezierIterationType::ClosenessSq(F::ZERO),
+                F::PI() * (3.0_f32 / 8.0).into(),
+            )
             .unwrap(),
         0.001,
         "t of three-quarters-way round 90-degree arc of circle radius 1",

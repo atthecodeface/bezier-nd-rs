@@ -1,13 +1,16 @@
 use crate::Num;
 use crate::{
     metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce, BezierReduction,
-    BezierSplit, BoxedBezier,
+    BezierIterationType, BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
+    BoxedBezier,
 };
 
 use geo_nd::vector;
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 2] {
+    fn distance_sq_between(&self, p0: &[F; D], p1: &[F; D]) -> F {
+        vector::distance_sq(p0, p1)
+    }
     fn point_at(&self, t: F) -> [F; D] {
         vector::add(vector::scale(self[0], F::ONE - t), &self[1], t)
     }
@@ -144,19 +147,33 @@ impl<F: Num, const D: usize> BezierSplit<F> for [[F; D]; 2] {
         [m0, m1]
     }
 }
-
 impl<F, const D: usize> BezierFlatIterator<F, [F; D]> for [[F; D]; 2]
 where
     F: Num,
 {
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = ([F; D], [F; D])> {
-        BezierLineIter::<_, _, _, false>::new(self, closeness_sq)
+    /// Return an iterator of N points along the Bezier at even steps of `t`
+    fn as_t_lines(
+        &self,
+        iter_type: BezierIterationType<F>,
+    ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
+        let n = if let BezierIterationType::Uniform(n) = iter_type {
+            n
+        } else {
+            2
+        };
+        utils::float_iter(n)
+            .zip(utils::float_iter(n).skip(1))
+            .map(|(t0, t1)| (t0, self.point_at(t0), t1, self.point_at(t1)))
     }
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, false>::new(self, closeness_sq)
-    }
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        BezierLineTIter::<_, _, _, true>::new(self, closeness_sq)
+
+    /// Return an iterator of N points along the Bezier at even steps of `t`
+    fn as_t_points(&self, iter_type: BezierIterationType<F>) -> impl Iterator<Item = (F, [F; D])> {
+        let n = if let BezierIterationType::Uniform(n) = iter_type {
+            n
+        } else {
+            2
+        };
+        utils::float_iter(n).map(|t| (t, self.point_at(t)))
     }
 }
 

@@ -1,5 +1,5 @@
 //a Imports
-use crate::{BezierEval, BezierFlatIterator, Float};
+use crate::{BezierEval, BezierFlatIterator, BezierIterationType, Float};
 
 /// This type provides optimized calculation of the distance from a point to a (set) of Bezier
 ///
@@ -44,7 +44,7 @@ impl<F: Float> BezierDistance2D<F> {
     ) {
         self.beziers.push(Box::new(bezier.clone()));
         let first = self.flattened.len();
-        for p in bezier.as_points(self.closeness_sq) {
+        for (_t, p) in bezier.as_t_points(BezierIterationType::ClosenessSq(self.closeness_sq)) {
             self.flattened.push(p);
         }
         self.bezier_indices.push((first, self.flattened.len()));

@@ -9,7 +9,7 @@
 //! * [[f32;N];3] - Quadratic Bezier
 //! * [[f32;N];4] - Cubic Bezier
 
-use bezier_nd::{BezierEval, BezierFlatIterator, BezierSplit};
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierIterationType, BezierSplit};
 use geo_nd::vector;
 mod utils;
 
@@ -32,7 +32,7 @@ fn test_points<
         bezier.degree()
     );
     eprintln!("Bezier {bezier:?}");
-    for (t, p) in bezier.as_t_points(closeness_sq) {
+    for (t, p) in bezier.as_t_points(BezierIterationType::ClosenessSq(closeness_sq)) {
         eprintln!("Next t/p {t} {p:?}");
         let bp = bezier.point_at(t);
         let d_sq = vector::distance_sq(&bp, &p);
@@ -51,7 +51,9 @@ fn test_points<
     );
 
     // Create a set of points where the whole Bezier is within closeness_sq, and check the points are on the Bezier
-    let bezier_pts_of_closeness = utils::BezierPtSet::of_point_iter(bezier.as_points(closeness_sq));
+    let bezier_pts_of_closeness = utils::BezierPtSet::of_point_iter(
+        bezier.as_t_points(BezierIterationType::ClosenessSq(closeness_sq)),
+    );
     let max_d_sq = bezier_pts_of_closeness.max_distance_sq_of_all_pts(&bezier_all_pts);
     assert!(max_d_sq < max_pt_sep_sq + 1E-10, "Distance squared between bezier as points is too far ({max_d_sq}) from the Bezier (or rather the closest of {} equidistant points on the Bezier", bezier_all_pts.len());
 

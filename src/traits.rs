@@ -1,5 +1,15 @@
+use std::f32;
+
 use crate::BezierBuilder;
-use crate::{BezierPointIter, BezierPointTIter};
+use crate::BezierPointTIter;
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
+pub enum BezierIterationType<F: Num> {
+    ClosenessSq(F),
+    DcClosenessSq(F),
+    Uniform(usize),
+}
 
 /// How to reduce a Bezier curve
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -41,6 +51,74 @@ pub enum BezierMetric {
     SumControlSquared,
 }
 
+pub trait NumOps:
+    Sized
+    + 'static
+    + From<f32>
+    + std::ops::Neg<Output = Self>
+    + std::cmp::PartialOrd
+    + num_traits::ConstZero
+    + Copy
+{
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn is_unreliable_divisor(self) -> bool {
+        self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
+    }
+
+    /// Return an estimate of the square root to within a precision
+    fn sqrt_est(self, accuracy: f32, min: bool) -> Self;
+
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn cbrt_est(self, accuracy: f32) -> Self;
+
+    fn is_sign_negative(self) -> bool {
+        self < Self::ZERO
+    }
+}
+
+impl NumOps for f32 {
+    fn is_unreliable_divisor(self) -> bool {
+        self.abs() <= f32::EPSILON
+    }
+
+    /// Return an estimate of the square root to within a precision
+    fn sqrt_est(self, _accuracy: f32, _min: bool) -> Self {
+        self.sqrt()
+    }
+
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn cbrt_est(self, _accuracy: f32) -> Self {
+        self.cbrt()
+    }
+
+    fn is_sign_negative(self) -> bool {
+        <Self as num_traits::Float>::is_sign_negative(self)
+    }
+}
+
+impl NumOps for f64 {
+    fn is_unreliable_divisor(self) -> bool {
+        self.abs() <= f64::EPSILON
+    }
+
+    /// Return an estimate of the square root to within a precision
+    fn sqrt_est(self, _accuracy: f32, _min: bool) -> Self {
+        self.sqrt()
+    }
+
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn cbrt_est(self, _accuracy: f32) -> Self {
+        self.cbrt()
+    }
+    fn is_sign_negative(self) -> bool {
+        <Self as num_traits::Float>::is_sign_negative(self)
+    }
+}
+
 /// A trait that is the basic requirement for the 't' parameter for Beziers; it
 /// requires basic arithmetic operations, and conversion from f32.
 ///
@@ -52,6 +130,8 @@ pub trait Num:
     + std::any::Any
     + PartialEq
     + PartialOrd
+    + Send
+    + Sync
     + std::fmt::Display
     + std::fmt::Debug
     + std::ops::Neg<Output = Self>
@@ -62,10 +142,31 @@ pub trait Num:
     + num_traits::FromPrimitive
     + From<f32>
     + 'static
+    + NumOps
 {
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
-    fn is_unreliable_divisor(self) -> bool;
+    // Abs for those types that don't support FloatOps
+    fn nabs(self) -> Self {
+        if self.is_sign_negative() {
+            -self
+        } else {
+            self
+        }
+    }
+
+    fn min(self, other: Self) -> Self {
+        if self <= other {
+            self
+        } else {
+            other
+        }
+    }
+    fn max(self, other: Self) -> Self {
+        if other <= self {
+            self
+        } else {
+            other
+        }
+    }
 }
 
 /// An extension to the [Num] trait, providing in addition floating point operations such as sqrt and cbrt.
@@ -78,12 +179,13 @@ pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
 
 impl<T> Float for T where T: Num + num_traits::Float + num_traits::FloatConst {}
 
-impl<T> Num for T
-where
+impl<T> Num for T where
     T: Copy
         + std::any::Any
         + PartialEq
         + PartialOrd
+        + Send
+        + Sync
         + std::fmt::Display
         + std::fmt::Debug
         + std::ops::Neg<Output = Self>
@@ -93,11 +195,9 @@ where
         + num_traits::ConstZero
         + num_traits::FromPrimitive
         + From<f32>
-        + 'static,
+        + 'static
+        + NumOps
 {
-    fn is_unreliable_divisor(self) -> bool {
-        self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
-    }
 }
 
 pub trait BasicBezier<F: Num, P: Clone>:
@@ -127,6 +227,11 @@ impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
 ///
 /// This is explicitly dyn-compatible, and supported by `Approximation`
 pub trait BezierEval<F: Num, P: Clone> {
+    /// Distance between
+    ///
+    /// Method provided to permit length-of-a-vector
+    fn distance_sq_between(&self, p0: &P, p1: &P) -> F;
+
     /// Evaluate the point on the Bezier at parameter 't'
     fn point_at(&self, t: F) -> P;
 
@@ -363,81 +468,41 @@ where
     F: Num,
     P: Clone,
 {
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    fn as_lines(&self, closeness_sq: F) -> impl Iterator<Item = (P, P)>;
+    /// Return an iterator of N points along the Bezier at even steps of `t`
+    fn as_t_lines(&self, iter_type: BezierIterationType<F>) -> impl Iterator<Item = (F, P, F, P)>;
 
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    fn as_points(&self, closeness_sq: F) -> impl Iterator<Item = P> {
-        BezierPointIter::new(self.as_lines(closeness_sq))
+    /// Return an iterator of N points along the Bezier at even steps of `t`
+    fn as_t_points(&self, iter_type: BezierIterationType<F>) -> impl Iterator<Item = (F, P)> {
+        BezierPointTIter::new(self.as_t_lines(iter_type))
     }
 
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The line points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Do not attempt to preserve the closeness of points on the individual line
-    /// segments map linearly with the t values they associate with to within the
-    /// closeness_sq of the Bezier (but they will to a different t value)
-    fn as_t_lines(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
-
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Do not attempt to preserve the closeness of points on the individual line
-    /// segments map linearly with the t values they associate with to within the
-    /// closeness_sq of the Bezier (but they will to a different t value)
-    fn as_t_points(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
-        BezierPointTIter::new(self.as_t_lines(closeness_sq))
+    /// Calculates the length of an iterator
+    fn iter_length(&self, iter_type: BezierIterationType<F>) -> F {
+        self.as_t_lines(iter_type)
+            .fold(F::ZERO, |acc, (_t0, p0, _t1, p1)| {
+                acc + self
+                    .distance_sq_between(&p0, &p1)
+                    .sqrt_est(f32::EPSILON, false)
+            })
     }
 
-    /// Return an iterator of line segments represented by a pair of points,
-    /// where the line segments approximate the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The line points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Preserve the mapping of 't' such that the point on the original Bezier at
-    /// a parameter `t` will be within closeness_sq of the point on the line segment
-    /// provided here with a linear `t` mapping given its endpoints
-    ///
-    /// This may require more line segments to be returned than a regular as_t_lines iterator would return
-    fn as_t_lines_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P, F, P)>;
+    /// Calculates the length of a setion of the Bezier
+    fn iter_t_of_distance(&self, iter_type: BezierIterationType<F>, mut distance: F) -> Option<F> {
+        for (t0, p0, t1, p1) in self.as_t_lines(iter_type) {
+            let dp = self
+                .distance_sq_between(&p0, &p1)
+                .sqrt_est(f32::EPSILON, false);
 
-    /// Return an iterator of points,
-    /// where the points are the start/end points of line segments that approximate
-    ///  the Bezier such that all points
-    /// on the Bezier are approximated by points on the line segments within a
-    /// distance squared of 'closeness_sq'
-    ///
-    /// The points are indicated by the actual point value and the parameter
-    /// 't' of the original Bezier that the point is from
-    ///
-    /// Preserve the mapping of 't' such that the point on the original Bezier at
-    /// a parameter `t` will be within closeness_sq of the point on the line segment
-    /// provided here with a linear `t` mapping given its endpoints
-    ///
-    /// This may require more points to be returned than a regular as_t_points iterator would return
-    fn as_t_points_dc(&self, closeness_sq: F) -> impl Iterator<Item = (F, P)> {
-        BezierPointTIter::new(self.as_t_lines_dc(closeness_sq))
+            if distance <= dp {
+                if dp.is_unreliable_divisor() {
+                    return Some(t0);
+                } else {
+                    return Some(t0 + (t1 - t0) * distance / dp);
+                }
+            }
+            distance -= dp;
+        }
+        None
     }
 }
 

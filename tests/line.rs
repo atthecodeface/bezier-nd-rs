@@ -1,5 +1,5 @@
 //a Imports
-use bezier_nd::{BasicBezier, BezierND};
+use bezier_nd::{BasicBezier, BezierIterationType, BezierND};
 use bezier_nd::{Float, Num};
 mod utils;
 use rand::prelude::*;
@@ -52,7 +52,7 @@ fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 
     let mut v = Vec::new();
     v.clear();
-    for (a, _b) in bezier.as_lines(0.1_f32.into()) {
+    for (_, a, _, _b) in bezier.as_t_lines(BezierIterationType::ClosenessSq(0.1_f32.into())) {
         v.push(a);
     }
     assert_eq!(

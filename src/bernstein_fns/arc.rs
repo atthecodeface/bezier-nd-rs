@@ -191,7 +191,7 @@ pub fn of_round_corner<F: Float, const D: usize>(
     let v0 = vector::normalize(*v0);
     let v1 = vector::normalize(*v1);
     let cos_alpha = vector::dot(&v0, &v1);
-    if cos_alpha.abs() >= nearly_one {
+    if cos_alpha >= nearly_one || cos_alpha < -nearly_one {
         // v0 and v1 point in the same direction
         let mut p0 = [F::zero(); D];
         let mut p1 = [F::zero(); D];
