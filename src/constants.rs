@@ -1,3 +1,18 @@
+use crate::BezierReduction;
+pub fn reduce_table_of_match(method: BezierReduction) -> &'static [&'static [f64]] {
+    match method {
+        BezierReduction::LeastSquares => REDUCE_BY_ONE_LSQ,
+        _ => REDUCE_BY_ONE_UNIFORM,
+    }
+}
+
+pub fn er_minus_i_table_of_match(method: BezierReduction) -> &'static [&'static [f64]] {
+    match method {
+        BezierReduction::LeastSquares => ER_LSQ_MINUS_I,
+        _ => ER_UNIFORM_MINUS_I,
+    }
+}
+
 /// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value\[0\]
 ///
 /// i.e. (n i) is in `BINOMIALS[n][i+1]`

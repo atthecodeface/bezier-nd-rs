@@ -122,7 +122,7 @@
 //! i.e. the reduction chosen has the property that elevate(reduce) is the identity, which we need for a reduction
 
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
     BezierFlatIterator, BezierLineIter, BezierLineTIter, BezierMetric, BezierOps, BezierReduce,
     BezierReduction, BezierSplit, Num,
 };
@@ -597,22 +597,58 @@ where
     type Quadratic = Self;
     type Cubic = Self;
 
-    fn reduce(&self, _method: BezierReduction) -> Option<Self::Reduced> {
-        todo!()
+    fn can_reduce(&self, method: BezierReduction) -> bool {
+        let table = constants::reduce_table_of_match(method);
+        self.degree > 1 && self.degree <= table.len() + 2
     }
-    fn can_reduce(&self, _method: BezierReduction) -> bool {
-        self.degree > 1
+    fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
+        let table = constants::reduce_table_of_match(method);
+        if self.degree > table.len() + 2 {
+            None
+        } else {
+            let mut result = Self::default();
+            crate::lazy_constants::use_constants_table(
+                |table| {
+                    bernstein_fns::transform::transform_pts(
+                        table,
+                        &self.pts[0..=self.degree],
+                        &mut result.pts[0..self.degree],
+                    )
+                },
+                table,
+                self.degree - 2,
+            );
+            result.degree = self.degree - 1;
+            Some(result)
+        }
     }
-    fn dc_sq_from_reduction(&self, _method: BezierReduction) -> F {
-        todo!();
+    fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
+        match self.degree {
+            2 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self.pts[0..3])
+                .unwrap()
+                .dc_sq_from_reduction(method),
+            3 => self.dc_sq_from_quadratic(),
+            _ => {
+                let table = constants::er_minus_i_table_of_match(method);
+                if self.degree > table.len() + 2 {
+                    F::ZERO
+                } else {
+                    crate::lazy_constants::use_constants_table(
+                        |table| metrics::mapped_c_sq(&self.pts[0..=self.degree], table),
+                        table,
+                        self.degree - 2,
+                    )
+                }
+            }
+        }
     }
 
     fn dc_sq_from_quadratic(&self) -> F {
-        todo!()
+        F::ZERO
     }
 
     fn dc_sq_from_cubic(&self) -> F {
-        todo!()
+        F::ZERO
     }
     fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
         None

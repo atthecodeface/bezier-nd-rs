@@ -458,5 +458,25 @@ fn preserve_uniform() {
         let mut pts = vec![[0.0_f32; 2]; 10];
         utils::set_random_bezier(&mut rng, &distribution, &mut pts);
         test_reduce_preserve_uniform(&pts);
+
+        let mut pts = BezierND::<f64, 10, _>::new(&[[0.0; 2]; 3]);
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_preserve_uniform(&pts);
+
+        let mut pts = BezierND::<f64, 10, _>::new(&[[0.0; 2]; 4]);
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_preserve_uniform(&pts);
+
+        let mut pts = BezierND::<f64, 10, _>::new(&[[0.0; 2]; 5]);
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_preserve_uniform(&pts);
+
+        let mut pts = BezierND::<f64, 10, _>::new(&[[0.0; 2]; 6]);
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_preserve_uniform(&pts);
+
+        let mut pts = BezierND::<f64, 10, _>::new(&[[0.0; 2]; 9]);
+        utils::set_random_bezier(&mut rng, &distribution, &mut pts);
+        test_reduce_preserve_uniform(&pts);
     }
 }

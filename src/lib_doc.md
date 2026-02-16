@@ -2,6 +2,8 @@
 
 Adder BuilderError to BezierBuilder, to provide feedback on why a build fails
 
+Change Reduce to just reduce by one, and provide matrix of [F] to reduce, and apply matrix to produce a Option<Mapped>
+
 Add tests for:
 * t_closest
 * reduce

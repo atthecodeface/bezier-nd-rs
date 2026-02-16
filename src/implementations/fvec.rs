@@ -189,12 +189,7 @@ where
     type Cubic = Self;
 
     fn can_reduce(&self, method: BezierReduction) -> bool {
-        let table = {
-            match method {
-                BezierReduction::LeastSquares => constants::REDUCE_BY_ONE_LSQ,
-                _ => constants::REDUCE_BY_ONE_UNIFORM,
-            }
-        };
+        let table = constants::reduce_table_of_match(method);
         self.len() > 2 && self.len() <= table.len() + 3
     }
 
@@ -209,12 +204,7 @@ where
                 .reduce(method)
                 .map(|a| a.into()),
             _ => {
-                let table = {
-                    match method {
-                        BezierReduction::LeastSquares => constants::REDUCE_BY_ONE_LSQ,
-                        _ => constants::REDUCE_BY_ONE_UNIFORM,
-                    }
-                };
+                let table = constants::reduce_table_of_match(method);
                 if self.len() > table.len() + 3 {
                     None
                 } else {
@@ -237,12 +227,7 @@ where
                 .dc_sq_from_reduction(method),
             4 => self.dc_sq_from_quadratic(),
             _ => {
-                let table = {
-                    match method {
-                        BezierReduction::LeastSquares => constants::ER_LSQ_MINUS_I,
-                        _ => constants::ER_LSQ_MINUS_I,
-                    }
-                };
+                let table = constants::er_minus_i_table_of_match(method);
                 if self.len() > table.len() + 3 {
                     F::ZERO
                 } else {

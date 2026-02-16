@@ -2,6 +2,7 @@ use crate::Num;
 use geo_nd::vector;
 
 /// Transform a slice of points by a matrix into a (new) slice of points
+#[track_caller]
 pub fn transform_pts<F: Num, const D: usize>(matrix: &[F], pts: &[[F; D]], result: &mut [[F; D]]) {
     assert_eq!(
         pts.len() * result.len(),
