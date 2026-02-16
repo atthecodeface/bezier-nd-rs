@@ -4,4 +4,4 @@ mod split;
 
 pub use lines::BezierLineTIter;
 pub use points::BezierPointTIter;
-pub use split::{BezierSplitIter, BezierSplitTIter};
+pub use split::BezierSplitTIter;

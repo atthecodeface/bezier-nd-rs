@@ -31,6 +31,7 @@ fn test_points<
         "test_points for Bezier of degree {} and dimension {D} with closeness_sq {closeness_sq}",
         bezier.degree()
     );
+
     eprintln!("Bezier {bezier:?}");
     for (t, p) in bezier.as_t_points(BezierIterationType::ClosenessSq(closeness_sq)) {
         eprintln!("Next t/p {t} {p:?}");
@@ -39,6 +40,19 @@ fn test_points<
         assert!(
             d_sq < 1E-10,
             "Distance between point at {t} {p:?} and actual bezier at t {bp:?} is too big {d_sq}"
+        );
+    }
+
+    eprintln!("Uniform iteration");
+    for (f, (t, p)) in
+        utils::float_iter(21).zip(bezier.as_t_points(BezierIterationType::Uniform(21)))
+    {
+        eprintln!("Next {f} t/p {t} {p:?}");
+        let bp = bezier.point_at(f);
+        let d_sq = vector::distance_sq(&bp, &p);
+        assert!(
+            d_sq < 1E-10,
+            "Distance between point at {f} == {t} {p:?} and actual bezier at t {bp:?} is too big {d_sq}"
         );
     }
 
@@ -72,6 +86,7 @@ where
     [[f32; D]; N]:
         BezierEval<f32, [f32; D]> + BezierSplit<f32> + BezierFlatIterator<f32, [f32; D]> + Clone,
 {
+    eprintln!("Random seed {seed}");
     let mut rng = utils::make_random(seed);
     let distribution = rand::distr::Uniform::new(-10.0_f32, 10.0).unwrap();
     let bezier = utils::new_random_point_array(&mut rng, &distribution);

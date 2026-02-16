@@ -31,7 +31,7 @@ pub mod metrics;
 /*a Exports
 */
 pub use approximation::Approximation;
-pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitIter, BezierSplitTIter};
+pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter};
 pub use traits::{
     BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
     BezierIterationType, BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,

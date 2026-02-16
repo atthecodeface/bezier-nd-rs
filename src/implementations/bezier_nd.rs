@@ -494,11 +494,7 @@ where
         &self,
         iter_type: BezierIterationType<F>,
     ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
-        match iter_type {
-            BezierIterationType::ClosenessSq(f) => BezierLineTIter::new(self, f, false),
-            BezierIterationType::DcClosenessSq(f) => BezierLineTIter::new(self, f, true),
-            BezierIterationType::Uniform(_) => BezierLineTIter::new(self, F::ONE, true),
-        }
+        BezierLineTIter::of_iter_type(self, iter_type)
     }
 }
 

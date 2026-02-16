@@ -1,5 +1,5 @@
 use crate::Num;
-use crate::{BezierEval, BezierSplit, BezierSplitIter, BezierSplitTIter};
+use crate::{BezierEval, BezierIterationType, BezierSplit, BezierSplitTIter};
 use std::marker::PhantomData;
 
 /// An iterator with Item = (P, P) of straight lines that form a single Bezier
@@ -27,13 +27,20 @@ where
     B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
+    pub fn of_iter_type(bezier: &B, iter_type: BezierIterationType<F>) -> Self {
+        match iter_type {
+            BezierIterationType::ClosenessSq(f) => Self::split_bezier(bezier, f, false),
+            BezierIterationType::DcClosenessSq(f) => Self::split_bezier(bezier, f, true),
+            BezierIterationType::Uniform(n) => Self::uniform(bezier, F::ZERO, F::ONE, n),
+        }
+    }
     //fp new
     /// Create a new Bezier line iterator for a given Bezier and
     /// straightness
     ///
     /// This clones the Bezier.
-    pub fn new(bezier: &B, straightness_sq: F, use_dc: bool) -> Self {
-        let split_iter = BezierSplitTIter::new(bezier);
+    pub fn split_bezier(bezier: &B, straightness_sq: F, use_dc: bool) -> Self {
+        let split_iter = BezierSplitTIter::split_bezier(bezier);
         let metric = if use_dc {
             B::dc_sq_from_line
         } else {
@@ -44,6 +51,15 @@ where
             straightness_sq,
             split_iter,
             metric,
+            phantom: PhantomData,
+        }
+    }
+    pub fn uniform(bezier: &B, t0: F, t1: F, num_steps: usize) -> Self {
+        let split_iter = BezierSplitTIter::uniform(bezier, t0, t1, num_steps);
+        Self {
+            straightness_sq: F::ZERO,
+            split_iter,
+            metric: B::closeness_sq_to_line,
             phantom: PhantomData,
         }
     }
@@ -68,17 +84,21 @@ where
     /// This forces the segment returned (eventually!) to be (pa,pb)
     /// and to leave the top of the stack starting with pb.
     fn next(&mut self) -> Option<Self::Item> {
-        while let Some((t0, t1, bezier)) = self.split_iter.next() {
-            let metric = (self.metric)(&bezier);
-            if metric < self.straightness_sq {
-                let (ep0, ep1) = bezier.endpoints();
-                return Some((t0, ep0.clone(), t1, ep1.clone()));
-            } else {
-                self.split_iter.add_split(&(t0, t1, bezier));
+        if self.straightness_sq == F::ZERO {
+            self.split_iter
+                .next()
+                .map(|(t0, t1, b)| (t0, b.point_at(t0), t1, b.point_at(t1)))
+        } else {
+            while let Some((t0, t1, bezier)) = self.split_iter.next() {
+                let metric = (self.metric)(&bezier);
+                if metric < self.straightness_sq {
+                    let (ep0, ep1) = bezier.endpoints();
+                    return Some((t0, ep0.clone(), t1, ep1.clone()));
+                } else {
+                    self.split_iter.add_split(&(t0, t1, bezier));
+                }
             }
+            None
         }
-        None
     }
-
-    //zz All done
 }
