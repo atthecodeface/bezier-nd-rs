@@ -189,8 +189,7 @@ where
     type Cubic = Self;
 
     fn can_reduce(&self, method: BezierReduction) -> bool {
-        let table = constants::reduce_table_of_match(method);
-        self.len() > 2 && self.len() <= table.len() + 3
+        constants::reduce_table_of_match(method, self.len() - 1).is_some()
     }
 
     fn reduce(&self, method: BezierReduction) -> Option<Self> {
@@ -204,17 +203,15 @@ where
                 .reduce(method)
                 .map(|a| a.into()),
             _ => {
-                let table = constants::reduce_table_of_match(method);
-                if self.len() > table.len() + 3 {
-                    None
-                } else {
+                if let Some(table) = constants::reduce_table_of_match(method, self.len() - 1) {
                     let mut result = vec![[F::ZERO; D]; self.len() - 1];
                     crate::lazy_constants::use_constants_table(
                         |table| bernstein_fns::transform::transform_pts(table, self, &mut result),
                         table,
-                        self.len() - 3,
                     );
                     Some(result)
+                } else {
+                    None
                 }
             }
         }
@@ -222,20 +219,19 @@ where
 
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         match self.len() {
+            0 | 1 => F::ZERO,
             3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
                 .unwrap()
                 .dc_sq_from_reduction(method),
             4 => self.dc_sq_from_quadratic(),
             _ => {
-                let table = constants::er_minus_i_table_of_match(method);
-                if self.len() > table.len() + 3 {
-                    F::ZERO
-                } else {
+                if let Some(table) = constants::er_minus_i_table_of_match(method, self.len() - 1) {
                     crate::lazy_constants::use_constants_table(
                         |table| metrics::mapped_c_sq(self, table),
                         table,
-                        self.len() - 3,
                     )
+                } else {
+                    F::ZERO
                 }
             }
         }

@@ -1,16 +1,22 @@
 use crate::BezierReduction;
-pub fn reduce_table_of_match(method: BezierReduction) -> &'static [&'static [f64]] {
-    match method {
-        BezierReduction::LeastSquares => REDUCE_BY_ONE_LSQ,
-        _ => REDUCE_BY_ONE_UNIFORM,
-    }
+pub fn reduce_table_of_match(method: BezierReduction, degree: usize) -> Option<&'static [f64]> {
+    let table = {
+        match method {
+            BezierReduction::LeastSquares => REDUCE_BY_ONE_LSQ,
+            _ => REDUCE_BY_ONE_UNIFORM,
+        }
+    };
+    (degree >= 2 && degree <= 2 + table.len()).then(|| table[degree - 2])
 }
 
-pub fn er_minus_i_table_of_match(method: BezierReduction) -> &'static [&'static [f64]] {
-    match method {
-        BezierReduction::LeastSquares => ER_LSQ_MINUS_I,
-        _ => ER_UNIFORM_MINUS_I,
-    }
+pub fn er_minus_i_table_of_match(method: BezierReduction, degree: usize) -> Option<&'static [f64]> {
+    let table = {
+        match method {
+            BezierReduction::LeastSquares => ER_LSQ_MINUS_I,
+            _ => ER_UNIFORM_MINUS_I,
+        }
+    };
+    (degree >= 2 && degree <= 2 + table.len()).then(|| table[degree - 2])
 }
 
 /// Preevaluated values for (n i), with 2^n (i.e. the sum of (n i)) in value\[0\]

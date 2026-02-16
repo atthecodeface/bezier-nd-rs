@@ -6,7 +6,6 @@ Change Reduce to just reduce by one, and provide matrix of [F] to reduce, and ap
 
 Add tests for:
 * t_closest
-* reduce
 * elevate_by(>1)
 * BezierOps
 * Polynomial (set_multiply, set_divide, find cubic real root, tests for [F])
@@ -15,6 +14,7 @@ Add tests for:
 * Approximation derivative_at of t<0 or t>1
 * Approximation into iterator
 * Appromixation for_each_control_point
+* metrics of any kind from line or bezier
 
 * add 'BezierCubic' trait? - support arc
 * add 'BezierQuadratic' trait?

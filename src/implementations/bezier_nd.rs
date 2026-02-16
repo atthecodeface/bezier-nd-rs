@@ -598,14 +598,10 @@ where
     type Cubic = Self;
 
     fn can_reduce(&self, method: BezierReduction) -> bool {
-        let table = constants::reduce_table_of_match(method);
-        self.degree > 1 && self.degree <= table.len() + 2
+        constants::reduce_table_of_match(method, self.degree).is_some()
     }
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
-        let table = constants::reduce_table_of_match(method);
-        if self.degree > table.len() + 2 {
-            None
-        } else {
+        if let Some(table) = constants::reduce_table_of_match(method, self.degree) {
             let mut result = Self::default();
             crate::lazy_constants::use_constants_table(
                 |table| {
@@ -616,30 +612,21 @@ where
                     )
                 },
                 table,
-                self.degree - 2,
             );
             result.degree = self.degree - 1;
             Some(result)
+        } else {
+            None
         }
     }
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
-        match self.degree {
-            2 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self.pts[0..3])
-                .unwrap()
-                .dc_sq_from_reduction(method),
-            3 => self.dc_sq_from_quadratic(),
-            _ => {
-                let table = constants::er_minus_i_table_of_match(method);
-                if self.degree > table.len() + 2 {
-                    F::ZERO
-                } else {
-                    crate::lazy_constants::use_constants_table(
-                        |table| metrics::mapped_c_sq(&self.pts[0..=self.degree], table),
-                        table,
-                        self.degree - 2,
-                    )
-                }
-            }
+        if let Some(table) = constants::er_minus_i_table_of_match(method, self.degree) {
+            crate::lazy_constants::use_constants_table(
+                |table| metrics::mapped_c_sq(&self.pts[0..=self.degree], table),
+                table,
+            )
+        } else {
+            F::ZERO
         }
     }
 
