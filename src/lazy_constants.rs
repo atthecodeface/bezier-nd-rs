@@ -11,13 +11,7 @@ struct Table {
 static CONSTANTS_TABLE_HASHMAP: OnceLock<RwLock<HashMap<(usize, TypeId), Table>>> = OnceLock::new();
 
 fn create_f_table<F: Num>(table: &'static [f64]) -> Table {
-    let x: Vec<F> = table
-        .iter()
-        .map(|f| {
-            let f: F = (*f as f32).into();
-            f
-        })
-        .collect();
+    let x: Vec<F> = table.iter().map(|f| F::of_f64(*f)).collect();
     Table {
         type_id: TypeId::of::<F>(),
         table: Box::new(x),

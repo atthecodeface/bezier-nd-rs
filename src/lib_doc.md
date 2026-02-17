@@ -2,13 +2,12 @@
 
 Adder BuilderError to BezierBuilder, to provide feedback on why a build fails
 
-* Remove BezierLineIter, bezierPointIter
-* Remove use of abs/min/max from utils
 * Change Reduce to just reduce by one
 * Make arc and round etc explicit public functions
 * Move BezierOps (all dyn compatible) to BezierEval If Approxmiation can do them
 * Add BezierMap trait apply matrix to produce a Option<Mapped>
-* Add pubic function to fill Option<matrix> for 'reduce by N given method', 'elevate by N'
+* Add pubic function to fill Option<matrix> for 'reduce by N given method', 'elevate by N', 'Bernstein degree N from N+1 uniform points', 'Bernstein degree N to N+1 uniform points'
+* Add BezierBuilder of degree N matrix to be applied to N+1 points
 
 Add tests for:
 * t_closest

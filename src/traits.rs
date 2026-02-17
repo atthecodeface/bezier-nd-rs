@@ -60,19 +60,24 @@ pub trait NumOps:
     + num_traits::ConstZero
     + Copy
 {
+    /// Convert an f64 to this value
+    fn of_f64(v: f64) -> Self {
+        (v as f32).into()
+    }
+
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
     fn is_unreliable_divisor(self) -> bool {
         self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
     }
 
-    /// Return an estimate of the square root to within a precision
-    fn sqrt_est(self, accuracy: f32, min: bool) -> Self;
+    /// Return an estimate of the square root
+    fn sqrt_est(self) -> Self;
 
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
-    fn cbrt_est(self, accuracy: f32) -> Self;
+    /// Return an estimate of the cube root
+    fn cbrt_est(self) -> Self;
 
+    /// Return true if the value is negative
     fn is_sign_negative(self) -> bool {
         self < Self::ZERO
     }
@@ -83,14 +88,11 @@ impl NumOps for f32 {
         self.abs() <= f32::EPSILON
     }
 
-    /// Return an estimate of the square root to within a precision
-    fn sqrt_est(self, _accuracy: f32, _min: bool) -> Self {
+    fn sqrt_est(self) -> Self {
         self.sqrt()
     }
 
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
-    fn cbrt_est(self, _accuracy: f32) -> Self {
+    fn cbrt_est(self) -> Self {
         self.cbrt()
     }
 
@@ -100,18 +102,19 @@ impl NumOps for f32 {
 }
 
 impl NumOps for f64 {
+    fn of_f64(v: f64) -> Self {
+        v
+    }
+
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f64::EPSILON
     }
 
-    /// Return an estimate of the square root to within a precision
-    fn sqrt_est(self, _accuracy: f32, _min: bool) -> Self {
+    fn sqrt_est(self) -> Self {
         self.sqrt()
     }
 
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
-    fn cbrt_est(self, _accuracy: f32) -> Self {
+    fn cbrt_est(self) -> Self {
         self.cbrt()
     }
     fn is_sign_negative(self) -> bool {
@@ -480,18 +483,14 @@ where
     fn iter_length(&self, iter_type: BezierIterationType<F>) -> F {
         self.as_t_lines(iter_type)
             .fold(F::ZERO, |acc, (_t0, p0, _t1, p1)| {
-                acc + self
-                    .distance_sq_between(&p0, &p1)
-                    .sqrt_est(f32::EPSILON, false)
+                acc + self.distance_sq_between(&p0, &p1).sqrt_est()
             })
     }
 
     /// Calculates the length of a setion of the Bezier
     fn iter_t_of_distance(&self, iter_type: BezierIterationType<F>, mut distance: F) -> Option<F> {
         for (t0, p0, t1, p1) in self.as_t_lines(iter_type) {
-            let dp = self
-                .distance_sq_between(&p0, &p1)
-                .sqrt_est(f32::EPSILON, false);
+            let dp = self.distance_sq_between(&p0, &p1).sqrt_est();
 
             if distance <= dp {
                 if dp.is_unreliable_divisor() {

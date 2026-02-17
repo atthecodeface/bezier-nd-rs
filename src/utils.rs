@@ -37,7 +37,6 @@ pub fn opt_min_and_max_tc<F: Num, T: Copy>(
         )
     }
 }
-
 /// Iterate in 'n' steps from t0 to t1 inclusive
 pub fn float_iter_between<N: Num>(t0: N, t1: N, n: usize) -> impl Iterator<Item = N> {
     let step = {

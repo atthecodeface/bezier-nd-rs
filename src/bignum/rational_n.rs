@@ -1,4 +1,5 @@
 use super::{IntN, UIntN};
+use crate::utils;
 use num_traits::{ConstOne, One, Zero};
 
 /// A Rational number, with numerator and denominator as N*64-bit integers
@@ -551,6 +552,10 @@ impl<const N: usize> num_traits::Num for RationalN<N> {
 }
 
 impl<const N: usize> crate::NumOps for RationalN<N> {
+    fn of_f64(v: f64) -> Self {
+        v.into()
+    }
+
     fn is_unreliable_divisor(self) -> bool {
         self.numer.magnitude().find_top_bit_set() + 32 < self.denom.find_top_bit_set()
     }
@@ -560,13 +565,13 @@ impl<const N: usize> crate::NumOps for RationalN<N> {
     }
 
     /// Return an estimate of the square root to within a precision
-    fn sqrt_est(self, _accuracy: f32, min: bool) -> Self {
-        crate::utils::sqrt_est::<_, 5>(self, min)
+    fn sqrt_est(self) -> Self {
+        utils::sqrt_est::<_, 5>(self, true)
     }
 
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
-    fn cbrt_est(self, _accuracy: f32) -> Self {
-        crate::utils::cbrt_est::<_, 5>(self)
+    fn cbrt_est(self) -> Self {
+        utils::cbrt_est::<_, 5>(self)
     }
 }

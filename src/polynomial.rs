@@ -249,7 +249,7 @@ impl<F: Num> Polynomial<F> for [F] {
 /// Improve an estimate for a root; as we get closer the dx should get smaller
 ///
 /// If the dx is *larger* than the last dx then stop
-fn improve_root<F: Num + From<f32>>(poly: &[F], x: F) -> Option<(F, F)> {
+fn improve_root<F: Num>(poly: &[F], x: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
     let d2f = poly.d2f(x);
@@ -296,7 +296,7 @@ pub fn find_real_roots_quad<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
         if disc < F::zero() {
             (None, None)
         } else {
-            let disc_sq = disc.sqrt_est(f32::EPSILON, true);
+            let disc_sq = disc.sqrt_est();
             (
                 Some((-b + disc_sq) / two / a),
                 Some((-b - disc_sq) / two / a),

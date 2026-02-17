@@ -1,6 +1,12 @@
 #!/usr/bin/env python3
 import math
 
+wn = lambda a, x: (x * x + a) // (2 * x)
+yn = lambda a: (a // 6 + 1)
+zn = lambda z: wn(z, wn(z, yn(z)))
+for i in range(1, 16):
+    print(i, i * i, zn(i * i))
+
 
 def sqrt_est(sq):
     scale = 4
