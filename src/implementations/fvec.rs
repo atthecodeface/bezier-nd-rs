@@ -1,6 +1,6 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate,
+    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
     BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
     BezierReduce, BezierReduction, BezierSplit,
 };
@@ -283,7 +283,7 @@ where
 }
 
 impl<F: Num, const D: usize> BezierConstruct<F, D> for Vec<[F; D]> {
-    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let (mut matrix, pts) = builder.get_matrix_pts()?;
         let degree = pts.len() - 1;
 
@@ -293,7 +293,7 @@ impl<F: Num, const D: usize> BezierConstruct<F, D> for Vec<[F; D]> {
         let mut tr1 = vec![F::zero(); degree + 1];
 
         if matrix::lup_decompose(degree + 1, &matrix, &mut lu, &mut pivot) == F::ZERO {
-            return Err(());
+            return Err(BezierError::BadBuildConstraints);
         }
 
         assert!(

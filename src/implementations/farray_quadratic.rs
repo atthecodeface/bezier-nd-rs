@@ -1,5 +1,5 @@
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
+    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError, BezierEval,
     BezierFlatIterator, BezierLineTIter, BezierMetric, BezierOps, BezierReduce, BezierReduction,
     BezierSplit, BoxedBezier,
 };
@@ -285,12 +285,12 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
 }
 
 impl<F: Num, const D: usize> BezierConstruct<F, D> for [[F; D]; 3] {
-    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let mut matrix = [F::ZERO; 9];
         let mut pts = [[F::ZERO; D]; 3];
         builder.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
         if geo_nd::matrix::determinant3(&matrix).is_unreliable_divisor() {
-            Err(())
+            Err(BezierError::BadBuildConstraints)
         } else {
             let matrix = geo_nd::matrix::inverse3(&matrix);
             let mut bezier = [[F::ZERO; D]; 3];

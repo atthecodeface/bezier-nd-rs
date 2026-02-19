@@ -1,7 +1,4 @@
-use std::f32;
-
-use crate::BezierBuilder;
-use crate::BezierPointTIter;
+use crate::{BezierBuilder, BezierError, BezierPointTIter};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
@@ -703,5 +700,5 @@ where
     /// In all such cases the type can return an error; it might be that an underconstrained
     /// Bezier is built to its required degree, and then elevated to the degree of the
     /// actual type (if that is fixed), but this is not required.
-    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()>;
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError>;
 }

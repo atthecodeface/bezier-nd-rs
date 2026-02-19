@@ -4,6 +4,8 @@
 
 /*a Imports
 */
+mod error;
+pub use error::BezierError;
 mod builder;
 /// Constants used for Bezier curves and their elevation/reduction
 pub mod constants;

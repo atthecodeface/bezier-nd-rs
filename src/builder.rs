@@ -1,6 +1,6 @@
 use crate::bernstein_fns;
-use crate::BezierConstruct;
 use crate::Num;
+use crate::{BezierConstruct, BezierError};
 
 /// BezierBuildConstraint is a constraint that can be specified when
 /// building a Bezier, to constraint the point at a particular value
@@ -46,9 +46,12 @@ impl<F: Num, const D: usize> BezierBuildConstraint<F, D> {
         degree: usize,
         coeffs: &mut [F],
         pt: &mut [F; D],
-    ) -> bool {
+    ) -> Result<(), BezierError> {
         if coeffs.len() < degree + 1 {
-            false
+            Err(BezierError::BuildTooFewCoefficients(
+                degree + 1,
+                coeffs.len(),
+            ))
         } else {
             match self {
                 BezierBuildConstraint::PositionAtT(t, posn) => {
@@ -59,19 +62,19 @@ impl<F: Num, const D: usize> BezierBuildConstraint<F, D> {
                         *c = bc;
                     }
                     *pt = *posn;
-                    true
+                    Ok(())
                 }
                 BezierBuildConstraint::DerivativeAtT(t, 1, dp) => {
                     let (dc_reduce, dc_iter) = bernstein_fns::basis_dt_coeff_enum_num(degree, *t);
-                    eprintln!("{dc_reduce}");
                     for (c, (_i, bc)) in coeffs.iter_mut().zip(dc_iter) {
                         *c = bc / dc_reduce;
-                        eprintln!("{c} {bc} {dc_reduce} {degree} {_i}");
                     }
                     *pt = *dp;
-                    true
+                    Ok(())
                 }
-                BezierBuildConstraint::DerivativeAtT(_t, _n, _dp) => false,
+                BezierBuildConstraint::DerivativeAtT(_t, _n, _dp) => {
+                    Err(BezierError::UnableToBuild())
+                }
             }
         }
     }
@@ -140,14 +143,18 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
     /// If the matrix is invertible, then `p = matrix.inverse() * pts`, and the required Bezier curve
     /// that meets the constraints can be built. If the matrix is not invertible then the Bezier curve
     /// constraints are either tautological or contradictory.
-    pub fn fill_fwd_matrix_and_pts(&self, matrix: &mut [F], pts: &mut [[F; D]]) -> Result<(), ()> {
+    pub fn fill_fwd_matrix_and_pts(
+        &self,
+        matrix: &mut [F],
+        pts: &mut [[F; D]],
+    ) -> Result<(), BezierError> {
         let degree = self.bezier_min_degree();
         let n2 = (degree + 1) * (degree + 1);
         if matrix.len() != n2 {
-            return Err(());
+            return Err(BezierError::BadMatrixSize(n2, matrix.len()));
         }
         if pts.len() != degree + 1 {
-            return Err(());
+            return Err(BezierError::BadVectorSize(degree + 1, pts.len()));
         }
         for ((c, matrix_row), pt) in self
             .constraints
@@ -155,9 +162,7 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
             .zip(matrix.chunks_exact_mut(degree + 1))
             .zip(pts.iter_mut())
         {
-            if !c.fill_bernstein_coeffs_and_pt(degree, matrix_row, pt) {
-                return Err(());
-            }
+            c.fill_bernstein_coeffs_and_pt(degree, matrix_row, pt)?;
         }
         Ok(())
     }
@@ -168,7 +173,7 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
     /// If the matrix is invertible, then `p = matrix.inverse() * pts`, and the required Bezier curve
     /// that meets the constraints can be built. If the matrix is not invertible then the Bezier curve
     /// constraints are either tautological or contradictory.
-    pub fn get_matrix_pts(&self) -> Result<(Vec<F>, Vec<[F; D]>), ()> {
+    pub fn get_matrix_pts(&self) -> Result<(Vec<F>, Vec<[F; D]>), BezierError> {
         let degree = self.bezier_min_degree();
         let n2 = (degree + 1) * (degree + 1);
         let mut matrix = vec![F::ZERO; n2];
@@ -178,7 +183,7 @@ impl<F: Num, const D: usize> BezierBuilder<F, D> {
     }
 
     /// Construct a Bezier curve using this builder
-    pub fn construct<B: BezierConstruct<F, D>>(&self) -> Result<B, ()> {
+    pub fn construct<B: BezierConstruct<F, D>>(&self) -> Result<B, BezierError> {
         B::of_builder(self)
     }
 }

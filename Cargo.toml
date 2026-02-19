@@ -15,6 +15,7 @@ repository = "https://github.com/atthecodeface/bezier-nd-rs"
 
 [dependencies]
 lazy_static = "1.5.0"
+thiserror = "2.0.18"
 
 [dependencies.geo-nd]
 version="0.6"

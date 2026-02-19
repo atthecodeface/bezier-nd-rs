@@ -122,8 +122,8 @@
 //! i.e. the reduction chosen has the property that elevate(reduce) is the identity, which we need for a reduction
 
 use crate::{
-    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierEval,
-    BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
+    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
+    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
     BezierReduce, BezierReduction, BezierSplit, Num,
 };
 
@@ -502,10 +502,10 @@ where
 }
 
 impl<F: Num, const N: usize, const D: usize> BezierConstruct<F, D> for BezierND<F, N, D> {
-    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let (mut matrix, pts) = builder.get_matrix_pts()?;
         if pts.len() > N {
-            return Err(());
+            return Err(BezierError::MaxBuildDegree(N - 1, pts.len() + 1));
         }
         let degree = pts.len() - 1;
         let bezier = Self::new(&pts);
@@ -516,7 +516,7 @@ impl<F: Num, const N: usize, const D: usize> BezierConstruct<F, D> for BezierND<
         let mut tr1 = vec![F::zero(); degree + 1];
 
         if matrix::lup_decompose(degree + 1, &matrix, &mut lu, &mut pivot) == F::ZERO {
-            return Err(());
+            return Err(BezierError::BadBuildConstraints);
         }
 
         assert!(

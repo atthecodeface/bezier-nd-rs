@@ -1,8 +1,8 @@
 use crate::Num;
 use crate::{
-    metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierIterationType, BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
-    BoxedBezier,
+    metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierError, BezierEval,
+    BezierFlatIterator, BezierIterationType, BezierMetric, BezierOps, BezierReduce,
+    BezierReduction, BezierSplit, BoxedBezier,
 };
 
 use geo_nd::vector;
@@ -235,12 +235,12 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 2] {
 }
 
 impl<F: Num, const D: usize> BezierConstruct<F, D> for [[F; D]; 2] {
-    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, ()> {
+    fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let mut matrix = [F::ZERO; 4];
         let mut pts = [[F::ZERO; D]; 2];
         builder.fill_fwd_matrix_and_pts(&mut matrix, &mut pts)?;
         if geo_nd::matrix::determinant2(&matrix).is_unreliable_divisor() {
-            Err(())
+            Err(BezierError::BadBuildConstraints)
         } else {
             let matrix = geo_nd::matrix::inverse2(&matrix);
             let mut bezier = [[F::ZERO; D]; 2];
