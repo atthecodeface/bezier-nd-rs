@@ -587,7 +587,14 @@ pub trait BezierMap<F: Num, P: Clone>: BezierEval<F, P> {
     /// Return the Bezier mapped by a mapping matrix to a Bezier (of a different degree, possibly)
     ///
     /// If the mapping is not supported then return None
-    fn map_to_degree(&self, to_degree: usize, matrix: &[F]) -> Option<Self::Mapped>;
+    fn mapped_to_degree(&self, to_degree: usize, matrix: &[F]) -> Option<Self::Mapped>;
+
+    /// Return the c_sq metric for the Bezier mapped by a mapping matrix
+    ///
+    /// The mapping matrix will often be
+    ///
+    /// If the mapping is not supported then return None
+    fn dc_sq_of_mapped_from_line(&self, to_degree: usize, matrix: &[F]) -> Option<F>;
 }
 
 /// A dyn-compatible trait supported by a Bezier that allows it to be reduced/split

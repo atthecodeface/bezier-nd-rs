@@ -10,6 +10,51 @@ use bezier_nd::{bernstein_fns, constants};
 const MAX_DEGREE: usize = 10;
 
 #[test]
+fn elevate() {
+    type F = f64;
+    let display_matrix = utils::display::string_of_f64_matrix_f64;
+    let accuracy = 9E-14_f64;
+    let mut elevate_by_one = vec![];
+    for degree in 1..MAX_DEGREE {
+        let n2 = degree + 2;
+        let n1 = degree + 1;
+        let (scale, mut elevate) =
+            bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix::<F>(degree);
+        for e in elevate.iter_mut() {
+            *e /= scale;
+        }
+        elevate_by_one.push(elevate);
+    }
+
+    let mut elevate_by_one_string = String::new();
+    elevate_by_one_string += "pub const ELEVAT_BY_ONE: &[&[f64]] = &[\n";
+    for r in &elevate_by_one {
+        elevate_by_one_string += "&";
+        elevate_by_one_string += &display_matrix(r);
+        elevate_by_one_string += ",\n";
+    }
+    elevate_by_one_string += "];\n";
+    eprintln!("{elevate_by_one_string}");
+
+    assert!(constants::ELEVATE_BY_ONE.len() == elevate_by_one.len());
+    for (i, (r, c)) in elevate_by_one
+        .iter()
+        .zip(constants::ELEVATE_BY_ONE.iter())
+        .enumerate()
+    {
+        assert_eq!(r.len(), c.len());
+        for (j, (r, c)) in r.iter().zip(c.iter()).enumerate() {
+            let r = f64::try_from(*r).unwrap();
+            let diff = r - *c;
+            assert!(
+                diff.abs() < accuracy,
+                "ELEVATE_BY_ONE {i}:{j} {r} {c} {diff}"
+            );
+        }
+    }
+}
+
+#[test]
 fn reduce_uniform() {
     // type F = RationalN<16>;
     // let display_matrix = utils::display::string_of_f64_matrix;

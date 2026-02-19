@@ -123,8 +123,8 @@
 
 use crate::{
     bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
-    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
-    BezierReduce, BezierReduction, BezierSplit, Num,
+    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMap, BezierMetric,
+    BezierOps, BezierReduce, BezierReduction, BezierSplit, Num,
 };
 
 use geo_nd::matrix;
@@ -618,5 +618,49 @@ where
         } else {
             F::ZERO
         }
+    }
+}
+
+impl<F, const N: usize, const D: usize> BezierMap<F, [F; D]> for BezierND<F, N, D>
+where
+    F: crate::Num,
+{
+    type Mapped = Self;
+
+    fn mapped_to_degree(&self, to_degree: usize, matrix: &[F]) -> Option<Self::Mapped> {
+        if to_degree + 1 >= N {
+            return None;
+        }
+        assert_eq!(
+            matrix.len(),
+            (to_degree + 1) * (self.degree+1),
+            "Matrix for mapping from degree {} to degree {to_degree} must be {}x{} but was {} in total",
+            self.degree,
+            to_degree + 1,
+            self.degree+1,
+            matrix.len()
+        );
+        let mut result = Self::default();
+        result.degree = to_degree;
+        bernstein_fns::transform::transform_pts(matrix, &self.pts, &mut result.pts);
+        Some(result)
+    }
+
+    fn dc_sq_of_mapped_from_line(&self, to_degree: usize, matrix: &[F]) -> Option<F> {
+        if to_degree + 1 >= N {
+            return None;
+        }
+        assert_eq!(
+            matrix.len(),
+            (to_degree + 1) * (self.degree+1),
+            "Matrix for mapping from degree {} to degree {to_degree} must be {}x{} but was {} in total",
+            self.degree,
+            to_degree + 1,
+            self.degree+1,
+            matrix.len()
+        );
+        Some(metrics::dc_sq_mapped_from_line(
+            &self.pts, to_degree, matrix,
+        ))
     }
 }

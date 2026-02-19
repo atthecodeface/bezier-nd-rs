@@ -150,6 +150,24 @@ pub fn dc_sq_from_line<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
     }
 }
 
+/// Maximum of the squared length of the difference in control points between a bezier and the straight line between its endpoints
+///
+/// This provides a metric of how far from a straight line the curve is; all points on the
+/// Bezier curve will be no further from the straight line than this distance squared
+pub fn dc_sq_mapped_from_line<F: Num, const D: usize>(
+    bezier: &[[F; D]],
+    to_degree: usize,
+    mapping: &[F],
+) -> F {
+    assert_eq!(mapping.len(), (to_degree + 1) * bezier.len());
+    mapping
+        .chunks_exact(bezier.len())
+        .zip(utils::linear_iter(bezier, utils::float_iter(to_degree + 1)))
+        .fold(F::ZERO, |acc, (m, l)| {
+            acc.max(vector::distance_sq(&vector::sum_scaled(bezier, m), &l))
+        })
+}
+
 /// Total of the squared length of the difference in control points between a bezier and the straight line between its endpoints
 ///
 /// This is guaranteed to be at least as large as `dc_sq_from_line`

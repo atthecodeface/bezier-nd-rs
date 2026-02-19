@@ -1,8 +1,8 @@
 use crate::Num;
 use crate::{
     bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
-    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
-    BezierReduce, BezierReduction, BezierSplit,
+    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMap, BezierMetric,
+    BezierOps, BezierReduce, BezierReduction, BezierSplit,
 };
 
 use geo_nd::{matrix, vector};
@@ -231,6 +231,45 @@ where
                 }
             }
         }
+    }
+}
+
+/// A trait provided by a Bezier to allow it to be mapped to a Bezier of a different degree
+///
+/// This provides methods to generate a Bezier of a potenitally different degree by applying a mapping to its control points.
+/// Normally this is not used to map to a Bezier of the same degree - that can be achieved by simply mapping the control points themselves.
+///
+/// A type may provide this, but only support mapping to one specific (other) degree of Bezier
+///
+/// This can be used to chain Bezier mappings; for example, to elevate by 4 degrees multiply
+/// four elevate-by-one matrices together, then that can be applied to a number of Bezier curves
+impl<F: Num, const D: usize> BezierMap<F, [F; D]> for Vec<[F; D]> {
+    type Mapped = Self;
+
+    fn mapped_to_degree(&self, to_degree: usize, matrix: &[F]) -> Option<Self::Mapped> {
+        assert_eq!(
+            matrix.len(),
+            (to_degree + 1) * self.len(),
+            "Matrix for mapping to degree {to_degree} must be {}x{} but was {} in total",
+            to_degree + 1,
+            self.len(),
+            matrix.len()
+        );
+        let mut result = vec![[F::ZERO; D]; to_degree + 1];
+        bernstein_fns::transform::transform_pts(matrix, self, &mut result);
+        Some(result)
+    }
+
+    fn dc_sq_of_mapped_from_line(&self, to_degree: usize, matrix: &[F]) -> Option<F> {
+        assert_eq!(
+            matrix.len(),
+            (to_degree + 1) * self.len(),
+            "Matrix for mapping to degree {to_degree} must be {}x{} but was {} in total",
+            to_degree + 1,
+            self.len(),
+            matrix.len()
+        );
+        Some(metrics::dc_sq_mapped_from_line(self, to_degree, matrix))
     }
 }
 

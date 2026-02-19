@@ -1,11 +1,12 @@
 # TODO
 
-* Change Reduce to just reduce by one
+* Should ER-minus_i just be ER?
 * Make arc and round etc explicit public functions
 * Move BezierOps (all dyn compatible) to BezierEval If Approxmiation can do them
 * Add BezierMap trait apply matrix to produce a Option<Mapped>
 * Add pubic function to fill Option<matrix> for 'reduce by N given method', 'elevate by N', 'Bernstein degree N from N+1 uniform points', 'Bernstein degree N to N+1 uniform points'
 * Add BezierBuilder of degree N matrix to be applied to N+1 points
+* Add map method to bezeier ops, and dc_sq_from_mapped (which assumes mapping is trying to produce an idential-ish bezier)
 
 Add tests for:
 * t_closest
