@@ -218,7 +218,7 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
 
 impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 4] {
     type ElevatedByOne = Self;
-    type Elevated = Self;
+
     fn elevate_by_one(&self) -> Option<[[F; D]; 4]> {
         None
     }
@@ -226,8 +226,6 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 4] {
 
 impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     type Reduced = [[F; D]; 3];
-    type Quadratic = [[F; D]; 3];
-    type Cubic = Self;
 
     fn can_reduce(&self, _method: BezierReduction) -> bool {
         true
@@ -259,12 +257,30 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
                     ],
                 ),
             ]),
-            _ => self.reduced_to_quadratic(),
+            _ => Some([
+                self[0],
+                vector::sum_scaled(
+                    self,
+                    &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
+                ),
+                self[3],
+            ]),
         }
     }
 
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
-        let dc_sq = self.dc_sq_from_quadratic();
+        let m_half = F::frac(-1, 2);
+        let dc2_0 = vector::length_sq(&vector::sum_scaled(
+            self,
+            &[m_half, F::ONE, F::ZERO, m_half],
+        ));
+
+        let dc2_1 = vector::length_sq(&vector::sum_scaled(
+            self,
+            &[m_half, F::ZERO, F::ONE, m_half],
+        ));
+
+        let dc_sq = dc2_0.max(dc2_1);
         if method == BezierReduction::LeastSquares {
             dc_sq.max(vector::length_sq(&vector::sum_scaled(
                 self,
@@ -278,32 +294,6 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
         } else {
             dc_sq
         }
-    }
-
-    fn dc_sq_from_quadratic(&self) -> F {
-        let sixth = F::frac(1, 6);
-        let half = F::frac(1, 2);
-        let dc2_0 = vector::length_sq(&vector::sum_scaled(self, &[sixth, half, half, -sixth]));
-        let dc2_1 = vector::length_sq(&vector::sum_scaled(self, &[-sixth, half, half, sixth]));
-
-        dc2_0.max(dc2_1)
-    }
-
-    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
-        Some([
-            self[0],
-            vector::sum_scaled(
-                self,
-                &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
-            ),
-            self[3],
-        ])
-    }
-    fn dc_sq_from_cubic(&self) -> F {
-        F::ZERO
-    }
-    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
-        None
     }
 }
 

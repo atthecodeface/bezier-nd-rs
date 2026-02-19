@@ -35,8 +35,8 @@ pub use approximation::Approximation;
 pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter};
 pub use traits::{
     BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierIterationType, BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
-    BoxedBezier,
+    BezierIterationType, BezierMap, BezierMetric, BezierOps, BezierReduce, BezierReduction,
+    BezierSplit, BoxedBezier,
 };
 
 pub use builder::BezierBuilder;

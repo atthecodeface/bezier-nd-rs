@@ -221,8 +221,6 @@ impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
 
 impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
     type ElevatedByOne = [[F; D]; 4];
-    // Full elevation is not supported
-    type Elevated = Self;
     fn elevate_by_one(&self) -> Option<[[F; D]; 4]> {
         Some([
             self[0],
@@ -235,8 +233,6 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
 
 impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     type Reduced = [[F; D]; 2];
-    type Quadratic = Self;
-    type Cubic = Self;
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
         match method {
             BezierReduction::LeastSquares => {
@@ -268,19 +264,6 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
             }
             _ => self.dc_sq_from_line(),
         }
-    }
-
-    fn dc_sq_from_quadratic(&self) -> F {
-        F::ZERO
-    }
-    fn dc_sq_from_cubic(&self) -> F {
-        F::ZERO
-    }
-    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
-        None
-    }
-    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
-        None
     }
 }
 

@@ -57,14 +57,11 @@ fn elevate_fvec() {
     let b = utils::new_random_point_vec::<_, f32, _, 1>(&mut rng, &distribution, 2);
     let b1 = b.elevate_by_one().unwrap();
     let b2 = b1.elevate_by_one().unwrap();
-    let b2_v2 = b.elevate_by(2).unwrap();
 
     eprintln!("Compare first elevate-by-1");
     test_beziers_approx_eq(&b, &b1);
     eprintln!("Compare second elevate-by-1");
     test_beziers_approx_eq(&b, &b2);
-    eprintln!("Compare elevate-by-2 with two elevate-by-1");
-    test_beziers_approx_eq(&b, &b2_v2);
 }
 
 #[test]

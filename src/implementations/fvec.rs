@@ -158,7 +158,6 @@ where
 
 impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
     type ElevatedByOne = Self;
-    type Elevated = Self;
     fn elevate_by_one(&self) -> Option<Self> {
         let n = self.len();
         let mut s = vec![[F::ZERO; D]; n + 1];
@@ -176,17 +175,6 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
         }
         Some(s)
     }
-    fn elevate_by(&self, degree: usize) -> Option<Self> {
-        if degree == 0 {
-            Some(self.clone())
-        } else {
-            let mut bezier = self.elevate_by_one();
-            for _ in 1..degree {
-                bezier = bezier.unwrap().elevate_by_one();
-            }
-            bezier
-        }
-    }
 }
 
 impl<F, const D: usize> BezierReduce<F, [F; D]> for Vec<[F; D]>
@@ -194,9 +182,6 @@ where
     F: Num,
 {
     type Reduced = Self;
-    type Quadratic = Self;
-    type Cubic = Self;
-
     fn can_reduce(&self, method: BezierReduction) -> bool {
         constants::reduce_table_of_match(method, self.len() - 1).is_some()
     }
@@ -232,7 +217,9 @@ where
             3 => <&[[F; D]] as TryInto<&[[F; D]; 3]>>::try_into(&self[0..3])
                 .unwrap()
                 .dc_sq_from_reduction(method),
-            4 => self.dc_sq_from_quadratic(),
+            4 => <&[[F; D]] as TryInto<&[[F; D]; 4]>>::try_into(&self[0..4])
+                .unwrap()
+                .dc_sq_from_reduction(method),
             _ => {
                 if let Some(table) = constants::er_minus_i_table_of_match(method, self.len() - 1) {
                     crate::lazy_constants::use_constants_table(
@@ -244,41 +231,6 @@ where
                 }
             }
         }
-    }
-
-    fn dc_sq_from_quadratic(&self) -> F {
-        if self.len() != 4 {
-            F::ZERO
-        } else {
-            let m_half = F::frac(-1, 2);
-            let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
-            let dc2_0 = vector::length_sq(&dv_0);
-            let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
-            let dc2_1 = vector::length_sq(&dv_1);
-            dc2_0.max(dc2_1)
-        }
-    }
-
-    fn reduced_to_quadratic(&self) -> Option<Self> {
-        if self.len() != 4 {
-            None
-        } else {
-            Some(vec![
-                self[0],
-                vector::sum_scaled(
-                    self,
-                    &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
-                ),
-                self[3],
-            ])
-        }
-    }
-
-    fn dc_sq_from_cubic(&self) -> F {
-        todo!()
-    }
-    fn reduced_to_cubic(&self) -> Option<Self> {
-        None
     }
 }
 

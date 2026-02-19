@@ -534,16 +534,8 @@ pub trait BezierElevate<F: Num, P: Clone>: BezierEval<F, P> {
     /// Type of Bezier returned when elevated by one, or Self if that always fails
     type ElevatedByOne: BezierEval<F, P>;
 
-    /// Type of Bezier returned when elevated by arbitrary degree, or Self if that always fails
-    type Elevated: BezierEval<F, P>;
-
     /// Elevate the Bezier by one degree; return None only if this is *never* supported
     fn elevate_by_one(&self) -> Option<Self::ElevatedByOne>;
-
-    /// Elevate the Bezier by arbitrary degree, returning None if this cannot be performed.
-    fn elevate_by(&self, _degrees: usize) -> Option<Self::Elevated> {
-        None
-    }
 }
 
 /// A trait provided by a Bezier to allow it to be reduced
@@ -557,18 +549,6 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// If the Bezier does not readily reduce (because it is already
     /// a linear Bezier, for example) then this can be Self
     type Reduced: BezierEval<F, P>;
-
-    /// The quadratic Bezier that this reduces to
-    ///
-    /// If the Bezier does not have a mechanism to reduce it
-    /// to a quadratic then this can be 'Self', and 'reduced_to_quadratic' should return None
-    type Quadratic: BezierEval<F, P>;
-
-    /// The cubic Bezier that this reduces to
-    ///
-    /// If the Bezier does not have a mechanism to reduce it
-    /// to a cubic then this can be 'Self', and 'reduced_to_cubic' should return None
-    type Cubic: BezierEval<F, P>;
 
     /// Determine if reduction actually reduces
     ///
@@ -591,42 +571,23 @@ pub trait BezierReduce<F: Num, P: Clone>: BezierEval<F, P> {
     /// a cubic Bezier from a Bezier of degree 10); the reduction *must* have a lower
     /// degree than the original.
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced>;
+}
 
-    /// Find how close the Bezier is to a Bezier of degree 2 with the same endpoints
-    ///
-    /// The metric should be quadratic with respect to the units of length of P,
-    /// i.e. if P were in reality measured in meters, then this metric should be
-    /// in units of square meteres
-    fn dc_sq_from_quadratic(&self) -> F;
+/// A trait provided by a Bezier to allow it to be mapped to a Bezier of a different degree
+///
+/// This provides methods to generate a Bezier of a potenitally different degree by applying a mapping to its control points.
+/// Normally this is not used to map to a Bezier of the same degree - that can be achieved by simply mapping the control points themselves.
+///
+/// A type may provide this, but only support mapping to one specific (other) degree of Bezier
+pub trait BezierMap<F: Num, P: Clone>: BezierEval<F, P> {
+    /// The Bezier that this maps to, if a mapping can succeed
 
-    /// Find how close the Bezier to a Bezier of degree 3 with the same endpoints
-    ///
-    /// The metric should be quadratic with respect to the units of length of P,
-    /// i.e. if P were in reality measured in meters, then this metric should be
-    /// in units of square meteres
-    fn dc_sq_from_cubic(&self) -> F;
+    type Mapped: BezierEval<F, P>;
 
-    /// Return a Bezier of this reduced to a quadratic Bezier
+    /// Return the Bezier mapped by a mapping matrix to a Bezier (of a different degree, possibly)
     ///
-    /// Invoking self.closeness_sq_to_quadratic will give a measure of how
-    /// close the quadratic would be to 'self'
-    ///
-    /// If the Bezier does not have a mechanism to reduce it
-    /// to a quadratic then this should return None
-    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
-        None
-    }
-
-    /// Return a Bezier of this reduced to a cubic Bezier
-    ///
-    /// Invoking self.closeness_sq_to_cubic will give a measure of how
-    /// close the cubic would be to 'self'
-    ///
-    /// If the Bezier does not have a mechanism to reduce it
-    /// to a cubic then this should return None
-    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
-        None
-    }
+    /// If the mapping is not supported then return None
+    fn map_to_degree(&self, to_degree: usize, matrix: &[F]) -> Option<Self::Mapped>;
 }
 
 /// A dyn-compatible trait supported by a Bezier that allows it to be reduced/split

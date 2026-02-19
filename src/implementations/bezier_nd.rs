@@ -552,7 +552,7 @@ where
     F: crate::Num,
 {
     type ElevatedByOne = Self;
-    type Elevated = Self;
+
     fn elevate_by_one(&self) -> Option<Self> {
         if self.degree + 1 >= N {
             None
@@ -579,17 +579,6 @@ where
             Some(s)
         }
     }
-    fn elevate_by(&self, degree: usize) -> Option<Self> {
-        if degree == 0 {
-            Some(self.clone())
-        } else {
-            let mut bezier = self.elevate_by_one();
-            for _ in 1..degree {
-                bezier = bezier.unwrap().elevate_by_one();
-            }
-            bezier
-        }
-    }
 }
 
 impl<F, const N: usize, const D: usize> BezierReduce<F, [F; D]> for BezierND<F, N, D>
@@ -597,8 +586,6 @@ where
     F: crate::Num,
 {
     type Reduced = Self;
-    type Quadratic = Self;
-    type Cubic = Self;
 
     fn can_reduce(&self, method: BezierReduction) -> bool {
         constants::reduce_table_of_match(method, self.degree).is_some()
@@ -631,19 +618,5 @@ where
         } else {
             F::ZERO
         }
-    }
-
-    fn dc_sq_from_quadratic(&self) -> F {
-        F::ZERO
-    }
-
-    fn dc_sq_from_cubic(&self) -> F {
-        F::ZERO
-    }
-    fn reduced_to_quadratic(&self) -> Option<Self::Quadratic> {
-        None
-    }
-    fn reduced_to_cubic(&self) -> Option<Self::Cubic> {
-        None
     }
 }
