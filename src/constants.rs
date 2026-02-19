@@ -1,5 +1,11 @@
 use crate::BezierReduction;
 
+/// Return the matrix that elevates a bezier by one degree
+pub fn elevate_table_of_match(degree: usize) -> Option<&'static [f64]> {
+    let table = ELEVATE_BY_ONE;
+    (degree >= 1 && degree <= 1 + table.len()).then(|| table[degree - 1])
+}
+
 /// Return the matrix that reduced by one degree using the method, if that is in the constants table
 pub fn reduce_table_of_match(method: BezierReduction, degree: usize) -> Option<&'static [f64]> {
     let table = {

@@ -1,5 +1,6 @@
 mod utils;
-use bezier_nd::{bernstein_fns, BezierElevate, BezierND};
+use bezier_nd::{bernstein_fns, constants, BezierElevate, BezierND};
+use geo_nd::matrix;
 use utils::test_beziers_approx_eq;
 
 #[test]
@@ -62,6 +63,20 @@ fn elevate_fvec() {
     test_beziers_approx_eq(&b, &b1);
     eprintln!("Compare second elevate-by-1");
     test_beziers_approx_eq(&b, &b2);
+
+    // e_deg_3 is 5 by 4 matrix; etc
+    //
+    // If they are multiplied togehther it is 7 by 4 matrix
+    let e_deg_3 = constants::elevate_table_of_match(3).unwrap();
+    let e_deg_4 = constants::elevate_table_of_match(4).unwrap();
+    let e_deg_5 = constants::elevate_table_of_match(5).unwrap();
+
+    let mut e_deg_35 = vec![0_f64; 24];
+    matrix::multiply_dyn(6, 5, 4, e_deg_4, e_deg_3, &mut e_deg_35);
+    let mut e_deg_36 = vec![0_f64; 28];
+    matrix::multiply_dyn(7, 6, 4, e_deg_5, &e_deg_35, &mut e_deg_36);
+    utils::display::eprintln_matrix(&e_deg_36, 4);
+    assert!(false);
 }
 
 #[test]
