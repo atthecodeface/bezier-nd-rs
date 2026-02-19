@@ -4,15 +4,6 @@
 use crate::{bernstein_fns, utils, BezierEval, BezierMetric, Float, Num};
 use geo_nd::vector;
 
-/// Maximum of the squared length of the control points
-///
-/// This provides a bound on the maximum distance (squared) from the origin of every point on the Bezier curve
-pub fn c_sq<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
-    bezier
-        .iter()
-        .fold(F::ZERO, |acc, pt| acc.max(vector::length_sq(pt)))
-}
-
 /// Maximum of the squared length of the control points mapped by the mapping matrix
 ///
 /// This provides a bound on the maximum distance (squared) from the origin of every point on the Bezier curve
@@ -21,15 +12,6 @@ pub fn mapped_c_sq<F: Num, const D: usize>(bezier: &[[F; D]], mapping: &[F]) -> 
     mapping.chunks_exact(bezier.len()).fold(F::ZERO, |acc, m| {
         acc.max(vector::length_sq(&vector::sum_scaled(bezier, m)))
     })
-}
-
-/// Total of the squared length of the control points
-///
-/// This is guaranteed to be at least as large as c_sq
-pub fn f_sq<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
-    bezier
-        .iter()
-        .fold(F::ZERO, |acc, pt| acc + vector::length_sq(pt))
 }
 
 /// The L2 norm between two beziers given a step dt
@@ -55,6 +37,22 @@ pub fn dl_sq_est<F: Num, const D: usize>(
     }
 }
 
+/// The L2 norm between a bezier and the a straight line between its two endpoints given a step dt
+///
+/// This is an approximation meant for testing/analysis - do not use if
+/// performance is required!
+///
+/// L2 norm is the integral of the distance squared between each point
+/// at the same t. This is a simple estimate using summation.
+pub fn dl_sq_est_from_line<F: Num, const D: usize>(bezier: &[[F; D]], num_steps: usize) -> F {
+    utils::float_iter(num_steps)
+        .zip(utils::linear_iter(bezier, utils::float_iter(num_steps)))
+        .fold(F::ZERO, |acc, (t, l)| {
+            acc + vector::distance_sq(&bernstein_fns::values::point_at(bezier, t), &l)
+        })
+        / (num_steps as f32).into()
+}
+
 /// The maximum difference between two beziers given a step dt
 ///
 /// This is an approximation meant for testing/analysis - do not use if
@@ -77,6 +75,24 @@ pub fn dm_sq_est<F: Num, const D: usize>(
             ))
         }))
     }
+}
+
+/// The L2 norm between a bezier and the a straight line between its two endpoints given a step dt
+///
+/// This is an approximation meant for testing/analysis - do not use if
+/// performance is required!
+///
+/// L2 norm is the integral of the distance squared between each point
+/// at the same t. This is a simple estimate using summation.
+pub fn dm_sq_est_from_line<F: Num, const D: usize>(bezier: &[[F; D]], num_steps: usize) -> F {
+    utils::float_iter(num_steps)
+        .zip(utils::linear_iter(bezier, utils::float_iter(num_steps)))
+        .fold(F::ZERO, |acc, (t, l)| {
+            acc.max(vector::distance_sq(
+                &bernstein_fns::values::point_at(bezier, t),
+                &l,
+            ))
+        })
 }
 
 /// Maximum of the squared length of the difference in control points between two Bezier curves
@@ -124,34 +140,31 @@ pub fn df_sq<F: Num, const D: usize>(bezier: &[[F; D]], other: &[[F; D]]) -> Opt
 /// This provides a metric of how far from a straight line the curve is; all points on the
 /// Bezier curve will be no further from the straight line than this distance squared
 pub fn dc_sq_from_line<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
-    assert!(bezier.len() > 1);
-    let l0 = bezier.first().unwrap();
-    let l1 = bezier.last().unwrap();
-    bezier
-        .iter()
-        .zip(utils::float_iter(bezier.len()))
-        .fold(F::ZERO, |acc, (b, t)| {
-            let l = vector::mix(l0, l1, t);
-            acc.max(vector::distance_sq(b, &l))
-        })
+    if bezier.len() < 2 {
+        F::ZERO
+    } else {
+        bezier
+            .iter()
+            .zip(utils::linear_iter(bezier, utils::float_iter(bezier.len())))
+            .fold(F::ZERO, |acc, (b, l)| acc.max(vector::distance_sq(b, &l)))
+    }
 }
 
 /// Total of the squared length of the difference in control points between a bezier and the straight line between its endpoints
 ///
 /// This is guaranteed to be at least as large as `dc_sq_from_line`
 pub fn df_sq_from_line<F: Num, const D: usize>(bezier: &[[F; D]]) -> F {
-    assert!(bezier.len() > 1);
-    let l0 = bezier.first().unwrap();
-    let l1 = bezier.last().unwrap();
-    bezier
-        .iter()
-        .zip(utils::float_iter(bezier.len()))
-        .fold(F::ZERO, |acc, (b, t)| {
-            let l = vector::mix(l0, l1, t);
-            acc + vector::distance_sq(b, &l)
-        })
+    if bezier.len() < 2 {
+        F::ZERO
+    } else {
+        bezier
+            .iter()
+            .zip(utils::linear_iter(bezier, utils::float_iter(bezier.len())))
+            .fold(F::ZERO, |acc, (b, l)| acc + vector::distance_sq(b, &l))
+    }
 }
 
+/// Calculate a specific metric between two Bezier curves (which must be of equal degree, else None is returned)
 pub fn metric_from<F: Num, const D: usize>(
     bezier: &[[F; D]],
     other: &[[F; D]],
@@ -171,29 +184,18 @@ pub fn metric_from<F: Num, const D: usize>(
     }
 }
 
+/// Calculate a specific metric between a Bezier curve and straight Bezier of equivalent degree with the same endpoints
 pub fn metric_from_line<F: Num, const D: usize>(bezier: &[[F; D]], metric: BezierMetric) -> F {
     if bezier.len() <= 2 {
         F::ZERO
     } else {
         match metric {
-            BezierMetric::MaxDistanceSquared(_num_steps) => F::ZERO,
-            BezierMetric::SumDistanceSquared(_num_steps) => F::ZERO,
+            BezierMetric::MaxDistanceSquared(num_steps) => dm_sq_est_from_line(bezier, num_steps),
+            BezierMetric::SumDistanceSquared(num_steps) => dl_sq_est_from_line(bezier, num_steps),
             BezierMetric::MaxControlSquared => dc_sq_from_line(bezier),
             _ => df_sq_from_line(bezier),
         }
     }
-}
-
-/// Calculates the length of the Bezier when it is rendered down
-/// to the given a straightness
-///
-/// `straightness` is independent of the length of the Bezier
-pub fn length_of_lines<F: Float, const D: usize, I: Iterator<Item = ([F; D], [F; D])>>(
-    lines: I,
-) -> F {
-    lines.fold(F::ZERO, |acc, (p0, p1)| {
-        acc + geo_nd::vector::distance(&p0, &p1)
-    })
 }
 
 /// Find the closest point and parameter t on a Bezier to a give point

@@ -1,5 +1,6 @@
-use bezier_nd::bignum::IntN;
+use bezier_nd::bignum::{IntN, UIntN};
 use geo_nd::Num;
+use num_traits::FromPrimitive;
 use num_traits::{ConstOne, ConstZero};
 
 fn prime_25519<N: Num + From<u64>>() -> N {
@@ -123,6 +124,21 @@ fn test_int_tiny() {
     v *= v;
     assert_eq!(v.to_string(), "390625");
     test_number_n::<IntN<1>>(v);
+
+    let one_o_seven = IntN::<1>::from_i64(107).unwrap();
+    let one_o_seven_u = UIntN::<1>::from_u64(107).unwrap();
+
+    let mut v = IntN::<1>::from_i64(-1234).unwrap();
+    assert_eq!(v.to_string(), "-1234");
+    let mut w = v;
+    assert_eq!((v % one_o_seven).to_string(), "-57");
+    assert_eq!((v / one_o_seven).to_string(), "-11");
+    w %= one_o_seven;
+    assert_eq!(w.to_string(), "-57");
+    v /= one_o_seven;
+    assert_eq!(v.to_string(), "-11");
+    v = v * one_o_seven_u;
+    assert_eq!(v.to_string(), "-1177");
 
     let v: IntN<1> = u64::MAX.into();
     assert_eq!(v.to_string(), "18446744073709551615");

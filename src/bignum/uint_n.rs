@@ -1,6 +1,8 @@
 use num_traits::{ConstOne, ConstZero, Zero};
 use std::fmt::Write;
 
+use crate::traits;
+
 /// Unsigned integer of N*64 bits, supporting copy
 ///
 /// This is not heavily optimized for performance, but for space; an optimization
@@ -175,6 +177,7 @@ impl<const N: usize> std::ops::SubAssign for UIntN<N> {
 impl<const N: usize> std::ops::Mul<&UIntN<N>> for UIntN<N> {
     type Output = UIntN<N>;
 
+    #[track_caller]
     fn mul(self, other: &UIntN<N>) -> UIntN<N> {
         self.do_multiply(other)
     }
@@ -183,12 +186,14 @@ impl<const N: usize> std::ops::Mul<&UIntN<N>> for UIntN<N> {
 impl<const N: usize> std::ops::Mul for UIntN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn mul(self, other: Self) -> Self {
         self.do_multiply(&other)
     }
 }
 
 impl<const N: usize> std::ops::MulAssign for UIntN<N> {
+    #[track_caller]
     fn mul_assign(&mut self, other: Self) {
         *self = self.do_multiply(&other);
     }
@@ -564,6 +569,7 @@ impl<const N: usize> UIntN<N> {
         self
     }
 
+    #[track_caller]
     fn do_multiply(&self, other: &Self) -> Self {
         let (overflow, r) = self.multiply_value(other);
         assert!(!overflow, "Multiplication overflowed");

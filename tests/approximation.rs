@@ -30,6 +30,7 @@ fn test_approximation_closeness_sq<
     bezier: &B,
     closeness_sq: f32,
 ) {
+    let closeness = closeness_sq.sqrt();
     eprintln!("Testing bexier approximation {bezier:?} {closeness_sq}");
     let a = Approximation::new(bezier, closeness_sq);
 
@@ -120,6 +121,47 @@ fn test_approximation_closeness_sq<
             d_sq < 1E-10,
             "Distance between point at {t1} {p1:?} and actual bezier at t {bp:?} is too big {d_sq}"
         );
+    }
+
+    for d in 0..D {
+        let (Some((btmin, bpmin)), Some((btmax, bpmax))) =
+            bezier.t_coords_at_min_max(d, true, true)
+        else {
+            // Presumbaly not analytically calculable
+            continue;
+        };
+        let (Some((atmin, apmin)), Some((atmax, apmax))) = a.t_coords_at_min_max(d, true, true)
+        else {
+            panic!("Expected min and max to be evaluated");
+        };
+        eprintln!("Found approx {d} bounds {apmin}, {apmax} at ts of {atmin} {atmax} - closeness_sq of {closeness_sq}");
+        eprintln!("Found bezier {d} bounds {bpmin}, {bpmax} at ts of {btmin} {btmax}");
+        utils::approx_eq(
+            bpmin,
+            apmin,
+            closeness,
+            "Min of point coordinates should be about equal",
+        );
+        utils::approx_eq(
+            bpmax,
+            apmax,
+            closeness,
+            "Max of point coordinates should be about equal",
+        );
+        if closeness < 0.1 {
+            utils::approx_eq(
+                btmin,
+                atmin,
+                3E-2,
+                "Min of t for point coordinates should be about equal",
+            );
+            utils::approx_eq(
+                btmax,
+                atmax,
+                3E-2,
+                "Max of t for point coordinates should be about equal",
+            );
+        }
     }
 }
 

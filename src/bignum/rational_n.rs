@@ -26,7 +26,9 @@ impl<const N: usize> std::default::Default for RationalN<N> {
 
 impl<const N: usize> std::convert::From<(IntN<N>, UIntN<N>)> for RationalN<N> {
     fn from((numer, denom): (IntN<N>, UIntN<N>)) -> Self {
-        Self { numer, denom }
+        let mut m = Self { numer, denom };
+        assert!(m.normalize());
+        m
     }
 }
 
@@ -96,7 +98,6 @@ impl<const N: usize> std::convert::From<&RationalN<N>> for f64 {
         r.as_f64_bits().map(f64::from_bits).unwrap_or(f64::NAN)
     }
 }
-
 impl<const N: usize> std::cmp::Ord for RationalN<N> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self.is_neg(), other.is_neg()) {
@@ -310,9 +311,15 @@ impl<const N: usize> RationalN<N> {
         if gcd.is_zero() {
             if !self.denom.is_one() {
                 self.denom = UIntN::<N>::ONE;
+                self.numer.is_neg = false;
                 true
             } else {
-                false
+                if self.numer.is_neg {
+                    self.numer.is_neg = false;
+                    true
+                } else {
+                    false
+                }
             }
         } else if gcd.is_one() {
             false
@@ -531,6 +538,32 @@ impl<const N: usize> RationalN<N> {
             }),
             lcm,
         )
+    }
+
+    /// Find the number of bits in the denominator
+    pub fn denom_length(&self) -> u32 {
+        self.denom.find_top_bit_set() + 1
+    }
+
+    /// Round by shrinking denominator length (if required)
+    ///
+    /// Will have a number that is (rnd_num +0/1) / rnd_denom; have num/denom
+    ///
+    /// One has error (denom*rnd_num - num * rnd_denom).abs();
+    /// other has error (denom*(rnd_num+1) - num*rnd_denom).abs()
+    ///
+    /// Should chose smaller error
+    #[must_use]
+    pub fn round_to_denom_length(&self, num_bits: u32) -> Self {
+        let n = self.denom.find_top_bit_set();
+        let mut result = *self;
+        if n > num_bits {
+            for _ in 0..(n - num_bits) {
+                result.numer.value.shift_right_one();
+            }
+            result.normalize();
+        }
+        result
     }
 }
 

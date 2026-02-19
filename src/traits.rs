@@ -243,9 +243,13 @@ pub trait BezierEval<F: Num, P: Clone> {
     fn derivative_at(&self, t: F) -> (F, P);
 
     /// Get the endpoints of the Bezier
+    #[track_caller]
     fn endpoints(&self) -> (P, P) {
         (
-            self.control_points().first().unwrap().clone(),
+            self.control_points()
+                .first()
+                .expect("Bezier with no control points has no endpoints")
+                .clone(),
             self.control_points().last().unwrap().clone(),
         )
     }
@@ -383,7 +387,8 @@ pub trait BezierEval<F: Num, P: Clone> {
     /// This enables finding the bounding box of a Bezier by requesting the minimum and maximum for each
     /// index in the dimensions of the point coordinate space.
     ///
-    /// The value may not be analytically calculatable, in which case None can be returned.
+    /// The value may not be analytically calculatable, in which case None can be returned; the bounding box might then be evaluated either
+    /// by iterating through points on the Bezier, or estimating with the control points perhaps expanded by the dc_sq_from_line metric
     fn t_coords_at_min_max(
         &self,
         pt_index: usize,

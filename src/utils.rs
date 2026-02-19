@@ -54,6 +54,16 @@ pub fn float_iter<F: Num>(n: usize) -> impl Iterator<Item = F> {
     float_iter_between(F::ZERO, F::ONE, n)
 }
 
+/// Generate a linear mix of an equivalent straight Bezier from a parameter iterator
+pub fn linear_iter<'a, F: Num, const D: usize, I: Iterator<Item = F> + 'a>(
+    b: &'a [[F; D]],
+    iter: I,
+) -> impl Iterator<Item = [F; D]> + 'a {
+    let p0 = b.first().unwrap();
+    let p1 = b.last().unwrap();
+    iter.map(|t| vector::mix(p0, p1, t))
+}
+
 /// Calculate the projection of the point onto the line, the length squared of a line,
 /// and if the line is approximately zero length
 pub fn relative_to_line<F: Num, const D: usize>(
@@ -193,7 +203,7 @@ pub fn find_real_roots_quad_num<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
         if disc < F::zero() {
             (None, None)
         } else {
-            let disc_sq = sqrt_est::<_, 5>(disc, true);
+            let disc_sq = disc.sqrt_est();
             (
                 Some((-b + disc_sq) / two / a),
                 Some((-b - disc_sq) / two / a),

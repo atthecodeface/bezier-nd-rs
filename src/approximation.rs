@@ -159,7 +159,6 @@ where
                 let t1 = self.ts[n + 1];
                 let dt = t1 - t0;
                 let t_rel = (t - t0) / dt;
-                eprintln!("{t} : {t_rel}, {n} {t0} {t1} {dt} {t_rel}");
                 vector::sum_scaled(&self.points[n..], &[F::ONE - t_rel, t_rel])
             }
         }
@@ -210,11 +209,38 @@ where
     }
     fn t_coords_at_min_max(
         &self,
-        _pt_index: usize,
-        _give_min: bool,
-        _give_max: bool,
+        pt_index: usize,
+        give_min: bool,
+        give_max: bool,
     ) -> (Option<(F, F)>, Option<(F, F)>) {
-        (None, None)
+        assert!(
+            pt_index < D,
+            "point index out of range of point array size {D}"
+        );
+        let mut min: Option<(F, F)> = None;
+        let mut max: Option<(F, F)> = None;
+        for (t, p) in self.iter_t_pts() {
+            let p = p[pt_index];
+            if give_min {
+                if let Some(m) = min {
+                    if p < m.1 {
+                        min = Some((t, p));
+                    }
+                } else {
+                    min = Some((t, p));
+                }
+            }
+            if give_max {
+                if let Some(m) = max {
+                    if p > m.1 {
+                        max = Some((t, p));
+                    }
+                } else {
+                    max = Some((t, p));
+                }
+            }
+        }
+        (min, max)
     }
 }
 
@@ -225,7 +251,7 @@ where
 {
     fn as_t_lines(
         &self,
-        iter_type: BezierIterationType<F>,
+        _iter_type: BezierIterationType<F>,
     ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
         self.iter_t_pts()
             .zip(self.iter_t_pts().skip(1))

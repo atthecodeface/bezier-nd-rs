@@ -384,6 +384,9 @@ where
         give_min: bool,
         give_max: bool,
     ) -> (Option<(F, F)>, Option<(F, F)>) {
+        // Generally defer to the methods for Beziers of the associated degree
+        //
+        // When the value is not analytically calculable return None
         match self.degree {
             0 => (
                 give_min.then_some((F::ZERO, self.pts[0][pt_index])),

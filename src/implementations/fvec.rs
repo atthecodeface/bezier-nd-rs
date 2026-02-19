@@ -13,10 +13,18 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for Vec<[F; D]> {
     }
 
     fn point_at(&self, t: F) -> [F; D] {
-        bernstein_fns::values::point_at(self, t)
+        if self.is_empty() {
+            [F::ZERO; D]
+        } else {
+            bernstein_fns::values::point_at(self, t)
+        }
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        bernstein_fns::values::derivative_at(self, t)
+        if self.is_empty() {
+            (F::ONE, [F::ZERO; D])
+        } else {
+            bernstein_fns::values::derivative_at(self, t)
+        }
     }
     fn closeness_sq_to_line(&self) -> F {
         metrics::dc_sq_from_line(self)

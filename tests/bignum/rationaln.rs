@@ -1,5 +1,8 @@
-use bezier_nd::bignum::RationalN;
-use num_traits::{one, zero, ConstZero, Num, Zero};
+use bezier_nd::{
+    bignum::{IntN, RationalN, UIntN},
+    NumOps,
+};
+use num_traits::{one, zero, ConstZero, FromPrimitive, Num, Zero};
 
 fn prime_25519<N: Num + Copy + From<u64>>() -> N {
     let a: N = 2.into();
@@ -112,7 +115,6 @@ fn test_rational_tiny_int() {
 
 #[test]
 fn test_rational_tiny_fract() {
-    use num_traits::FromPrimitive;
     let half = RationalN::<1>::from_u64(1).unwrap() / RationalN::<1>::from_u64(2).unwrap();
     let big: RationalN<1> = (u64::MAX - 3).into();
     let big = big * half * half;
@@ -123,6 +125,32 @@ fn test_rational_tiny_fract() {
     let big: RationalN<8> = u64::MAX.into();
     test_number_n(half);
     test_number_n(big);
+}
+
+#[test]
+fn test_rational_num() {
+    let half: RationalN<8> = (0.5_f32).into();
+    let n = half * half * half * half;
+    assert!(!n.is_sign_negative());
+    let mut n = -n;
+    assert!(n.is_sign_negative());
+    n *= n; // 1/256
+    assert!(!n.is_sign_negative());
+    assert_eq!(n.denom_length(), 9);
+    let m = n.sqrt_est();
+    let dm = m - 0.0625_f32.into();
+    let dm = dm.round_to_denom_length(32);
+    assert_eq!(dm, 0_f32.into());
+
+    let n = RationalN::<8>::from_i64(-4).unwrap();
+    let m = n.sqrt_est();
+    assert_eq!(m, 0_f32.into());
+    let m = (-n).sqrt_est();
+    assert_eq!(m, 2_f32.into());
+
+    let n = RationalN::<8>::from_i64(-8).unwrap();
+    let m = n.cbrt_est();
+    assert_eq!(m, (-2_f32).into());
 }
 
 #[test]
@@ -224,8 +252,11 @@ fn test_arithmetic<const N: usize>(value: f64, scale: f64) {
     v_r /= s_r;
     assert_approx_eq(&v_r, &s_r, value);
     assert_approx_eq(&(v_r + v_r), &s_r, value * 2.0);
-    //    assert_approx_eq(&(v_r * v_r), &s_r, value * value / scale);
-    //    assert_approx_eq(&((v_r + v_r) / v_r), &s_r, 2.0 * scale);
+
+    let numer: IntN<3> = (-1234_i64).into();
+    let denom: UIntN<3> = 12_u64.into();
+    let r: RationalN<_> = (numer, denom).into();
+    assert_eq!(r.to_string(), "-617/6");
 }
 
 #[test]
