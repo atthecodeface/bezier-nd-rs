@@ -39,33 +39,29 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 use crate::Num;
 
 fn poly_calc<F: Num>(poly: &[F], x: F) -> F {
-    let mut r = F::ZERO;
-    let mut xn = F::ONE;
-    for p in poly.iter() {
-        r += (*p) * xn;
-        xn *= x;
-    }
-    r
+    poly.iter()
+        .fold((F::ZERO, F::ONE), |(acc, xn), p| (acc + *p * xn, xn * x))
+        .0
 }
 
 fn poly_gradient<F: Num>(poly: &[F], x: F) -> F {
-    let mut r = F::ZERO;
-    let mut xn = F::ONE;
-    for (i, p) in poly.iter().enumerate().skip(1) {
-        r += (*p) * xn * F::of_usize(i);
-        xn *= x;
-    }
-    r
+    poly.iter()
+        .enumerate()
+        .skip(1)
+        .fold((F::ZERO, F::ONE), |(acc, xn), (i, p)| {
+            (acc + *p * xn * F::of_usize(i), xn * x)
+        })
+        .0
 }
 
 fn poly_d2f<F: Num>(poly: &[F], x: F) -> F {
-    let mut r = F::ZERO;
-    let mut xn = F::ONE;
-    for (i, p) in poly.iter().enumerate().skip(2) {
-        r += (*p) * xn * F::of_usize((i - 1) * i);
-        xn *= x;
-    }
-    r
+    poly.iter()
+        .enumerate()
+        .skip(2)
+        .fold((F::ZERO, F::ONE), |(acc, xn), (i, p)| {
+            (acc + *p * xn * F::of_usize(i * (i - 1)), xn * x)
+        })
+        .0
 }
 
 fn poly_differentiate<F: Num>(poly: &mut [F]) {
