@@ -62,7 +62,7 @@ fn poly_d2f<F: Num>(poly: &[F], x: F) -> F {
     let mut r = F::ZERO;
     let mut xn = F::ONE;
     for (i, p) in poly.iter().enumerate().skip(2) {
-        r += (*p) * xn * F::of_usize(((i - 1) * i));
+        r += (*p) * xn * F::of_usize((i - 1) * i);
         xn *= x;
     }
     r

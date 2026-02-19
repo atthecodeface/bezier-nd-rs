@@ -127,7 +127,7 @@ fn test_rational_tiny_fract() {
     test_number_n(big);
 }
 
-// #[test]
+#[test]
 fn test_rational_num() {
     let half: RationalN<8> = (0.5_f32).into();
     let n = half * half * half * half;

@@ -1,5 +1,5 @@
 use bezier_nd::BezierEval;
-use bezier_nd::{metrics, BezierBuilder, BezierMetric, BezierND, BezierOps, Num};
+use bezier_nd::{BezierBuilder, BezierMetric, BezierND, BezierOps, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;

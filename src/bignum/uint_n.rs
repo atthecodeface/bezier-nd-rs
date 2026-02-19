@@ -1,7 +1,6 @@
 use num_traits::{ConstOne, ConstZero, Zero};
 use std::fmt::Write;
 
-use crate::traits;
 
 /// Unsigned integer of N*64 bits, supporting copy
 ///

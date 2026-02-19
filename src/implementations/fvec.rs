@@ -1,6 +1,6 @@
 use crate::Num;
 use crate::{
-    bernstein_fns, constants, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate,
+    bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate,
     BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
     BezierReduce, BezierReduction, BezierSplit,
 };
