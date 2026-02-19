@@ -13,14 +13,12 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         vector::distance_sq(p0, p1)
     }
     fn point_at(&self, t: F) -> [F; D] {
-        let two: F = (2.0_f32).into();
         let u = F::ONE - t;
-        vector::sum_scaled(self, &[u * u, two * u * t, t * t])
+        vector::sum_scaled(self, &[u * u, F::of_i32(2) * u * t, t * t])
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        let two: F = (2.0_f32).into();
         let u = F::ONE - t;
-        (two, vector::sum_scaled(self, &[-u, u - t, t]))
+        (F::of_i32(2), vector::sum_scaled(self, &[-u, u - t, t]))
     }
     fn endpoints(&self) -> ([F; D], [F; D]) {
         (self[0], self[2])
@@ -31,7 +29,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     fn dc_sq_from_line(&self) -> F {
         vector::length_sq(&vector::sum_scaled(
             self,
-            &[(0.5_f32).into(), -F::ONE, (0.5_f32).into()],
+            &[F::frac(1, 2), -F::ONE, F::frac(1, 2)],
         ))
     }
 
@@ -111,13 +109,13 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         let p0 = self[0][pt_index];
         let p1 = self[1][pt_index];
         let p2 = self[2][pt_index];
-        let d_dt_denom = p0 + p2 - p1 * (2.0_f32).into();
+        let d_dt_denom = p0 + p2 - p1 * F::of_i32(2);
         let d_dt_numer = p0 - p1;
         if !d_dt_denom.is_unreliable_divisor() {
             let t = d_dt_numer / d_dt_denom;
             if t > F::ZERO && t < F::ONE {
                 let u = F::ONE - t;
-                let c = u * u * p0 + u * t * p1 * (2.0_f32).into() + t * t * p2;
+                let c = u * u * p0 + u * t * p1 * F::of_i32(2) + t * t * p2;
                 return utils::opt_min_and_max_tc(
                     give_min,
                     give_max,
@@ -161,9 +159,9 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 3] {
 
 impl<F: Num, const D: usize> BezierSplit<F> for [[F; D]; 3] {
     fn split(&self) -> (Self, Self) {
-        let c0 = vector::sum_scaled(self, &[0.5_f32.into(), 0.5_f32.into(), F::ZERO]);
-        let c1 = vector::sum_scaled(self, &[F::ZERO, 0.5_f32.into(), 0.5_f32.into()]);
-        let pm = vector::sum_scaled(self, &[0.25_f32.into(), 0.5_f32.into(), 0.25_f32.into()]);
+        let c0 = vector::sum_scaled(self, &[F::frac(1, 2), F::frac(1, 2), F::ZERO]);
+        let c1 = vector::sum_scaled(self, &[F::ZERO, F::frac(1, 2), F::frac(1, 2)]);
+        let pm = vector::sum_scaled(self, &[F::frac(1, 4), F::frac(1, 2), F::frac(1, 4)]);
         ([self[0], c0, pm], [pm, c1, self[2]])
     }
 
@@ -228,8 +226,8 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 3] {
     fn elevate_by_one(&self) -> Option<[[F; D]; 4]> {
         Some([
             self[0],
-            vector::sum_scaled(&self[0..2], &[0.3333333_f32.into(), 0.66666667_f32.into()]),
-            vector::sum_scaled(&self[1..3], &[0.66666667_f32.into(), 0.3333333_f32.into()]),
+            vector::sum_scaled(&self[0..2], &[F::frac(1, 3), F::frac(2, 3)]),
+            vector::sum_scaled(&self[1..3], &[F::frac(2, 3), F::frac(1, 3)]),
             self[2],
         ])
     }
@@ -242,9 +240,9 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
         match method {
             BezierReduction::LeastSquares => {
-                let five = (5.0_f32 / 6.0_f32).into();
-                let one: F = (1.0_f32 / 6.0_f32).into();
-                let two = (2.0_f32 / 6.0_f32).into();
+                let five = F::frac(5, 6);
+                let one = F::frac(1, 6);
+                let two = F::frac(2, 6);
                 Some([
                     vector::sum_scaled(self, &[five, two, -one]),
                     vector::sum_scaled(self, &[-one, two, five]),
@@ -261,9 +259,9 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         match method {
             BezierReduction::LeastSquares => {
-                let one: F = (1.0_f32 / 6.0_f32).into();
-                let two: F = (2.0_f32 / 6.0_f32).into();
-                let four: F = (4.0_f32 / 6.0_f32).into();
+                let one = F::frac(1, 6);
+                let two = F::frac(2, 6);
+                let four = F::frac(4, 6);
                 let dc_sq_0 = vector::length_sq(&vector::sum_scaled(self, &[-one, two, -one]));
                 let dc_sq_1 = vector::length_sq(&vector::sum_scaled(self, &[two, -four, two]));
                 dc_sq_0.max(dc_sq_1)

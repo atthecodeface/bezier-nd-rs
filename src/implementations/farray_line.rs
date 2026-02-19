@@ -126,10 +126,7 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for [[F; D]; 2] {
 
 impl<F: Num, const D: usize> BezierSplit<F> for [[F; D]; 2] {
     fn split(&self) -> (Self, Self) {
-        let m = vector::scale(
-            vector::add(self[0], &self[1], 1.0_f32.into()),
-            0.5_f32.into(),
-        );
+        let m = vector::sum_scaled(self, &[F::frac(1, 2), F::frac(1, 2)]);
         ([self[0], m], [m, self[1]])
     }
 
@@ -202,7 +199,7 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for [[F; D]; 2] {
     fn elevate_by_one(&self) -> Option<[[F; D]; 3]> {
         Some([
             self[0],
-            vector::sum_scaled(self, &[0.5_f32.into(), 0.5_f32.into()]),
+            vector::sum_scaled(self, &[F::frac(1, 2), F::frac(1, 2)]),
             self[1],
         ])
     }

@@ -1,7 +1,6 @@
 use bezier_nd::BezierEval;
 use bezier_nd::BezierSplit;
 
-use bezier_nd::Float;
 use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
@@ -18,11 +17,11 @@ use super::{float_iter, max, min};
 /// Find the largest closest distance between segmented points to points on the bezier
 ///
 /// Both of these should be less than 'straightness'
-pub struct BezierPtSet<F: Num, const D: usize> {
+pub struct BezierPtSet<F: Num + From<f32>, const D: usize> {
     pts: Vec<[F; D]>,
 }
 
-impl<F: Num, const D: usize> BezierPtSet<F, D> {
+impl<F: Num + From<f32>, const D: usize> BezierPtSet<F, D> {
     pub fn is_empty(&self) -> bool {
         self.pts.is_empty()
     }

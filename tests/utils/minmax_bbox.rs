@@ -1,11 +1,10 @@
 use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
-use bezier_nd::Float;
 use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
 pub fn assert_min_max_coords<
-    F: bezier_nd::Num,
+    F: Num + From<f32>,
     const D: usize,
     B: BezierEval<F, [F; D]> + std::fmt::Debug,
 >(

@@ -173,9 +173,9 @@ pub fn barycentric_coordinates<F: Num, const D: usize>(
 /// Difference sqaured = (ut)^2 . |u.A + t.B|^2
 /// |uA + tB| (with u=1-t, 0<=t<=1) has a maximum value of max(|A|, |B|)
 /// Hence difference squared <= (ut)^2 . max(A^2, B^2) <= max(A^2, B^2)
-pub fn straightness_sq_of_cubic<F: crate::Num, const D: usize>(cubic: &[[F; D]; 4]) -> F {
-    let m_third = (-0.33333333_f32).into();
-    let m_twothird = (-0.666_666_7_f32).into();
+pub fn straightness_sq_of_cubic<F: Num, const D: usize>(cubic: &[[F; D]; 4]) -> F {
+    let m_third = F::frac(-1, 3);
+    let m_twothird = F::frac(-2, 3);
     let dv_0 = vector::sum_scaled(cubic, &[m_twothird, F::ONE, F::ZERO, m_third]);
     let dc2_0 = vector::length_sq(&dv_0);
     let dv_1 = vector::sum_scaled(cubic, &[m_third, F::ZERO, F::ONE, m_twothird]);
@@ -195,19 +195,15 @@ pub fn find_real_roots_quad_num<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
     if poly[2].is_unreliable_divisor() {
         (crate::polynomial::find_real_roots_linear(poly), None)
     } else {
-        let a = poly[2];
+        let two_a = poly[2] + poly[2];
         let b = poly[1];
         let c = poly[0];
-        let two: F = (2.0_f32).into();
-        let disc = b * b - a * c * ((4.0_f32).into());
+        let disc = b * b - F::of_i32(2) * two_a * c;
         if disc < F::zero() {
             (None, None)
         } else {
             let disc_sq = disc.sqrt_est();
-            (
-                Some((-b + disc_sq) / two / a),
-                Some((-b - disc_sq) / two / a),
-            )
+            (Some((-b + disc_sq) / two_a), Some((-b - disc_sq) / two_a))
         }
     }
 }
@@ -231,16 +227,18 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         //
         // If it fails again at the same point from t=2
         let mut t0 = F::ZERO;
-        let mut p_t0: F = 1E8_f32.into();
-        for t in [0.0_f32, 1.0, 2.0, -1.0] {
-            let (root_est, _root_dt) = poly.find_root_nr_with_err(t.into(), 1E-6_f32.into(), 20);
+        let mut p_t0 = F::of_i32(i32::MAX);
+        for t in [0_i32, 1, 2, -1] {
+            let (root_est, _root_dt) =
+                poly.find_root_nr_with_err(F::of_i32(t), F::frac(1, 1_000_000), 20);
             let p_t = poly.calc(root_est).nabs();
             if p_t < p_t0 {
                 t0 = root_est;
                 p_t0 = p_t;
             }
         }
-        if p_t0.nabs() > 1E-4_f32.into() {
+        if p_t0.nabs() > F::frac(1, 1_000) {
+            // If it is not actually a root, i.e poly(t) > 0.001
             panic!("Failed to find root for polynomial {poly:?}");
             return (None, None, None);
         }
@@ -269,7 +267,7 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
 ///
 /// A value of N=5 will yield a square root accurate to one part in a 1E6.
 pub fn sqrt_est<F: Num, const N: usize>(sq: F, min: bool) -> F {
-    if sq < 1E-4_f32.into() {
+    if sq < F::frac(1, 10_000) {
         if min {
             F::ZERO
         } else {
@@ -279,12 +277,12 @@ pub fn sqrt_est<F: Num, const N: usize>(sq: F, min: bool) -> F {
         if sq.is_unreliable_divisor() {
             return F::ZERO;
         }
-        let scale: F = 4.0_f32.into();
-        let scale_r: F = 0.25_f32.into(); // 1/scale
-        let scale_sq_r: F = 0.0625_f32.into(); // 1/scale^2
-        let scale_sq: F = 16.0_f32.into(); // scale^2
-        let mut est = 2.0_f32.into(); // scale/2.0
-        let half: F = 0.5_f32.into();
+        let scale = F::of_usize(4);
+        let scale_r = F::frac(1, 4);
+        let scale_sq = F::of_usize(16); // scale^2
+        let scale_sq_r = F::frac(1, 16); // 1/scale^2
+        let mut est = F::of_usize(2); // scale/2.0
+        let half: F = F::frac(1, 2);
 
         let mut tsq = sq;
         while tsq < F::ONE {
@@ -331,11 +329,11 @@ pub fn cbrt_est<F: Num, const N: usize>(cb: F) -> F {
     if cb.is_unreliable_divisor() {
         return F::ZERO;
     }
-    let scale: F = 4.0_f32.into();
-    let scale_r: F = 0.25_f32.into(); // 1/scale
-    let scale_cb_r: F = 0.015625_f32.into(); // 1/scale^2
-    let scale_cb: F = 64.0_f32.into(); // scale^2
-    let mut est: F = 2.0_f32.into();
+    let scale = F::of_usize(4);
+    let scale_r = F::frac(1, 4);
+    let scale_cb = F::of_usize(64); // scale^3
+    let scale_cb_r = F::frac(1, 64); // 1/scale^3
+    let mut est = F::of_usize(2); // scale/2.0
 
     let mut tcb = {
         if cb < F::ZERO {
@@ -363,7 +361,7 @@ pub fn cbrt_est<F: Num, const N: usize>(cb: F) -> F {
 
 #[test]
 fn test_sqrt() {
-    fn test_x<F: Num, const N: usize>(x: f32, accuracy: f32) {
+    fn test_x<F: Num + From<f32>, const N: usize>(x: f32, accuracy: f32) {
         let x: F = x.into();
         let x_sq = x * x;
         let est_min = sqrt_est::<_, N>(x_sq, true);
@@ -400,7 +398,7 @@ fn test_sqrt() {
 
 #[test]
 fn test_cbrt() {
-    fn test_x<F: Num, const N: usize>(x: f32, accuracy: f32) {
+    fn test_x<F: Num + From<f32>, const N: usize>(x: f32, accuracy: f32) {
         let x: F = x.into();
         let x_cb = x * x * x;
         let est = cbrt_est::<_, N>(x_cb);

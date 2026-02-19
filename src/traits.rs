@@ -51,25 +51,30 @@ pub enum BezierMetric {
     SumControlSquared,
 }
 
+/// Trait that must be supplied to enable a value to be used as a parameter or point in a Bezier
 pub trait NumOps:
-    Sized
-    + 'static
-    + From<f32>
-    + std::ops::Neg<Output = Self>
-    + std::cmp::PartialOrd
-    + num_traits::ConstZero
-    + Copy
+    Sized + 'static + std::ops::Neg<Output = Self> + std::cmp::PartialOrd + num_traits::ConstZero + Copy
 {
-    /// Convert an f64 to this value
-    fn of_f64(v: f64) -> Self {
-        (v as f32).into()
+    /// frac
+    fn frac(n: i32, u: u32) -> Self;
+
+    fn of_i32(n: i32) -> Self {
+        Self::frac(n, 1)
     }
+
+    fn of_usize(n: usize) -> Self {
+        Self::frac(n as i32, 1)
+    }
+
+    /// Convert an f64 to this value
+    fn of_f64(v: f64) -> Self;
 
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
-    fn is_unreliable_divisor(self) -> bool {
-        self <= f32::EPSILON.into() && self >= (-f32::EPSILON).into()
-    }
+    fn is_unreliable_divisor(self) -> bool;
+
+    /// Raise to the i'th power
+    fn powi(self, p: i32) -> Self;
 
     /// Return an estimate of the square root
     fn sqrt_est(self) -> Self;
@@ -84,8 +89,21 @@ pub trait NumOps:
 }
 
 impl NumOps for f32 {
+    fn frac(n: i32, u: u32) -> Self {
+        (n as f32) / (u as f32)
+    }
+
+    /// Convert an f64 to this value
+    fn of_f64(v: f64) -> Self {
+        v as f32
+    }
+
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f32::EPSILON
+    }
+
+    fn powi(self, p: i32) -> Self {
+        <Self as num_traits::Float>::powi(self, p)
     }
 
     fn sqrt_est(self) -> Self {
@@ -102,12 +120,20 @@ impl NumOps for f32 {
 }
 
 impl NumOps for f64 {
+    fn frac(n: i32, u: u32) -> Self {
+        (n as f64) / (u as f64)
+    }
+
     fn of_f64(v: f64) -> Self {
         v
     }
 
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f64::EPSILON
+    }
+
+    fn powi(self, p: i32) -> Self {
+        <Self as num_traits::Float>::powi(self, p)
     }
 
     fn sqrt_est(self) -> Self {
@@ -143,7 +169,6 @@ pub trait Num:
     + num_traits::ConstOne
     + num_traits::ConstZero
     + num_traits::FromPrimitive
-    + From<f32>
     + 'static
     + NumOps
 {
@@ -172,16 +197,6 @@ pub trait Num:
     }
 }
 
-/// An extension to the [Num] trait, providing in addition floating point operations such as sqrt and cbrt.
-///
-/// Most Bezier operations do not require such functions, but sqrt in particular provides the means to determine
-/// a distance, rather than just a distance squared.
-///
-/// A blanket implementation is provided for any type that provides the required trait implementations, and hence is implemented for example by [f32] and [f64].
-pub trait Float: Num + num_traits::Float + num_traits::FloatConst {}
-
-impl<T> Float for T where T: Num + num_traits::Float + num_traits::FloatConst {}
-
 impl<T> Num for T where
     T: Copy
         + std::any::Any
@@ -197,7 +212,6 @@ impl<T> Num for T where
         + num_traits::ConstOne
         + num_traits::ConstZero
         + num_traits::FromPrimitive
-        + From<f32>
         + 'static
         + NumOps
 {

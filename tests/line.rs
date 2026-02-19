@@ -1,11 +1,11 @@
 //a Imports
+use bezier_nd::Num;
 use bezier_nd::{BasicBezier, BezierIterationType, BezierND};
-use bezier_nd::{Float, Num};
 mod utils;
 use rand::prelude::*;
 
 /// Test a Bezier that is a line between two points
-fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
+fn test_line_between<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
     bezier: &B,
     pts: [[F; 2]; 2],
 ) {
@@ -65,7 +65,7 @@ fn test_line_between<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 }
 
 fn test_line<
-    F: Float,
+    F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
     B: BasicBezier<F, [F; 2]> + std::fmt::Debug,

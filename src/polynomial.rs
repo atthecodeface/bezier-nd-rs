@@ -35,19 +35,8 @@ or         a = (Xt.X)' . Xt.y (where M' = inverse of M)
 
 !*/
 
-use std::f32;
-
 //a Imports
-use crate::{Float, Num};
-
-#[inline(always)]
-fn abs<F: Num>(f: F) -> F {
-    if f < F::ZERO {
-        -f
-    } else {
-        f
-    }
-}
+use crate::Num;
 
 fn poly_calc<F: Num>(poly: &[F], x: F) -> F {
     let mut r = F::ZERO;
@@ -59,33 +48,33 @@ fn poly_calc<F: Num>(poly: &[F], x: F) -> F {
     r
 }
 
-fn poly_gradient<F: Num + From<f32>>(poly: &[F], x: F) -> F {
+fn poly_gradient<F: Num>(poly: &[F], x: F) -> F {
     let mut r = F::ZERO;
     let mut xn = F::ONE;
     for (i, p) in poly.iter().enumerate().skip(1) {
-        r += (*p) * xn * (i as f32).into();
+        r += (*p) * xn * F::of_usize(i);
         xn *= x;
     }
     r
 }
 
-fn poly_d2f<F: Num + From<f32>>(poly: &[F], x: F) -> F {
+fn poly_d2f<F: Num>(poly: &[F], x: F) -> F {
     let mut r = F::ZERO;
     let mut xn = F::ONE;
     for (i, p) in poly.iter().enumerate().skip(2) {
-        r += (*p) * xn * (((i - 1) * i) as f32).into();
+        r += (*p) * xn * F::of_usize(((i - 1) * i));
         xn *= x;
     }
     r
 }
 
-fn poly_differentiate<F: Num + From<f32>>(poly: &mut [F]) {
+fn poly_differentiate<F: Num>(poly: &mut [F]) {
     let n = poly.len();
     if n < 1 {
         return;
     }
     for i in 0..n - 1 {
-        poly[i] = poly[i + 1] * ((i + 1) as f32).into();
+        poly[i] = poly[i + 1] * F::of_usize(i + 1);
     }
     poly[n - 1] = F::ZERO;
 }
@@ -253,18 +242,17 @@ fn improve_root<F: Num>(poly: &[F], x: F) -> Option<(F, F)> {
     let f = poly.calc(x);
     let df = poly.gradient(x);
     let d2f = poly.d2f(x);
-    let denom = df * df - f * d2f / (2.0_f32.into());
+    let denom = df * df - f * d2f * F::frac(1, 2);
     if denom.is_unreliable_divisor() {
         if df.is_unreliable_divisor() {
             None
         } else {
             let new_x = x - f / df;
-            Some((new_x, abs(new_x - x)))
+            Some((new_x, (new_x - x).nabs()))
         }
     } else {
         let new_x = x - f * df / denom;
-        // eprintln!("x:{x} f:{f} df:{df} d2f:{d2f} new_x:{new_x}");
-        Some((new_x, abs(new_x - x)))
+        Some((new_x, (new_x - x).nabs()))
     }
 }
 
@@ -288,24 +276,22 @@ pub fn find_real_roots_quad<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
     if poly[2].is_unreliable_divisor() {
         (find_real_roots_linear(poly), None)
     } else {
-        let a = poly[2];
+        let two_a = poly[2] + poly[2];
         let b = poly[1];
         let c = poly[0];
-        let two: F = (2.0_f32).into();
-        let disc = b * b - a * c * ((4.0_f32).into());
+        let disc = b * b - F::of_i32(2) * two_a * c;
         if disc < F::zero() {
             (None, None)
         } else {
             let disc_sq = disc.sqrt_est();
-            (
-                Some((-b + disc_sq) / two / a),
-                Some((-b - disc_sq) / two / a),
-            )
+            (Some((-b + disc_sq) / two_a), Some((-b - disc_sq) / two_a))
         }
     }
 }
 
-pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Option<F>) {
+pub fn find_real_roots_cubic<F: Num + num_traits::Float>(
+    poly: &[F],
+) -> (Option<F>, Option<F>, Option<F>) {
     assert!(
         poly.len() >= 4,
         "Root of a cubic polynomial requires at least four coefficients (and [4..] should be zero)"
@@ -319,21 +305,20 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
         let c = poly[1];
         let d = poly[0];
 
-        let two: F = 2.0_f32.into();
-        let three: F = 3.0_f32.into();
+        let two = F::of_usize(2);
+        let three = F::of_usize(3);
         let sqrt3 = three.sqrt();
 
-        let delta_0 = b * b - a * c * (3.0_f32.into());
-        let delta_1 =
-            b * b * b * two - a * b * c * (9.0_f32.into()) + a * a * d * (27.0_f32.into());
-        let disc = delta_1 * delta_1 - delta_0 * delta_0 * delta_0 * (4.0_f32.into());
+        let delta_0 = b * b - a * c * three;
+        let delta_1 = b * b * b * two - a * b * c * F::of_usize(9) + a * a * d * F::of_usize(27);
+        let disc = delta_1 * delta_1 - delta_0 * delta_0 * delta_0 * F::of_usize(4);
         // dbg!(delta_0, delta_1, disc);
         if delta_0.is_unreliable_divisor() {
             // three identical roots if delta_1 is zero
             //
             // If delta_1 is nonzero then one real root (?)
             let big_c = (delta_1 / two).cbrt();
-            let x = (b + big_c) / (-a * (3.0_f32.into()));
+            let x = (b + big_c) / (-a * three);
             if delta_1.is_unreliable_divisor() {
                 (Some(x), Some(x), Some(x))
             } else {
@@ -349,12 +334,13 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
                 }
             }) / two)
                 .cbrt();
-            let x = (b + big_c + delta_0 / big_c) / (-a * (3.0_f32.into()));
+            let x = (b + big_c + delta_0 / big_c) / (-a * three);
             (Some(x), None, None)
         } else {
             let mut r0 = None;
             let mut r1 = None;
             let mut r2 = None;
+            let small = F::frac(1, 1000);
 
             // Note there is *always* one real root
 
@@ -366,17 +352,16 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_cubed_i = (-disc).sqrt() / two;
             let big_c_cubed_r = delta_1 / two;
             // dbg!(big_c_cubed_r, big_c_cubed_i);
-            let cbrt_theta = big_c_cubed_i.atan2(big_c_cubed_r) / (3.0_f32.into());
-            let cbrt_mag = (big_c_cubed_i * big_c_cubed_i + big_c_cubed_r * big_c_cubed_r)
-                .powf((1.0_f32 / 6.0).into());
+            let cbrt_theta = big_c_cubed_i.atan2(big_c_cubed_r) / three;
+            let cbrt_mag =
+                (big_c_cubed_i * big_c_cubed_i + big_c_cubed_r * big_c_cubed_r).powf(F::frac(1, 6));
             let big_c_r = cbrt_theta.cos() * cbrt_mag;
             let big_c_i = cbrt_theta.sin() * cbrt_mag;
             // Note that / big_C is the same as * big_C comp / |C|^2
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
-                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
-                    / (-a * (3.0_f32.into()));
+            if thing.nabs() < small {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r0 = Some(x);
             }
@@ -386,9 +371,8 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
-                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
-                    / (-a * (3.0_f32.into()));
+            if thing.nabs() < small {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r1 = Some(x);
             }
@@ -398,9 +382,8 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing > (-0.001_f32).into() && thing < 0.001_f32.into() {
-                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag))
-                    / (-a * (3.0_f32.into()));
+            if thing.nabs() < small {
+                let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r2 = Some(x);
             }
@@ -414,7 +397,7 @@ pub fn find_real_roots_cubic<F: Float>(poly: &[F]) -> (Option<F>, Option<F>, Opt
 /// Types that provide PolyFindRoots will provide accurate calculation of
 /// polynomial roots if the polynomial they represent is linear, quadratic
 /// or cubic
-pub trait PolyFindRoots<F: Float> {
+pub trait PolyFindRoots<F: Num + num_traits::Float> {
     /// Assume the polynomial is linear, and solve
     fn find_roots_linear(&self) -> Option<F>;
     /// Assume the polynomial is quadratic, and solve
@@ -434,7 +417,7 @@ pub trait PolyNewtonRaphson<F: Num> {
     where
         Self: Polynomial<F>,
     {
-        let mut last_dx = 1E7_f32.into();
+        let mut last_dx = F::of_i32(i32::MAX);
         while let Some((improved_x, improved_dx)) = self.improve_root(x) {
             // eprintln!("x:{x}, {improved_x} {improved_dx}");
             x = improved_x;
@@ -462,7 +445,7 @@ pub trait PolyNewtonRaphson<F: Num> {
 }
 
 //ip PolyFindRoots for [F; N]
-impl<F: Float, const N: usize> PolyFindRoots<F> for [F; N] {
+impl<F: Num + num_traits::Float, const N: usize> PolyFindRoots<F> for [F; N] {
     fn find_roots_linear(&self) -> Option<F> {
         find_real_roots_linear(self.as_slice())
     }

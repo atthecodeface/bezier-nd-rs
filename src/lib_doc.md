@@ -15,13 +15,13 @@ Add tests for:
 * t_closest
 * elevate_by(>1)
 * BezierOps
-* Polynomial (set_multiply, set_divide, find cubic real root, tests for [F])
+* Polynomial d2f
 * section_length with t0<0, t1>1, t1<t0
 * Approximation t_of_distance beyond length
 * Approximation derivative_at of t<0 or t>1
 * Approximation into iterator
 * Appromixation for_each_control_point
-* metric_from s of any kind from line or bezier
+* Approximation metric from, est)min_distance_to, t_dsq_closest_to_pt
 
 # Bezier curve library
 

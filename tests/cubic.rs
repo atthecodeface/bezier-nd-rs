@@ -1,13 +1,13 @@
 //a Imports
+use bezier_nd::Num;
 use bezier_nd::{
     Approximation, BasicBezier, BezierEval, BezierFlatIterator, BezierIterationType, BezierND,
 };
-use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
 
-fn test_cubic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
+fn test_cubic_with<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
     bezier: &B,
     pts: [[F; 2]; 4],
 ) {
@@ -82,7 +82,7 @@ fn test_cubic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 }
 
 fn test_cubic<
-    F: Float,
+    F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
     B: BasicBezier<F, [F; 2]> + std::fmt::Debug,
@@ -99,9 +99,10 @@ fn test_cubic<
         test_cubic_with(&bezier, pts);
     }
 }
-fn test_arc<F: Float>() {
+
+fn test_arc<F: Num + num_traits::Float + From<f32>>() {
     let bezier = bezier_nd::bernstein_fns::arc::arc(
-        F::PI() / (2.0_f32.into()),
+        F::frac(3_141_592_65, 2_000_000_00), // PI/2
         F::ONE,
         &[F::ZERO, F::ZERO],
         &[F::ONE, F::ZERO],
@@ -113,7 +114,7 @@ fn test_arc<F: Float>() {
 
     eprintln!("{:?}", approx);
     utils::approx_eq(
-        F::PI() * 0.5_f32.into(),
+        F::frac(3_141_592_65, 2_000_000_00), // PI/2
         approx.iter_length(BezierIterationType::ClosenessSq(F::ZERO)),
         0.001_f32,
         "Length of 90-degree arc of circle radius 1 should be PI/2",
@@ -124,7 +125,7 @@ fn test_arc<F: Float>() {
         approx
             .iter_t_of_distance(
                 BezierIterationType::ClosenessSq(F::ZERO),
-                F::PI() / 4.0_f32.into(),
+                F::frac(3_141_592_65, 4_000_000_00), // PI/4
             )
             .unwrap(),
         0.001,
@@ -135,7 +136,7 @@ fn test_arc<F: Float>() {
         approx
             .iter_t_of_distance(
                 BezierIterationType::ClosenessSq(F::ZERO),
-                F::PI() / 8.0_f32.into(),
+                F::frac(3_141_592_65, 8_000_000_00), // PI/8
             )
             .unwrap(),
         0.001,
@@ -146,7 +147,7 @@ fn test_arc<F: Float>() {
         approx
             .iter_t_of_distance(
                 BezierIterationType::ClosenessSq(F::ZERO),
-                F::PI() * (3.0_f32 / 8.0).into(),
+                F::frac(9_424_777_95, 8_000_000_00), // 3PI/8
             )
             .unwrap(),
         0.001,

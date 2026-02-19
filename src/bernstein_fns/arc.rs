@@ -1,11 +1,9 @@
 //a Imports
-use crate::Float;
+use crate::{BezierEval, Num};
 use geo_nd::vector;
 
-use crate::BezierEval;
-
 //fi lambda_of_k_d
-fn lambda_of_k_d<F: Float>(k: F, d: F) -> F {
+fn lambda_of_k_d<F: Num + From<f32>>(k: F, d: F) -> F {
     // There are numerous versions of calculating
     // the lambda for the arc from the angle of the arc
     //
@@ -111,7 +109,7 @@ fn lambda_of_k_d<F: Float>(k: F, d: F) -> F {
 ///
 /// The arc will be between an angle A1 and A2, where A2-A1 == angle, and A1==rotate
 ///
-pub fn arc<F: Float, const D: usize>(
+pub fn arc<F: Num + From<f32> + num_traits::Float, const D: usize>(
     angle: F,
     radius: F,
     center: &[F; D],
@@ -179,7 +177,7 @@ pub fn arc<F: Float, const D: usize>(
 /// Hence also k^2, and hence d and k.
 ///
 /// Then we require an arc given the angle of the arc is 2*theta
-pub fn of_round_corner<F: Float, const D: usize>(
+pub fn of_round_corner<F: Num + From<f32> + num_traits::Float, const D: usize>(
     corner: &[F; D],
     v0: &[F; D],
     v1: &[F; D],
@@ -188,8 +186,18 @@ pub fn of_round_corner<F: Float, const D: usize>(
     let nearly_one = (0.999_999_f32).into();
     let one = F::one();
     let two: F = (2.0_f32).into();
-    let v0 = vector::normalize(*v0);
-    let v1 = vector::normalize(*v1);
+    let v0_l = vector::length_sq(v0).sqrt_est();
+    let v1_l = vector::length_sq(v1).sqrt_est();
+    let v0 = if v0_l.is_unreliable_divisor() {
+        *v0
+    } else {
+        vector::reduce(*v0, v0_l)
+    };
+    let v1 = if v1_l.is_unreliable_divisor() {
+        *v1
+    } else {
+        vector::reduce(*v1, v1_l)
+    };
     let cos_alpha = vector::dot(&v0, &v1);
     if cos_alpha >= nearly_one || cos_alpha < -nearly_one {
         // v0 and v1 point in the same direction
@@ -264,7 +272,11 @@ pub fn of_round_corner<F: Float, const D: usize>(
 ///  k0 = (p0.t0 - p1.t1 * t1.t0) / ( 1 - (t1.t0)^2)
 ///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
 /// ```
-pub fn center_radius_of_bezier_arc<F: Float, const D: usize, B: BezierEval<F, [F; D]>>(
+pub fn center_radius_of_bezier_arc<
+    F: Num + num_traits::Float + From<f32> + num_traits::FloatConst,
+    const D: usize,
+    B: BezierEval<F, [F; D]>,
+>(
     bezier: &B,
 ) -> ([F; D], F) {
     let zero = F::zero();

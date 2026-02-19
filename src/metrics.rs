@@ -1,7 +1,7 @@
 //! This library provides functions that return *Metrics* for Bezier curves or the difference between
 //! them and other curves or lines.
 //!
-use crate::{bernstein_fns, utils, BezierEval, BezierMetric, Float, Num};
+use crate::{bernstein_fns, utils, BezierEval, BezierMetric, Num};
 use geo_nd::vector;
 
 /// Maximum of the squared length of the control points mapped by the mapping matrix
@@ -32,7 +32,7 @@ pub fn dl_sq_est<F: Num, const D: usize>(
         Some(
             utils::float_iter(num_steps).fold(F::ZERO, |acc, t| {
                 acc + vector::length_sq(&bernstein_fns::values::vector_between_at(bezier, other, t))
-            }) / (num_steps as f32).into(),
+            }) / F::of_usize(num_steps),
         )
     }
 }
@@ -50,7 +50,7 @@ pub fn dl_sq_est_from_line<F: Num, const D: usize>(bezier: &[[F; D]], num_steps:
         .fold(F::ZERO, |acc, (t, l)| {
             acc + vector::distance_sq(&bernstein_fns::values::point_at(bezier, t), &l)
         })
-        / (num_steps as f32).into()
+        / F::of_usize(num_steps)
 }
 
 /// The maximum difference between two beziers given a step dt

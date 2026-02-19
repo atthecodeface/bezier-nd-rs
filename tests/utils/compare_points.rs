@@ -1,13 +1,12 @@
 use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
-use bezier_nd::Float;
 use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
 #[track_caller]
 pub fn vec_eq<F: Num, const D: usize>(v0: &[F; D], v1: &[F; D]) {
     #[allow(non_snake_case)]
-    let EPSILON: F = (1E-8_f32).into();
+    let EPSILON = F::frac(1, 100_000_000);
     let d = vector::distance_sq(v0, v1);
     assert!(d < EPSILON, "mismatch in {:?} {:?}", v0, v1);
 }
@@ -15,16 +14,16 @@ pub fn vec_eq<F: Num, const D: usize>(v0: &[F; D], v1: &[F; D]) {
 //fi pt_eq
 pub fn pt_eq<F: Num, const D: usize>(v: &[F; D], x: F, y: F) {
     #[allow(non_snake_case)]
-    let EPSILON: F = (1E-5_f32).into();
+    let EPSILON = F::frac(1, 100_000);
     assert!(
-        super::abs(v[0] - x) < EPSILON,
+        (v[0] - x).nabs() < EPSILON,
         "mismatch in x {:?} {:?} {:?}",
         v,
         x,
         y
     );
     assert!(
-        super::abs(v[1] - y) < EPSILON,
+        (v[1] - y).nabs() < EPSILON,
         "mismatch in y {:?} {:?} {:?}",
         v,
         x,

@@ -1,17 +1,17 @@
 //! A collection of functions for use with Bernstein polynomial Beziers
 
 use crate::constants::BINOMIAL_N_I;
-use crate::{Float, Num};
+use crate::Num;
 use geo_nd::vector;
 
 /// Calculate the ith Bernstein polynomial coefficient at 't' for a given degree.
 ///
 /// This is (1-t)^(degree-i) * t^i * (degree! / (i!.(degree-i)!) )
 ///
-/// This requires F:Float as it uses 'powi', which is not available if only F:Num
+/// This requires num_traits::Float as it uses 'powi', which is not available if only F:Num
 #[inline]
 #[track_caller]
-pub fn basis_coeff_enum<F: Float>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
+pub fn basis_coeff_enum<F: Num>(degree: usize, t: F) -> impl Iterator<Item = (usize, F)> {
     assert!(
         degree < BINOMIAL_N_I.len(),
         "Maximum degree of Bezier supported is {}",
@@ -61,7 +61,10 @@ pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item =
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
 #[track_caller]
-pub fn basis_dt_coeff_enum<F: Float>(degree: usize, t: F) -> (F, impl Iterator<Item = (usize, F)>) {
+pub fn basis_dt_coeff_enum<F: Num + num_traits::Float>(
+    degree: usize,
+    t: F,
+) -> (F, impl Iterator<Item = (usize, F)>) {
     let n = degree + 1;
     let _n_f = F::from_usize(n).unwrap();
     (
@@ -169,7 +172,7 @@ fn test_bernstein_dt_coeffs() {
 /// This requires F:Float as it uses 'powi', which is not available if only F:Num
 #[inline]
 #[track_caller]
-pub fn basis_coeff<F: Float>(degree: usize, i: usize, t: F) -> F {
+pub fn basis_coeff<F: Num>(degree: usize, i: usize, t: F) -> F {
     assert!(
         degree < BINOMIAL_N_I.len(),
         "Maximum degree of Bezier supported is {}",
@@ -231,12 +234,12 @@ pub fn elevate_by_one<F: Num, const D: usize>(pts: &mut [[F; D]], ele: &mut [[F;
     ele[n + 1] = pts[n];
     for (j, e) in ele.iter_mut().skip(1).take(n - 1).enumerate() {
         *e = vector::add(
-            vector::scale(pts[j], (j as f32).into()),
+            vector::scale(pts[j], F::of_usize(j)),
             &pts[j + 1],
-            ((n + 1 - j) as f32).into(),
+            F::of_usize(n + 1 - j),
         );
     }
-    (1.0 / ((n + 1) as f32)).into()
+    F::frac(1, (n as u32) + 1)
 }
 
 /// Generate Bernstein matrices for a given degree and values of t

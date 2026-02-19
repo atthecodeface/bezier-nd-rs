@@ -468,7 +468,7 @@ where
     F: Num,
 {
     fn split(&self) -> (Self, Self) {
-        self.split_at(0.5_f32.into())
+        self.split_at(F::frac(1, 2))
     }
     fn split_at(&self, t: F) -> (Self, Self) {
         let mut first = *self;
@@ -565,7 +565,7 @@ where
             };
             s.pts[0] = self.pts[0];
             s.pts[s.degree] = self.pts[self.degree];
-            let n_f: F = (n as f32).into();
+            let n_f = F::of_usize(n);
             let mut s0 = F::ONE;
             for (p, (p0, p1)) in s
                 .pts

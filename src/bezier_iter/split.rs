@@ -68,7 +68,7 @@ where
     {
         match self {
             Self::Split { ref mut stack } => {
-                let tm = (*t0 + *t1) / (2.0_f32).into();
+                let tm = (*t0 + *t1) * F::frac(1, 2);
                 let (b0, b1) = bezier.split();
                 stack.push((tm, *t1, b1));
                 stack.push((*t0, tm, b0));

@@ -11,10 +11,9 @@ pub mod lazy_constants;
 pub(crate) mod utils;
 
 mod traits;
-pub use traits::{Float, Num, NumOps};
+pub use traits::{Num, NumOps};
 
 mod approximation;
-mod distance;
 pub(crate) mod polynomial;
 
 mod bezier_iter;
@@ -40,7 +39,9 @@ pub use traits::{
 
 pub use builder::BezierBuilder;
 pub use constants::*;
-pub use distance::BezierDistance2D;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
+
+// mod distance;
+// pub use distance::BezierDistance2D;
 
 pub use implementations::bezier_nd::BezierND;

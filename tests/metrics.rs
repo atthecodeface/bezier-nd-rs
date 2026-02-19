@@ -5,7 +5,7 @@ use geo_nd::vector;
 use rand::prelude::*;
 
 fn check_metrics_of_beziers<
-    F: Num,
+    F: Num + From<f32>,
     const D: usize,
     B: BezierEval<F, [F; D]> + BezierOps<F, [F; D]> + Clone + std::fmt::Debug,
 >(
@@ -177,7 +177,7 @@ fn check_metrics_of_beziers<
 fn check_metrics_of_beziers_test<
     R: Rng,
     D: Distribution<f32>,
-    F: Num,
+    F: Num + From<f32>,
     const N: usize,
     B: BezierEval<F, [F; N]> + BezierOps<F, [F; N]> + Clone + std::fmt::Debug,
 >(

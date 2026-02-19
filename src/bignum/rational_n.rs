@@ -1,5 +1,5 @@
 use super::{IntN, UIntN};
-use crate::utils;
+use crate::{utils, NumOps};
 use num_traits::{ConstOne, One, Zero};
 
 /// A Rational number, with numerator and denominator as N*64-bit integers
@@ -173,12 +173,14 @@ impl<const N: usize> std::ops::SubAssign for RationalN<N> {
 impl<const N: usize> std::ops::Mul for RationalN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn mul(self, other: Self) -> Self {
         self.do_multiply(&other)
     }
 }
 
 impl<const N: usize> std::ops::MulAssign for RationalN<N> {
+    #[track_caller]
     fn mul_assign(&mut self, other: Self) {
         *self = self.do_multiply(&other);
     }
@@ -187,6 +189,7 @@ impl<const N: usize> std::ops::MulAssign for RationalN<N> {
 impl<const N: usize> std::ops::Div for RationalN<N> {
     type Output = Self;
 
+    #[track_caller]
     fn div(self, other: Self) -> Self {
         self.do_divide(&other)
     }
@@ -479,6 +482,7 @@ impl<const N: usize> RationalN<N> {
     /// Find g0 = gcd(A,D); g1 = gcd(B,C); A = a.g0; B = b.g1; C = c.g1 ; D = d.g0
     ///
     /// A/B * C/D = AC / BD = a.g0.c.g1 / b.g1.d.g0 = a.c / b.d
+    #[track_caller]
     fn do_multiply(&self, other: &Self) -> Self {
         if self.numer.is_zero() || other.numer.is_zero() {
             return Self::default();
@@ -584,7 +588,11 @@ impl<const N: usize> num_traits::Num for RationalN<N> {
     }
 }
 
-impl<const N: usize> crate::NumOps for RationalN<N> {
+impl<const N: usize> NumOps for RationalN<N> {
+    fn frac(n: i32, u: u32) -> Self {
+        ((n as i64), (u as u64)).into()
+    }
+
     fn of_f64(v: f64) -> Self {
         v.into()
     }
@@ -595,6 +603,10 @@ impl<const N: usize> crate::NumOps for RationalN<N> {
 
     fn is_sign_negative(self) -> bool {
         self.numer.is_neg()
+    }
+
+    fn powi(self, p: i32) -> Self {
+        (0..p).fold((1_i64, 1_u64).into(), |acc, _| acc * self)
     }
 
     /// Return an estimate of the square root to within a precision

@@ -62,14 +62,14 @@ pub fn bezier_quad_t_dsq_closest_to_pt<F: Num, const D: usize, B: BezierEval<F, 
     }
 
     // eprintln!("Cloeset endpoint {t_min}:{dsq_min}");
-    let p012 = vector::sum_scaled(&pts, &[F::ONE, (-2.0_f32).into(), F::ONE]);
+    let p012 = vector::sum_scaled(&pts, &[F::ONE, F::of_i32(-2), F::ONE]);
     let p01 = vector::sum_scaled(&pts, &[-F::ONE, F::ONE]);
     let p0p = vector::add(pts[0], pt, -F::ONE);
     let a = vector::dot(&p012, &p012);
     let d_dt_dsq_poly = [
         vector::dot(&p01, &p0p),
-        (vector::dot(&p01, &p01) * (2.0_f32).into() + vector::dot(&p012, &p0p)),
-        (vector::dot(&p01, &p012) * (3.0_f32).into()),
+        (vector::dot(&p01, &p01) * F::of_usize(2) + vector::dot(&p012, &p0p)),
+        (vector::dot(&p01, &p012) * F::of_usize(3)),
         a,
     ];
     let (opt_t0, opt_t1, opt_t2) = utils::find_root_cubic_num(d_dt_dsq_poly);

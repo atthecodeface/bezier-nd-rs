@@ -1,6 +1,5 @@
 use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
-use bezier_nd::Float;
 use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
@@ -20,7 +19,7 @@ pub fn bezier_eq<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(bez: &B, v: &
 #[track_caller]
 /// Find the maximum distance between `b0` for t0<=t<=t1 and `b1` for 0<=t<=1 in 'steps' intervals
 pub fn test_subsection<
-    F: Num,
+    F: Num + From<f32>,
     const D: usize,
     B0: BezierEval<F, [F; D]> + std::fmt::Debug,
     B1: BezierEval<F, [F; D]> + std::fmt::Debug,
@@ -43,7 +42,7 @@ pub fn test_subsection<
 pub fn test_beziers_approx_eq<
     B0: BezierEval<F, [F; D]> + BezierSplit<F> + std::fmt::Debug,
     B1: BezierEval<F, [F; D]> + BezierSplit<F> + std::fmt::Debug,
-    F: Num,
+    F: Num + From<f32>,
     const D: usize,
 >(
     b0: &B0,

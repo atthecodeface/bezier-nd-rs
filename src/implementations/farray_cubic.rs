@@ -13,7 +13,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         vector::distance_sq(p0, p1)
     }
     fn point_at(&self, t: F) -> [F; D] {
-        let three: F = (3.0_f32).into();
+        let three = F::of_i32(3);
         let u = F::ONE - t;
         vector::sum_scaled(
             self,
@@ -21,7 +21,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         )
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        let three: F = (3.0_f32).into();
+        let three = F::of_i32(3);
         let u = F::ONE - t;
         (
             three,
@@ -35,8 +35,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         self.dc_sq_from_line()
     }
     fn dc_sq_from_line(&self) -> F {
-        let one_third: F = (0.33333333).into();
-        let two_thirds: F = 0.666_666_7.into();
+        let one_third = F::frac(1, 3);
+        let two_thirds = F::frac(2, 3);
         let dv_0 = vector::sum_scaled(self, &[-two_thirds, F::ONE, F::ZERO, -one_third]);
         let dc2_0 = vector::length_sq(&dv_0);
         let dv_1 = vector::sum_scaled(self, &[-one_third, F::ZERO, F::ONE, -two_thirds]);
@@ -84,8 +84,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         let p3 = self[3][pt_index];
         let (mut opt_min, mut opt_max) =
             utils::opt_min_and_max_tc(give_min, give_max, (F::ZERO, p0), (F::ONE, p3), None);
-        let a = p3 - p0 + (p1 - p2) * (3.0_f32).into();
-        let b = (p0 + p2 - p1 - p1) * 2.0_f32.into();
+        let a = p3 - p0 + (p1 - p2) * F::of_i32(3);
+        let b = (p0 + p2 - p1 - p1) * F::of_i32(2);
         let c = p1 - p0;
         let (opt_t0, opt_t1) = utils::find_real_roots_quad_num(&[c, b, a]);
         if let Some(t0) = opt_t0 {
@@ -153,49 +153,13 @@ impl<F: Num, const D: usize> BezierSplit<F> for [[F; D]; 4] {
     fn split(&self) -> (Self, Self) {
         let pm = vector::sum_scaled(
             self,
-            &[
-                (0.125_f32).into(),
-                (0.375_f32).into(),
-                (0.375_f32).into(),
-                (0.125_f32).into(),
-            ],
+            &[F::frac(1, 8), F::frac(3, 8), F::frac(3, 8), F::frac(1, 8)],
         );
-        let c00 = vector::sum_scaled(
-            self,
-            &[
-                (0.5_f32).into(),
-                (0.5_f32).into(),
-                (0.0_f32).into(),
-                (0.0_f32).into(),
-            ],
-        );
-        let c01 = vector::sum_scaled(
-            self,
-            &[
-                (0.25_f32).into(),
-                (0.5_f32).into(),
-                (0.25_f32).into(),
-                (0.0_f32).into(),
-            ],
-        );
-        let c10 = vector::sum_scaled(
-            self,
-            &[
-                (0.0_f32).into(),
-                (0.25_f32).into(),
-                (0.5_f32).into(),
-                (0.25_f32).into(),
-            ],
-        );
-        let c11 = vector::sum_scaled(
-            self,
-            &[
-                (0.0_f32).into(),
-                (0.0_f32).into(),
-                (0.5_f32).into(),
-                (0.5_f32).into(),
-            ],
-        );
+        let c00 = vector::sum_scaled(&self[0..2], &[F::frac(1, 2), F::frac(1, 2)]);
+        let c01 = vector::sum_scaled(&self[0..3], &[F::frac(1, 4), F::frac(1, 2), F::frac(1, 4)]);
+        let c10 = vector::sum_scaled(&self[1..4], &[F::frac(1, 4), F::frac(1, 2), F::frac(1, 4)]);
+        let c11 = vector::sum_scaled(&self[2..4], &[F::frac(1, 2), F::frac(1, 2)]);
+
         ([self[0], c00, c01, pm], [pm, c10, c11, self[3]])
     }
 
@@ -275,28 +239,23 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
                 vector::sum_scaled(
                     self,
                     &[
-                        0.95_f32.into(),
-                        0.15_f32.into(),
-                        (-0.15_f32).into(),
-                        0.05_f32.into(),
+                        F::frac(19, 20),
+                        F::frac(3, 20),
+                        F::frac(-3, 20),
+                        F::frac(1, 20),
                     ],
                 ),
                 vector::sum_scaled(
                     self,
-                    &[
-                        (-0.25_f32).into(),
-                        0.75_f32.into(),
-                        0.75_f32.into(),
-                        (-0.25_f32).into(),
-                    ],
+                    &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
                 ),
                 vector::sum_scaled(
                     self,
                     &[
-                        0.05_f32.into(),
-                        (-0.15_f32).into(),
-                        0.15_f32.into(),
-                        0.95_f32.into(),
+                        F::frac(1, 20),
+                        F::frac(-3, 20),
+                        F::frac(3, 20),
+                        F::frac(19, 20),
                     ],
                 ),
             ]),
@@ -310,10 +269,10 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
             dc_sq.max(vector::length_sq(&vector::sum_scaled(
                 self,
                 &[
-                    0.05_f32.into(),
-                    (-0.15_f32).into(),
-                    0.15_f32.into(),
-                    (-0.05_f32).into(),
+                    F::frac(1, 20),
+                    F::frac(-3, 20),
+                    F::frac(3, 20),
+                    F::frac(-1, 20),
                 ],
             )))
         } else {
@@ -322,8 +281,8 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
     }
 
     fn dc_sq_from_quadratic(&self) -> F {
-        let sixth = (0.166666666_f32).into();
-        let half = (0.5_f32).into();
+        let sixth = F::frac(1, 6);
+        let half = F::frac(1, 2);
         let dc2_0 = vector::length_sq(&vector::sum_scaled(self, &[sixth, half, half, -sixth]));
         let dc2_1 = vector::length_sq(&vector::sum_scaled(self, &[-sixth, half, half, sixth]));
 
@@ -335,12 +294,7 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 4] {
             self[0],
             vector::sum_scaled(
                 self,
-                &[
-                    (-0.25_f32).into(),
-                    0.75_f32.into(),
-                    0.75_f32.into(),
-                    (-0.25_f32).into(),
-                ],
+                &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
             ),
             self[3],
         ])

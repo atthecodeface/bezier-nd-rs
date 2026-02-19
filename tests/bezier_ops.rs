@@ -1,13 +1,13 @@
 //a Imports
+use bezier_nd::Num;
 use bezier_nd::{BasicBezier, BezierND};
-use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
 use utils::{assert_near_equal, assert_near_equal_scale, test_beziers_approx_eq};
 
 fn test_bezier_ops<
-    F: Num,
+    F: Num + From<f32>,
     const D: usize,
     const NP: usize,
     B: BasicBezier<F, [F; D]> + std::fmt::Debug,
@@ -62,7 +62,7 @@ fn test_bezier_ops<
 }
 
 fn test_ops<
-    F: Float,
+    F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
     const N: usize,

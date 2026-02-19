@@ -57,7 +57,7 @@ pub fn set_random_point_array<R: Rng, F: Copy + From<f32>, D: Distribution<f32>,
 /// Update a Bezier with a set of random points
 pub fn set_random_bezier<
     R: Rng,
-    F: Num,
+    F: Num + From<f32>,
     D: Distribution<f32>,
     const N: usize,
     B: BezierOps<F, [F; N]>,

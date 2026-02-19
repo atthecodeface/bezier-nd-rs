@@ -1,11 +1,11 @@
 //a Imports
+use bezier_nd::Num;
 use bezier_nd::{BasicBezier, BezierEval, BezierND};
-use bezier_nd::{Float, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
 
-fn test_quadratic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
+fn test_quadratic_with<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
     bezier: &B,
     pts: [[F; 2]; 3],
 ) {
@@ -71,7 +71,7 @@ fn test_quadratic_with<F: Num, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
 }
 
 fn test_quadratic<
-    F: Float,
+    F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
     B: BasicBezier<F, [F; 2]> + std::fmt::Debug,

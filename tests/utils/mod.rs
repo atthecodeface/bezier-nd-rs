@@ -2,7 +2,6 @@
 #![allow(unused_imports)]
 use bezier_nd::{bernstein_fns, BezierEval, BezierSplit};
 
-use bezier_nd::Float;
 use bezier_nd::Num;
 use geo_nd::{matrix, vector};
 
@@ -47,7 +46,7 @@ pub fn float_iter<F: Num>(n: usize) -> impl Iterator<Item = F> {
 
 /// Generate Bernstein matrices for a given degree and values of t
 #[track_caller]
-pub fn generate_bernstein_matrix<F: Float>(matrix: &mut [F], degree: usize, ts: &[F]) {
+pub fn generate_bernstein_matrix<F: Num>(matrix: &mut [F], degree: usize, ts: &[F]) {
     assert_eq!(
         matrix.len(),
         (degree + 1) * ts.len(),
@@ -78,12 +77,12 @@ pub fn bernstein_basis_coeff_br<N: Num>(degree: usize, i: usize, t: N) -> N {
     // This is multiply by (n-j) for j = 0..i-1 inclusive and divide by j for j = 1..i inclusive
     for j in 0..=i {
         if j < i {
-            let f: N = ((degree - j) as f32).into();
+            let f = N::of_usize(degree - j);
             result *= f;
         }
 
         if j >= 1 {
-            let f: N = (j as f32).into();
+            let f = N::of_usize(j);
             result /= f;
         }
     }

@@ -1,12 +1,17 @@
 //a Imports
 use std::collections::HashMap;
 
-use bezier_nd::{Float, PolyFindRoots, PolyNewtonRaphson, Polynomial};
+use bezier_nd::{Num, PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
 mod utils;
 
-fn test_polynomial_roots<F: Float + num_traits::AsPrimitive<isize>, P>(poly: &P, roots: &[F])
-where
+fn test_polynomial_roots<
+    F: Num + From<f32> + num_traits::Float + num_traits::AsPrimitive<isize>,
+    P,
+>(
+    poly: &P,
+    roots: &[F],
+) where
     P: PolyFindRoots<F>
         + PolyNewtonRaphson<F>
         + Polynomial<F>
@@ -74,7 +79,7 @@ where
         _ => {}
     }
 
-    fn found_root<F: Float + num_traits::AsPrimitive<isize>>(
+    fn found_root<F: Num + From<f32> + num_traits::Float + num_traits::AsPrimitive<isize>>(
         root_set: &mut HashMap<isize, usize>,
         root: F,
     ) {

@@ -119,7 +119,7 @@ impl<F: Num, const D: usize> BezierOps<F, [F; D]> for Vec<[F; D]> {
 
 impl<F: Num, const D: usize> BezierSplit<F> for Vec<[F; D]> {
     fn split(&self) -> (Self, Self) {
-        self.split_at(0.5_f32.into())
+        self.split_at(F::frac(1, 2))
     }
     /// Split the Bezier into two (one covering parameter values 0..t, the other t..1)
     fn split_at(&self, t: F) -> (Self, Self) {
@@ -164,7 +164,7 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
         let mut s = vec![[F::ZERO; D]; n + 1];
         s[0] = *self.first().unwrap();
         s[n] = *self.last().unwrap();
-        let n_f: F = (n as f32).into();
+        let n_f = F::of_usize(n);
         let mut s0 = F::ONE;
         for (p, (p0, p1)) in s
             .iter_mut()
@@ -250,7 +250,7 @@ where
         if self.len() != 4 {
             F::ZERO
         } else {
-            let m_half = (-0.5_f32).into();
+            let m_half = F::frac(-1, 2);
             let dv_0 = vector::sum_scaled(self, &[m_half, F::ONE, F::ZERO, m_half]);
             let dc2_0 = vector::length_sq(&dv_0);
             let dv_1 = vector::sum_scaled(self, &[m_half, F::ZERO, F::ONE, m_half]);
@@ -267,12 +267,7 @@ where
                 self[0],
                 vector::sum_scaled(
                     self,
-                    &[
-                        (-0.25_f32).into(),
-                        0.75_f32.into(),
-                        0.75_f32.into(),
-                        (-0.25_f32).into(),
-                    ],
+                    &[F::frac(-1, 4), F::frac(3, 4), F::frac(3, 4), F::frac(-1, 4)],
                 ),
                 self[3],
             ])

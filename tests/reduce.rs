@@ -30,7 +30,7 @@ fn bernstein_matrix_br() {
 /// ts must be of length degree+1, and the reduction will keep the values
 /// of the reduced Bezier at these values of t *unchanged* compared to the
 /// original Bezier
-fn generate_bs_reduce_matrix<N: Num + Into<f64>>(
+fn generate_bs_reduce_matrix<N: Num + From<f32> + Into<f64>>(
     reduce_from_degree: usize,
     degree: usize,
     ts: &[N],
@@ -305,7 +305,7 @@ fn reduce_and_elevate_cubic() {
 fn test_reduce_least_squares<F, const D: usize, B>(bezier: &B)
 where
     B: BezierReduce<F, [F; D]>,
-    F: Num,
+    F: Num + From<f32>,
 {
     assert!(
         bezier.can_reduce(BezierReduction::LeastSquares),
