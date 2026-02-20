@@ -430,6 +430,8 @@ pub trait BezierOps<F: Num, P: Clone> {
     /// and returns `true` if a modification was made
     ///
     /// Returns the value returned by `map`
+    ///
+    /// This cannot change the degree of a Bezier - see the [BezierMap] trait to do that
     fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [P]) -> bool) -> bool;
 }
 

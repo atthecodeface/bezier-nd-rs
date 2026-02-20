@@ -41,6 +41,13 @@ fn add_constants_table<F: Num>(table: &'static [f64]) {
         .or_insert_with(|| create_f_table::<F>(table));
 }
 
+/// Invoke a function `f` on a slice of `[F]` derived from a *static* slice of `[f64]`
+///
+/// If `F` is `f64` then this is performed without any conversions
+///
+/// If `F` is a different type (supporting `Num`, hence providing and `of_f64`
+/// conversion method) then an intermediate `Vec` must be allocated, and filled
+/// with the converted values. This conversion is performed *once* when the lazy constants table is used.
 pub fn use_constants_table<F: Num, R, FN: FnMut(&[F]) -> R>(f: FN, table: &'static [f64]) -> R {
     let f_type = TypeId::of::<F>();
     let f64_type = TypeId::of::<f64>();
