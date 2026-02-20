@@ -2,7 +2,7 @@ use crate::Num;
 use crate::{
     bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
     BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMap, BezierMetric,
-    BezierOps, BezierReduce, BezierReduction, BezierSplit,
+    BezierOps, BezierReduce, BezierReduction, BezierSplit, CONSTANTS_TABLE,
 };
 
 use geo_nd::{matrix, vector};
@@ -199,7 +199,7 @@ where
             _ => {
                 if let Some(table) = constants::reduce_table_of_match(method, self.len() - 1) {
                     let mut result = vec![[F::ZERO; D]; self.len() - 1];
-                    crate::lazy_constants::use_constants_table(
+                    CONSTANTS_TABLE.use_constants_table(
                         |table| bernstein_fns::transform::transform_pts(table, self, &mut result),
                         table,
                     );
@@ -222,10 +222,8 @@ where
                 .dc_sq_from_reduction(method),
             _ => {
                 if let Some(table) = constants::er_minus_i_table_of_match(method, self.len() - 1) {
-                    crate::lazy_constants::use_constants_table(
-                        |table| metrics::mapped_c_sq(self, table),
-                        table,
-                    )
+                    CONSTANTS_TABLE
+                        .use_constants_table(|table| metrics::mapped_c_sq(self, table), table)
                 } else {
                     F::ZERO
                 }

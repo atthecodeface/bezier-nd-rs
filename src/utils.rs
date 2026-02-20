@@ -239,7 +239,7 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         }
         if p_t0.nabs() > F::frac(1, 1_000) {
             // If it is not actually a root, i.e poly(t) > 0.001
-            panic!("Failed to find root for polynomial {poly:?}");
+            // panic!("Failed to find root for polynomial {poly:?}");
             return (None, None, None);
         }
 

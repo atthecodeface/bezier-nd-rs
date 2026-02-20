@@ -16,8 +16,6 @@ fn elevate() {
     let accuracy = 9E-14_f64;
     let mut elevate_by_one = vec![];
     for degree in 1..MAX_DEGREE {
-        let n2 = degree + 2;
-        let n1 = degree + 1;
         let (scale, mut elevate) =
             bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix::<F>(degree);
         for e in elevate.iter_mut() {

@@ -5,19 +5,25 @@ use crate::Num;
 /// iteration
 #[derive(Clone)]
 pub enum BezierSplitTIter<B: Clone, F: Num> {
+    /// An iterator that *splits* the Bezier into halves recursively
     Split {
         /// A stack of future beziers to examine
         /// The top of the stack is p0->p1; below that is p1->p2, etc
         /// These beziers may need to be split to achieve some critertion
         stack: Vec<(F, F, B)>,
     },
+    /// An iterator over a Bezier using a range of `t` values
     TRange {
+        /// The Bezier that is being iterated over
         bezier: B,
-        /// Range of t
+        /// Initial value of `t`
         t0: F,
+        /// The amount to increase `t` by for each iteration
         t_scale: F,
-        step: F,
-        num_steps: F,
+        /// The step of iteration (from 0 to num_steps)
+        step: usize,
+        /// The number of iteration steps
+        num_steps: usize,
     },
 }
 
@@ -42,15 +48,14 @@ where
     /// This clones the Bezier.
     pub fn uniform(bezier: &B, t0: F, t1: F, num_steps: usize) -> Self {
         let bezier = bezier.clone();
-        let num_steps = F::from_usize(num_steps).unwrap();
         let t_scale = {
-            if num_steps <= F::ONE {
+            if num_steps <= 1 {
                 F::ONE
             } else {
-                (t1 - t0) / (num_steps - F::ONE)
+                (t1 - t0) / (F::from_usize(num_steps).unwrap() - F::ONE)
             }
         };
-        let step = F::ZERO;
+        let step = 0;
         Self::TRange {
             bezier,
             t0,
@@ -106,8 +111,8 @@ where
                 if *step >= *num_steps {
                     None
                 } else {
-                    let t = *t0 + *step * *t_scale;
-                    *step += F::ONE;
+                    let t = *t0 + F::from_usize(*step).unwrap() * *t_scale;
+                    *step += 1;
                     Some((t, t + *t_scale, bezier.clone()))
                 }
             }

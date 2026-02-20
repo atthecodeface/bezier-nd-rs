@@ -995,6 +995,12 @@ pub const REDUCE_BY_ONE_UNIFORM: &[&[f64]] = &[
     ],
 ];
 
+/// Matrices that map the control points to the *difference* between a Bezier of
+/// degree `N+1` and its reduction by one degree (using a uniform reduction)
+/// then elevated by one degree.
+///
+/// The length squared of the *mapped* control points is a summary of the
+/// `error` in the reduction that this indicates
 pub const ER_UNIFORM_MINUS_I: &[&[f64]] = &[
     &[0.0, 0.0, 0.0, 0.5, -1.0, 0.5, 0.0, 0.0, 0.0],
     &[
@@ -1474,6 +1480,15 @@ pub const ER_UNIFORM_MINUS_I: &[&[f64]] = &[
         0.0,
     ],
 ];
+
+/// Least-squares difference reduction by degree one of Bernstein polymial Bezier (with degree+1)
+///
+/// The reduced Bezier will (usually) have different end-points
+///
+/// `REDUCE_BY_ONE_LSQ[0]` is a 2x3 matrix to reduce a quadratic to a linear (degree 1) Bezier.
+/// `REDUCE_BY_ONE_LSQ[1]` is a 3x4 matrix to reduce a cubic to a quadratic (degree 2) Bezier.
+///
+/// i.e. `REDUCE_BY_ONE_LSQ[n]` reduces a degree 'n+2' Bezier to a degree 'n+1' Bezier
 pub const REDUCE_BY_ONE_LSQ: &[&[f64]] = &[
     &[
         0.8333333333333334,
@@ -1922,6 +1937,12 @@ pub const REDUCE_BY_ONE_LSQ: &[&[f64]] = &[
     ],
 ];
 
+/// Matrices that map the control points to the *difference* between a Bezier of
+/// degree `N+1` and its reduction by one degree (using a least squares reduction)
+/// then elevated by one degree.
+///
+/// The length squared of the *mapped* control points is a summary of the
+/// `error` in the reduction that this indicates
 pub const ER_LSQ_MINUS_I: &[&[f64]] = &[
     &[
         -0.16666666666666666,

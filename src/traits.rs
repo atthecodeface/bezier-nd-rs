@@ -1,10 +1,22 @@
 use crate::{BezierBuilder, BezierError, BezierPointTIter};
 
+/// This enumeration indicates the kind of straightening iterator over a Bezier
+/// (for points or lines) that is desired; a Bezier may be straightened purely
+/// by selecting a uniform `N` points along it (with parameter `0<=t<=1`), or by
+/// splitting the Bezier until the difference between the line segments and a
+/// straight line is within a certain closeness (squared)
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 #[non_exhaustive]
 pub enum BezierIterationType<F: Num> {
+    /// Split the line until its 'closeness_sq_from_line` is within the
+    /// specified value
     ClosenessSq(F),
+
+    /// Split the line until its 'dc_sq_from_line` is within the specified value
     DcClosenessSq(F),
+
+    /// Split the line into a specified number of sections using a uniform
+    /// splitting of the parameter t between 0 and 1
     Uniform(usize),
 }
 
@@ -52,13 +64,15 @@ pub enum BezierMetric {
 pub trait NumOps:
     Sized + 'static + std::ops::Neg<Output = Self> + std::cmp::PartialOrd + num_traits::ConstZero + Copy
 {
-    /// frac
+    /// Create a value from a fraction with signed numerator and unsigned denominator
     fn frac(n: i32, u: u32) -> Self;
 
+    /// Create a value from an [i32]
     fn of_i32(n: i32) -> Self {
         Self::frac(n, 1)
     }
 
+    /// Create a value from a [usize]
     fn of_usize(n: usize) -> Self {
         Self::frac(n as i32, 1)
     }
@@ -169,7 +183,7 @@ pub trait Num:
     + 'static
     + NumOps
 {
-    // Abs for those types that don't support FloatOps
+    /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
     fn nabs(self) -> Self {
         if self.is_sign_negative() {
             -self
@@ -178,6 +192,7 @@ pub trait Num:
         }
     }
 
+    /// Return the minimum of two values
     fn min(self, other: Self) -> Self {
         if self <= other {
             self
@@ -185,6 +200,8 @@ pub trait Num:
             other
         }
     }
+
+    /// Return the maximum of two values
     fn max(self, other: Self) -> Self {
         if other <= self {
             self

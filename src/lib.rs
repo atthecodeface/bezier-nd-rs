@@ -9,7 +9,8 @@ pub use error::BezierError;
 mod builder;
 /// Constants used for Bezier curves and their elevation/reduction
 pub mod constants;
-pub mod lazy_constants;
+mod lazy_constants;
+pub use lazy_constants::{ConstantsTable, CONSTANTS_TABLE};
 pub(crate) mod utils;
 
 mod traits;

@@ -27,6 +27,11 @@ where
     B: BezierSplit<F> + BezierEval<F, P> + Clone,
     P: Clone,
 {
+    /// Create a [BezierLineTIter] from a Bezier, using a specified [BezierIterationType]
+    ///
+    /// This might mean creating an iterator that uses uniform `t` values
+    /// between 0 and 1, or by splitting the Bezier curve into halves
+    /// recursively until a specific 'closeness' to a line is achieved
     pub fn of_iter_type(bezier: &B, iter_type: BezierIterationType<F>) -> Self {
         match iter_type {
             BezierIterationType::ClosenessSq(f) => Self::split_bezier(bezier, f, false),
@@ -34,7 +39,7 @@ where
             BezierIterationType::Uniform(n) => Self::uniform(bezier, F::ZERO, F::ONE, n),
         }
     }
-    //fp new
+
     /// Create a new Bezier line iterator for a given Bezier and
     /// straightness
     ///
@@ -54,6 +59,8 @@ where
             phantom: PhantomData,
         }
     }
+
+    /// Create a uniform line iterator with `t0<=t<=t1` with the specified number of steps for the Bezier
     pub fn uniform(bezier: &B, t0: F, t1: F, num_steps: usize) -> Self {
         let split_iter = BezierSplitTIter::uniform(bezier, t0, t1, num_steps);
         Self {

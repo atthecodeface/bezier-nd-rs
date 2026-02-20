@@ -124,7 +124,7 @@
 use crate::{
     bernstein_fns, constants, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
     BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMap, BezierMetric,
-    BezierOps, BezierReduce, BezierReduction, BezierSplit, Num,
+    BezierOps, BezierReduce, BezierReduction, BezierSplit, Num, CONSTANTS_TABLE,
 };
 
 use geo_nd::matrix;
@@ -593,7 +593,7 @@ where
     fn reduce(&self, method: BezierReduction) -> Option<Self::Reduced> {
         if let Some(table) = constants::reduce_table_of_match(method, self.degree) {
             let mut result = Self::default();
-            crate::lazy_constants::use_constants_table(
+            CONSTANTS_TABLE.use_constants_table(
                 |table| {
                     bernstein_fns::transform::transform_pts(
                         table,
@@ -611,7 +611,7 @@ where
     }
     fn dc_sq_from_reduction(&self, method: BezierReduction) -> F {
         if let Some(table) = constants::er_minus_i_table_of_match(method, self.degree) {
-            crate::lazy_constants::use_constants_table(
+            CONSTANTS_TABLE.use_constants_table(
                 |table| metrics::mapped_c_sq(&self.pts[0..=self.degree], table),
                 table,
             )
