@@ -27,7 +27,7 @@ impl TableEntry {
     /// Invoke a function of `&[F]` where `F==f64` on a table whose contents are `&'static [f64]`
     ///
     /// Note that `Any` requires the table to be *static*
-    fn invoke_f_of_ts<F: Num, T: Num, R, FN: FnMut(&[F]) -> R>(
+    fn invoke_f_of_ts<F: Num, T: Copy, R, FN: FnMut(&[F]) -> R>(
         mut f: FN,
         table: &&'static [T],
     ) -> R {
@@ -56,32 +56,33 @@ impl StaticConstantsTable {
         Self(OnceLock::new())
     }
 
-    /// Invoke a function `f` on a slice of `[F]` derived from a *static* slice of `[f64]`
+    /// Invoke a function `f` on a slice of `[F]` derived from a *static* slice of `[T]`
     ///
-    /// If `F` is `f64` then this is performed without any conversions
+    /// If `F` is `T` then this is performed without any conversions
     ///
-    /// If `F` is a different type (supporting `Num`, hence providing and `of_f64`
-    /// conversion method) then an intermediate `Vec` must be allocated, and filled
+    /// If `F` is a different type then an intermediate `Vec` must be allocated, and filled
     /// with the converted values. This conversion is performed *once* when the lazy constants table is used.
-    pub fn use_constants_table<F: Num, R, FN: FnMut(&[F]) -> R>(
-        &self,
-        f: FN,
-        table: &'static [f64],
-    ) -> R {
+    pub fn use_constants_table<F, T, R, M>(&self, map: M, table: &'static [T]) -> R
+    where
+        F: Num,
+        M: FnMut(&[F]) -> R,
+        T: Copy,
+        SharedConstantsTable: ConstantsTable<T>,
+    {
         let f_type = TypeId::of::<F>();
-        let f64_type = TypeId::of::<f64>();
-        if f_type == f64_type {
-            TableEntry::invoke_f_of_ts(f, &table)
+        let t_type = TypeId::of::<T>();
+        if f_type == t_type {
+            TableEntry::invoke_f_of_ts(map, &table)
         } else {
             let constants_table = self.0.get_or_init(SharedConstantsTable::new);
-            constants_table.invoke_using_table(f, table)
+            constants_table.invoke_using_table(map, table)
         }
     }
 }
 
 /// A trait supported by constants tables that allow invocation of a mapping
 /// function given a table of type `&[T]`
-pub trait ConstantsTable<T: Num> {
+pub trait ConstantsTable<T: Copy> {
     /// Invoke the mapping function `map` on the table, having converted the mapping
     /// first into something that permits a `&[F]`
     fn invoke_using_table<F: Num, R, M: FnMut(&[F]) -> R>(&self, map: M, table: &[T]) -> R;
@@ -134,7 +135,7 @@ impl SharedConstantsTable {
 }
 
 macro_rules! ConstantsTableImpl {
-    {$t:ty, $conv:ident} => {
+    {$t:ty, $conv:expr} => {
         impl ConstantsTable<$t> for SharedConstantsTable {
             /// Invoke a function on a table in the set
             fn invoke_using_table<F: Num, R, M: FnMut(&[F]) -> R>(&self, f: M, table: &[$t]) -> R {
@@ -142,7 +143,7 @@ macro_rules! ConstantsTableImpl {
                 let table_address: *const [$t] = table;
                 let table_address = table_address.addr();
                 let key = (table_address, f_type);
-                eprintln!("Here");
+
                 let rd = self.table.read().unwrap();
                 let Some(table) = rd.get(&key) else {
                     drop(rd);
@@ -150,7 +151,7 @@ macro_rules! ConstantsTableImpl {
                         .write()
                         .unwrap()
                         .entry(key)
-                        .or_insert_with(|| TableEntry::new_f_table(F :: $conv, table));
+                        .or_insert_with(|| TableEntry::new_f_table($conv, table));
                     return self.table.read().unwrap().get(&key).unwrap().invoke_f(f);
                 };
                 table.invoke_f(f)
@@ -166,13 +167,26 @@ macro_rules! ConstantsTableImpl {
                     .write()
                     .unwrap()
                     .entry(key)
-                    .or_insert_with(|| TableEntry::new_f_table(F :: $conv, table));
+                    .or_insert_with(|| TableEntry::new_f_table($conv, table));
                 true
             }
         }
     };
 }
-ConstantsTableImpl! {f64, of_f64}
+ConstantsTableImpl! {f64, |f| F::from_f64(f).unwrap()}
+ConstantsTableImpl! {f32, |f| F::from_f32(f).unwrap()}
+ConstantsTableImpl! {u8, |f| F::from_u8(f).unwrap()}
+ConstantsTableImpl! {i8, |f| F::from_i8(f).unwrap()}
+ConstantsTableImpl! {u16, |f| F::from_u16(f).unwrap()}
+ConstantsTableImpl! {i16, |f| F::from_i16(f).unwrap()}
+ConstantsTableImpl! {u32, |f| F::from_u32(f).unwrap()}
+ConstantsTableImpl! {i32, |f| F::from_i32(f).unwrap()}
+ConstantsTableImpl! {u64, |f| F::from_u64(f).unwrap()}
+ConstantsTableImpl! {i64, |f| F::from_i64(f).unwrap()}
+ConstantsTableImpl! {u128, |f| F::from_u128(f).unwrap()}
+ConstantsTableImpl! {i128, |f| F::from_i128(f).unwrap()}
+ConstantsTableImpl! {isize, |f| F::from_isize(f).unwrap()}
+ConstantsTableImpl! {usize, |f| F::from_usize(f).unwrap()}
 
 #[cfg(test)]
 fn assert_eq_value<F: Num>(index: usize, value: F) -> impl Fn(&[F]) -> bool {
