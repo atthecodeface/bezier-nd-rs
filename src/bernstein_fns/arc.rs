@@ -199,12 +199,8 @@ pub fn of_round_corner<F: Num, const D: usize>(
     let cos_alpha = vector::dot(&v0, &v1);
     if cos_alpha >= nearly_one || cos_alpha < -nearly_one {
         // v0 and v1 point in the same direction
-        let mut p0 = [F::zero(); D];
-        let mut p1 = [F::zero(); D];
-        for i in 0..D {
-            p0[i] = corner[i] - radius * v0[i];
-            p1[i] = corner[i] - radius * v1[i];
-        }
+        let p0 = vector::sum_scaled(&[*corner, v0], &[F::ONE, -radius]);
+        let p1 = vector::sum_scaled(&[*corner, v1], &[F::ONE, -radius]);
         let c0 = vector::sum_scaled(&[p0, *corner], &[F::frac(1, 3), F::frac(2, 3)]);
         let c1 = vector::sum_scaled(&[p1, *corner], &[F::frac(1, 3), F::frac(2, 3)]);
         [p0, c0, c1, p1]
@@ -217,16 +213,10 @@ pub fn of_round_corner<F: Num, const D: usize>(
 
         let lambda = radius * lambda_of_k_d(k, d);
 
-        let mut p0 = [F::zero(); D];
-        let mut p1 = [F::zero(); D];
-        let mut c0 = [F::zero(); D];
-        let mut c1 = [F::zero(); D];
-        for i in 0..D {
-            p0[i] = corner[i] - k * v0[i];
-            p1[i] = corner[i] - k * v1[i];
-            c0[i] = p0[i] + lambda * v0[i];
-            c1[i] = p1[i] + lambda * v1[i];
-        }
+        let p0 = vector::sum_scaled(&[*corner, v0], &[F::ONE, -k]);
+        let p1 = vector::sum_scaled(&[*corner, v1], &[F::ONE, -k]);
+        let c0 = vector::sum_scaled(&[p0, v0], &[F::ONE, lambda]);
+        let c1 = vector::sum_scaled(&[p1, v1], &[F::ONE, lambda]);
         [p0, c0, c1, p1]
     }
 }
@@ -258,11 +248,7 @@ pub fn of_round_corner<F: Num, const D: usize>(
 /// => k0 = (p0.t0 * |t1|^2 - p1.t1 * t1.t0) / ( |t0|^2.|t1|^2 - (t1.t0)^2)
 ///  & k1 = (p1.t1 * |t0|^2 - p0.t0 * t1.t0) / ( |t0|^2.|t1|^2 - (t1.t0)^2)
 /// ```
-pub fn center_radius_of_bezier_arc<
-    F: Num,
-    const D: usize,
-    B: BezierEval<F, [F; D]> + std::fmt::Debug,
->(
+pub fn center_radius_of_bezier_arc<F: Num, const D: usize, B: BezierEval<F, [F; D]>>(
     bezier: &B,
 ) -> ([F; D], F) {
     let p0 = bezier.endpoints().0;
