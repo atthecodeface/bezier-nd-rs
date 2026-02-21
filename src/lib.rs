@@ -33,14 +33,13 @@ pub mod metrics;
 /*a Exports
 */
 pub use approximation::Approximation;
-pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter};
+pub(crate) use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter};
 pub use constants_table::{
     ConstantsTable, SharedConstantsTable, StaticConstantsTable, CONSTANTS_TABLE,
 };
 pub use traits::{
-    BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
-    BezierIterationType, BezierMap, BezierMetric, BezierOps, BezierReduce, BezierReduction,
-    BezierSplit, BoxedBezier,
+    BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierIterationType, BezierMap,
+    BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
 };
 pub use traits::{Num, NumOps};
 

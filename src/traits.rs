@@ -257,16 +257,6 @@ impl<T> Num for T where
 {
 }
 
-pub trait BasicBezier<F: Num, P: Clone>:
-    BezierEval<F, P> + BezierOps<F, P> + BezierSplit<F> + BezierFlatIterator<F, P> + Clone
-{
-}
-
-impl<F: Num, P: Clone, T: BezierEval<F, P>> BasicBezier<F, P> for T where
-    T: BezierEval<F, P> + BezierOps<F, P> + BezierSplit<F> + BezierFlatIterator<F, P> + Clone
-{
-}
-
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
 ///
 /// This provides for the evaluation of the Bezier, and determination of how

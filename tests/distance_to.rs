@@ -1,7 +1,5 @@
 //a Imports
-use bezier_nd::{
-    Approximation, BasicBezier, BezierEval, BezierFlatIterator, BezierND, BezierSplit, Num,
-};
+use bezier_nd::{Approximation, BezierEval, BezierFlatIterator, BezierND, BezierSplit, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
@@ -92,7 +90,7 @@ fn test_bezier<
     D: Distribution<f32>,
     const N: usize,
     const FD: usize,
-    B: BasicBezier<F, [F; FD]>
+    B: BezierEval<F, [F; FD]>
         + BezierSplit<F>
         + BezierFlatIterator<F, [F; FD]>
         + Clone

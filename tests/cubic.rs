@@ -1,13 +1,16 @@
 //a Imports
 use bezier_nd::Num;
 use bezier_nd::{
-    Approximation, BasicBezier, BezierEval, BezierFlatIterator, BezierIterationType, BezierND,
+    Approximation, BezierEval, BezierFlatIterator, BezierIterationType, BezierND, BezierSplit,
 };
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
 
-fn test_cubic_with<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
+fn test_cubic_with<
+    F: Num + From<f32>,
+    B: BezierEval<F, [F; 2]> + BezierSplit<F> + Clone + std::fmt::Debug,
+>(
     bezier: &B,
     pts: [[F; 2]; 4],
 ) {
@@ -85,7 +88,7 @@ fn test_cubic<
     F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
-    B: BasicBezier<F, [F; 2]> + std::fmt::Debug,
+    B: BezierEval<F, [F; 2]> + BezierSplit<F> + Clone + std::fmt::Debug,
     M: Fn([[F; 2]; 4]) -> B,
 >(
     rng: &mut R,

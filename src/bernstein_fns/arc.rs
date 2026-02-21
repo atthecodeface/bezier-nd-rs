@@ -125,17 +125,22 @@ pub fn arc<F: Num + num_traits::Float, const D: usize>(
     let d1a = rotate + angle;
     let (d1s, d1c) = d1a.sin_cos();
 
-    let mut p0 = [F::zero(); D];
-    let mut p1 = [F::zero(); D];
-    let mut c0 = [F::zero(); D];
-    let mut c1 = [F::zero(); D];
-    for i in 0..D {
-        p0[i] = center[i] + unit[i] * (d0c * radius) + normal[i] * (d0s * radius);
-        p1[i] = center[i] + unit[i] * (d1c * radius) + normal[i] * (d1s * radius);
-
-        c0[i] = p0[i] - unit[i] * (d0s * lambda) + normal[i] * (d0c * lambda);
-        c1[i] = p1[i] + unit[i] * (d1s * lambda) - normal[i] * (d1c * lambda);
-    }
+    let p0 = vector::sum_scaled(
+        &[*center, *unit, *normal],
+        &[F::ONE, d0c * radius, d0s * radius],
+    );
+    let p1 = vector::sum_scaled(
+        &[*center, *unit, *normal],
+        &[F::ONE, d1c * radius, d1s * radius],
+    );
+    let c0 = vector::sum_scaled(
+        &[p0, *unit, *normal],
+        &[F::ONE, -d0s * lambda, d0c * lambda],
+    );
+    let c1 = vector::sum_scaled(
+        &[p1, *unit, *normal],
+        &[F::ONE, d1s * lambda, -d1c * lambda],
+    );
     [p0, c0, c1, p1]
 }
 

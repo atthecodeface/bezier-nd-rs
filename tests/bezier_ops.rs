@@ -1,6 +1,5 @@
 //a Imports
-use bezier_nd::Num;
-use bezier_nd::{BasicBezier, BezierND};
+use bezier_nd::{BezierEval, BezierND, BezierOps, BezierSplit, Num};
 mod utils;
 use geo_nd::vector;
 use rand::prelude::*;
@@ -10,7 +9,7 @@ fn test_bezier_ops<
     F: Num + From<f32>,
     const D: usize,
     const NP: usize,
-    B: BasicBezier<F, [F; D]> + std::fmt::Debug,
+    B: BezierEval<F, [F; D]> + BezierOps<F, [F; D]> + BezierSplit<F> + Clone + std::fmt::Debug,
 >(
     bezier: &B,
     pts: [[F; D]; NP],
@@ -67,7 +66,7 @@ fn test_ops<
     D: Distribution<f32>,
     const N: usize,
     const NP: usize,
-    B: BasicBezier<F, [F; N]> + std::fmt::Debug,
+    B: BezierEval<F, [F; N]> + BezierOps<F, [F; N]> + BezierSplit<F> + Clone + std::fmt::Debug,
     M: Fn([[F; N]; NP]) -> B,
 >(
     rng: &mut R,

@@ -1,11 +1,14 @@
 //a Imports
 use bezier_nd::Num;
-use bezier_nd::{BasicBezier, BezierIterationType, BezierND};
+use bezier_nd::{BezierEval, BezierFlatIterator, BezierIterationType, BezierND, BezierSplit};
 mod utils;
 use rand::prelude::*;
 
 /// Test a Bezier that is a line between two points
-fn test_line_between<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::Debug>(
+fn test_line_between<
+    F: Num + From<f32>,
+    B: BezierEval<F, [F; 2]> + BezierSplit<F> + Clone + std::fmt::Debug,
+>(
     bezier: &B,
     pts: [[F; 2]; 2],
 ) {
@@ -50,6 +53,20 @@ fn test_line_between<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::D
     utils::assert_near_equal_scale(&bezier.derivative_at(0.5_f32.into()).1, &dp, scale);
     utils::assert_near_equal_scale(&bezier.derivative_at(F::ONE).1, &dp, scale);
 
+    utils::assert_min_max_coords(bezier);
+}
+
+fn test_t_line<
+    F: Num + From<f32>,
+    const D: usize,
+    B: BezierEval<F, [F; 2]>
+        + BezierSplit<F>
+        + Clone
+        + BezierFlatIterator<F, [F; D]>
+        + std::fmt::Debug,
+>(
+    bezier: &B,
+) {
     let mut v = Vec::new();
     v.clear();
     for (_, a, _, _b) in bezier.as_t_lines(BezierIterationType::ClosenessSq(0.1_f32.into())) {
@@ -60,15 +77,17 @@ fn test_line_between<F: Num + From<f32>, B: BasicBezier<F, [F; 2]> + std::fmt::D
         1,
         "We know that at any straightness there must be 1 line segments"
     );
-
-    utils::assert_min_max_coords(bezier);
 }
 
 fn test_line<
     F: Num + From<f32>,
     R: Rng,
     D: Distribution<f32>,
-    B: BasicBezier<F, [F; 2]> + std::fmt::Debug,
+    B: BezierEval<F, [F; 2]>
+        + BezierSplit<F>
+        + BezierFlatIterator<F, [F; 2]>
+        + Clone
+        + std::fmt::Debug,
     M: Fn([[F; 2]; 2]) -> B,
 >(
     rng: &mut R,
@@ -80,6 +99,7 @@ fn test_line<
         let pts: [[F; 2]; 2] = utils::new_random_point_array(rng, distribution);
         let bezier = create_bezier(pts);
         test_line_between(&bezier, pts);
+        test_t_line(&bezier);
     }
 }
 
