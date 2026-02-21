@@ -7,20 +7,20 @@
 mod error;
 pub use error::BezierError;
 mod builder;
+
 /// Constants used for Bezier curves and their elevation/reduction
 pub mod constants;
-mod lazy_constants;
-pub use lazy_constants::{ConstantsTable, CONSTANTS_TABLE};
+mod constants_table;
+
 pub(crate) mod utils;
 
 mod traits;
-pub use traits::{Num, NumOps};
 
 mod approximation;
+
 pub(crate) mod polynomial;
 
 mod bezier_iter;
-
 mod implementations;
 
 /// Useful functions for generating Bernstein coefficients and operating on Berstein Bezier curves
@@ -34,11 +34,15 @@ pub mod metrics;
 */
 pub use approximation::Approximation;
 pub use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter};
+pub use constants_table::{
+    ConstantsTable, SharedConstantsTable, StaticConstantsTable, CONSTANTS_TABLE,
+};
 pub use traits::{
     BasicBezier, BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator,
     BezierIterationType, BezierMap, BezierMetric, BezierOps, BezierReduce, BezierReduction,
     BezierSplit, BoxedBezier,
 };
+pub use traits::{Num, NumOps};
 
 pub use builder::BezierBuilder;
 pub use constants::*;

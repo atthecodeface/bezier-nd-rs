@@ -62,7 +62,13 @@ pub enum BezierMetric {
 
 /// Trait that must be supplied to enable a value to be used as a parameter or point in a Bezier
 pub trait NumOps:
-    Sized + 'static + std::ops::Neg<Output = Self> + std::cmp::PartialOrd + num_traits::ConstZero + Copy
+    Sized
+    + 'static
+    + std::ops::Neg<Output = Self>
+    + std::cmp::PartialOrd
+    + num_traits::ConstZero
+    + num_traits::ConstOne
+    + Copy
 {
     /// Create a value from a fraction with signed numerator and unsigned denominator
     fn frac(n: i32, u: u32) -> Self;
@@ -79,6 +85,10 @@ pub trait NumOps:
 
     /// Convert an f64 to this value
     fn of_f64(v: f64) -> Self;
+
+    /// Return true if the divisor is too close to zero
+    /// to provide a useful result
+    fn reciprocal(self) -> Self;
 
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
@@ -113,6 +123,14 @@ impl NumOps for f32 {
         self.abs() <= f32::EPSILON
     }
 
+    fn reciprocal(self) -> Self {
+        if self.is_unreliable_divisor() {
+            self.recip() //            self.signum()
+        } else {
+            self.recip()
+        }
+    }
+
     fn powi(self, p: i32) -> Self {
         <Self as num_traits::Float>::powi(self, p)
     }
@@ -141,6 +159,14 @@ impl NumOps for f64 {
 
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f64::EPSILON
+    }
+
+    fn reciprocal(self) -> Self {
+        if self.is_unreliable_divisor() {
+            self.signum()
+        } else {
+            self.recip()
+        }
     }
 
     fn powi(self, p: i32) -> Self {

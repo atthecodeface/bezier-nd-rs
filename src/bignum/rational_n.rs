@@ -601,6 +601,13 @@ impl<const N: usize> NumOps for RationalN<N> {
         self.numer.magnitude().find_top_bit_set() + 32 < self.denom.find_top_bit_set()
     }
 
+    fn reciprocal(self) -> Self {
+        Self {
+            numer: (self.numer.is_neg, self.denom).into(),
+            denom: self.numer.value,
+        }
+    }
+
     fn is_sign_negative(self) -> bool {
         self.numer.is_neg()
     }

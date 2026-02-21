@@ -1,9 +1,7 @@
-//a Imports
 use crate::{BezierEval, Num};
 use geo_nd::vector;
 
-//fi lambda_of_k_d
-fn lambda_of_k_d<F: Num + From<f32>>(k: F, d: F) -> F {
+fn lambda_of_k_d<F: Num>(k: F, d: F) -> F {
     // There are numerous versions of calculating
     // the lambda for the arc from the angle of the arc
     //
@@ -86,12 +84,12 @@ fn lambda_of_k_d<F: Num + From<f32>>(k: F, d: F) -> F {
     // let  lambda = four_thirds * theta.tan();
     // lambda
     let k_d = k_d * k_d;
-    let a0: F = 3.160_323_6e-2_f32.into();
-    let a1: F = 2.795_054_2_f32.into();
-    let a2: F = (-1.148_674_3e1_f32).into();
-    let a3: F = 2.897_536_8e1_f32.into();
-    let a4: F = (-3.284_522_2e1_f32).into();
-    let a5: F = 1.377_942_9e1_f32.into();
+    let a0 = F::frac(31_603_236, 1_000_000_000);
+    let a1 = F::frac(2_795_0542, 10_000_000);
+    let a2 = F::frac(-11_486_743, 1_000_000);
+    let a3 = F::frac(28_975_368, 1_000_000);
+    let a4 = F::frac(-32_845_222, 1_000_000);
+    let a5 = F::frac(13_779_429, 1_000_000);
     a0 + a1 * k_d
         + a2 * k_d * k_d
         + a3 * k_d * k_d * k_d
@@ -109,7 +107,7 @@ fn lambda_of_k_d<F: Num + From<f32>>(k: F, d: F) -> F {
 ///
 /// The arc will be between an angle A1 and A2, where A2-A1 == angle, and A1==rotate
 ///
-pub fn arc<F: Num + From<f32> + num_traits::Float, const D: usize>(
+pub fn arc<F: Num + num_traits::Float, const D: usize>(
     angle: F,
     radius: F,
     center: &[F; D],
@@ -117,7 +115,7 @@ pub fn arc<F: Num + From<f32> + num_traits::Float, const D: usize>(
     normal: &[F; D],
     rotate: F,
 ) -> [[F; D]; 4] {
-    let two = (2.0_f32).into();
+    let two = F::of_usize(2);
     let half_angle = angle / two;
     let s = half_angle.sin();
     let lambda = radius * lambda_of_k_d(s, F::one());
@@ -177,15 +175,15 @@ pub fn arc<F: Num + From<f32> + num_traits::Float, const D: usize>(
 /// Hence also k^2, and hence d and k.
 ///
 /// Then we require an arc given the angle of the arc is 2*theta
-pub fn of_round_corner<F: Num + From<f32> + num_traits::Float, const D: usize>(
+pub fn of_round_corner<F: Num, const D: usize>(
     corner: &[F; D],
     v0: &[F; D],
     v1: &[F; D],
     radius: F,
 ) -> [[F; D]; 4] {
-    let nearly_one = (0.999_999_f32).into();
-    let one = F::one();
-    let two: F = (2.0_f32).into();
+    let nearly_one = F::frac(999_999, 1_000_000);
+    let one = F::ONE;
+    let two = F::of_usize(2);
     let v0_l = vector::length_sq(v0).sqrt_est();
     let v1_l = vector::length_sq(v1).sqrt_est();
     let v0 = if v0_l.is_unreliable_divisor() {
@@ -207,21 +205,15 @@ pub fn of_round_corner<F: Num + From<f32> + num_traits::Float, const D: usize>(
             p0[i] = corner[i] - radius * v0[i];
             p1[i] = corner[i] - radius * v1[i];
         }
-        let c0 = vector::sum_scaled(
-            &[p0, *corner],
-            &[0.3333333_f32.into(), 0.66666667_f32.into()],
-        );
-        let c1 = vector::sum_scaled(
-            &[p1, *corner],
-            &[0.3333333_f32.into(), 0.66666667_f32.into()],
-        );
+        let c0 = vector::sum_scaled(&[p0, *corner], &[F::frac(1, 3), F::frac(2, 3)]);
+        let c1 = vector::sum_scaled(&[p1, *corner], &[F::frac(1, 3), F::frac(2, 3)]);
         [p0, c0, c1, p1]
     } else {
         let r2 = radius * radius;
         let d2 = two * r2 / (one - cos_alpha);
         let k2 = d2 - r2;
-        let d = d2.sqrt();
-        let k = k2.sqrt();
+        let d = d2.sqrt_est();
+        let k = k2.sqrt_est();
 
         let lambda = radius * lambda_of_k_d(k, d);
 
@@ -242,62 +234,55 @@ pub fn of_round_corner<F: Num + From<f32> + num_traits::Float, const D: usize>(
 /// Find the center and radius of a Bezier if it is assumed to
 /// be a circular arc
 ///
-/// what is the center of the circle
-/// given point p0 and unit tangent t0
-/// and point p1 and unit tangent t1
+/// To calculate the center of the circle given point p0 and tangent t0 and
+/// point p1 and tangent t1:
 ///
 /// ```text
 /// |p0-c|^2 = |p1-c|^2 = r^2
-/// (p0-c) . t0 = 0
-/// (p1-c) . t1 = 0
+/// (p0-c) . t0 = 0 (t0 is tangent to circle, p0-c is radius)
+/// (p1-c) . t1 = 0 (t1 is tangent to circle, p1-c is radius)
 /// ```
 ///
-/// Consider c = k0.t0 + k1.t1
-///
-/// (given t0.t0 == 1 and t1.t1==1)
+/// Consider c = k0.t0 + k1.t1 for some k0 and k1
 ///
 /// ```text
-/// (p0-c) . t0 = (p0 - k0.t0 - k1.t1).t0 = 0
-///       p0.t0 = k0 + k1(t1.t0)
-/// ```
-/// similarly
-/// ```text
-///       p1.t1 = k1 + k0(t1.t0)
-/// ```
-///
-/// hence
-/// ```text
-///  (t1.t0) * (p1.t1)         = k0.(t1.t0)^2 + k1(t1.t0)
-///  p0.t0 - (t1.t0) * (p1.t1) = k0 ( 1 - (t1.t0)^2)
-///  k0 = (p0.t0 - p1.t1 * t1.t0) / ( 1 - (t1.t0)^2)
-///  k1 = (p1.t1 - p0.t0 * t1.t0) / ( 1 - (t1.t0)^2)
+///    (p0-c) . t0 = 0
+///         0 = (p0 - k0.t0 - k1.t1).t0
+///     p0.t0 = k0(t0.t0) + k1(t1.t0). [1]
+/// &   p1.t1 = k0(t1.t0) + k1(t1.t1)  [2] (similarly)
+/// => [2] * (t1.t0)
+///  (t1.t0) * (p1.t1)         = k0(t1.t0)^2 + k1(t1.t1)(t1.t0) [3]
+/// => [1]*(t1.t1) - [3]
+///  (p0.t0)(t1.t1) - (t1.t0)(p1.t1) = k0(t0.t0)(t1.t1) + k1(t1.t0)(t1.t1) - k0.(t1.t0)^2 - k1(t1.t0)(t1.t1)
+///  p0.t0*(t1.t1) - (t1.t0) * (p1.t1) = k0 ((t1.t1)(t0.t0) - (t1.t0)^2)
+/// => k0 = (p0.t0 * |t1|^2 - p1.t1 * t1.t0) / ( |t0|^2.|t1|^2 - (t1.t0)^2)
+///  & k1 = (p1.t1 * |t0|^2 - p0.t0 * t1.t0) / ( |t0|^2.|t1|^2 - (t1.t0)^2)
 /// ```
 pub fn center_radius_of_bezier_arc<
-    F: Num + num_traits::Float + From<f32> + num_traits::FloatConst,
+    F: Num,
     const D: usize,
-    B: BezierEval<F, [F; D]>,
+    B: BezierEval<F, [F; D]> + std::fmt::Debug,
 >(
     bezier: &B,
 ) -> ([F; D], F) {
-    let zero = F::zero();
-    let one = F::one();
-    let p0 = bezier.point_at(zero);
-    let p1 = bezier.point_at(one);
-    let (_sc0, t0) = bezier.derivative_at(zero);
-    let (_sc1, t1) = bezier.derivative_at(one);
-    let t0 = vector::normalize(t0);
-    let t1 = vector::normalize(t1);
+    let p0 = bezier.endpoints().0;
+    let p1 = bezier.endpoints().1;
+    let (_sc0, t0) = bezier.derivative_at(F::ZERO);
+    let (_sc1, t1) = bezier.derivative_at(F::ONE);
+    let t0_l2 = vector::length_sq(&t0);
+    let t1_l2 = vector::length_sq(&t1);
     let t1_d_t0 = vector::dot(&t1, &t0);
     let p0_d_t0 = vector::dot(&p0, &t0);
     let p1_d_t1 = vector::dot(&p1, &t1);
-    let k0 = (p0_d_t0 - p1_d_t1 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
-    let k1 = (p1_d_t1 - p0_d_t0 * t1_d_t0) / (one - t1_d_t0 * t1_d_t0);
 
-    let mut c = [F::zero(); D];
-    for i in 0..D {
-        c[i] = t0[i] * k0 + t1[i] * k1;
-    }
+    let det = t1_l2 * t0_l2 - t1_d_t0 * t1_d_t0;
+    let k0 = (p0_d_t0 * t1_l2 - p1_d_t1 * t1_d_t0) / det;
+    let k1 = (p1_d_t1 * t0_l2 - p0_d_t0 * t1_d_t0) / det;
 
-    let r = (vector::distance(&c, &p0) + vector::distance(&c, &p1)) / (2.0_f32).into();
+    let c = vector::sum_scaled(&[t0, t1], &[k0, k1]);
+    let r_sq_est_0 = vector::distance_sq(&c, &p0);
+    let r_sq_est_1 = vector::distance_sq(&c, &p1);
+    let r_sq_est = (r_sq_est_0 + r_sq_est_1) * F::frac(1, 2);
+    let r = r_sq_est.sqrt_est();
     (c, r)
 }
