@@ -2,7 +2,7 @@ use crate::Num;
 use crate::{
     metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierError, BezierEval,
     BezierFlatIterator, BezierIterationType, BezierMetric, BezierOps, BezierReduce,
-    BezierReduction, BezierSplit, BoxedBezier,
+    BezierReduction, BezierSplit,
 };
 
 use geo_nd::vector;
@@ -171,24 +171,6 @@ where
             2
         };
         utils::float_iter(n).map(|t| (t, self.point_at(t)))
-    }
-}
-
-impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 2] {
-    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
-        None
-    }
-    fn closeness_sq_to_reduction(&self) -> Option<F> {
-        None
-    }
-    fn boxed_split(
-        &self,
-    ) -> Option<(
-        Box<dyn BoxedBezier<F, [F; D]>>,
-        Box<dyn BoxedBezier<F, [F; D]>>,
-    )> {
-        let (b0, b1) = <Self as BezierSplit<_>>::split(self);
-        Some((Box::new(b0), Box::new(b1)))
     }
 }
 

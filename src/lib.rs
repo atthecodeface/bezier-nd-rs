@@ -39,7 +39,7 @@ pub use constants_table::{
 };
 pub use traits::{
     BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierIterationType, BezierMap,
-    BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
+    BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
 };
 pub use traits::{Num, NumOps};
 

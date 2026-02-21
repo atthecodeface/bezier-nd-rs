@@ -632,54 +632,6 @@ pub trait BezierMap<F: Num, P: Clone>: BezierEval<F, P> {
     fn dc_sq_of_mapped_from_line(&self, to_degree: usize, matrix: &[F]) -> Option<F>;
 }
 
-/// A dyn-compatible trait supported by a Bezier that allows it to be reduced/split
-/// into potentially *different* Bezier types that themselves can be reduced/split
-///
-/// Implementing this requires 'alloc', but permits a Bezier to be split into
-/// lines, quadratic Beziers, or cubic Beziers, to within a certain straightness
-pub trait BoxedBezier<F: Num, P: Clone>: BezierEval<F, P> {
-    /// Optionally reduce the bezier by one degree in some manner
-    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
-
-    /// Optionally split the bezier into two at t=0.5
-    fn boxed_split(&self) -> Option<(Box<dyn BoxedBezier<F, P>>, Box<dyn BoxedBezier<F, P>>)> {
-        None
-    }
-
-    /// Find how close the Bezier is to the (potenital) reduction of the Bezier
-    ///
-    /// The metric should be quadratic with respect to the units of length of P,
-    /// i.e. if P were in reality measured in meters, then this metric should be
-    /// in units of square meteres
-    ///
-    /// If this returns None then 'reduce' need not return a sensible reult.
-    fn closeness_sq_to_reduction(&self) -> Option<F>;
-
-    /// Optionally reduce the Bezier down to a quadratic Bezier
-    ///
-    /// If bezier.closeness_to_quad() returns 'straightness' then the
-    /// Bezier returned by this call should be within 'straightness' for all
-    /// parameter values t in 0 <= t <= 1.0
-    ///
-    /// A Bezier of degree 2 or lower (a quadratic or linear Bezier) should return None
-    fn boxed_reduce_to_quad(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
-
-    /// Optionally reduce the Bezier down to a cubic Bezier
-    ///
-    /// If bezier.closeness_to_cubic() returns 'straightness' then the
-    /// Bezier returned by this call should be within 'straightness' for all
-    /// parameter values t in 0 <= t <= 1.0
-    ///
-    /// A Bezier of degree 3 or lower (a cubic, quadratic or linear Bezier) should return None
-    fn boxed_reduce_to_cubic(&self) -> Option<Box<dyn BoxedBezier<F, P>>> {
-        None
-    }
-}
-
 /// A trait that allows a type to provide building from a [BezierBuilder]
 ///
 /// Implementing this permits a [BezierBuilder] to have its `construct` method

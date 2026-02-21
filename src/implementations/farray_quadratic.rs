@@ -1,11 +1,8 @@
 use crate::{
-    bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError, BezierEval,
-    BezierFlatIterator, BezierLineTIter, BezierMetric, BezierOps, BezierReduce, BezierReduction,
-    BezierSplit, BoxedBezier,
+    bernstein_fns, metrics, utils, BezierBuilder, BezierConstruct, BezierElevate, BezierError,
+    BezierEval, BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
+    BezierReduce, BezierReduction, BezierSplit, Num,
 };
-use crate::{utils, BezierIterationType};
-
-use crate::Num;
 use geo_nd::vector;
 
 impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
@@ -197,25 +194,6 @@ where
         iter_type: BezierIterationType<F>,
     ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
         BezierLineTIter::of_iter_type(self, iter_type)
-    }
-}
-
-// This requires Float as BezierDistance for [[F;D];3] requires Float for closest point to curve
-impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 3] {
-    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
-        Some(Box::new([self[0], self[1]]))
-    }
-    fn closeness_sq_to_reduction(&self) -> Option<F> {
-        None
-    }
-    fn boxed_split(
-        &self,
-    ) -> Option<(
-        Box<dyn BoxedBezier<F, [F; D]>>,
-        Box<dyn BoxedBezier<F, [F; D]>>,
-    )> {
-        let (b0, b1) = <Self as BezierSplit<_>>::split(self);
-        Some((Box::new(b0), Box::new(b1)))
     }
 }
 

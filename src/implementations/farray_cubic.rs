@@ -3,7 +3,7 @@ use crate::Num;
 use crate::{
     bernstein_fns, metrics, BezierBuilder, BezierConstruct, BezierElevate, BezierError, BezierEval,
     BezierFlatIterator, BezierIterationType, BezierLineTIter, BezierMetric, BezierOps,
-    BezierReduce, BezierReduction, BezierSplit, BoxedBezier,
+    BezierReduce, BezierReduction, BezierSplit,
 };
 
 use geo_nd::vector;
@@ -195,24 +195,6 @@ where
         iter_type: BezierIterationType<F>,
     ) -> impl Iterator<Item = (F, [F; D], F, [F; D])> {
         BezierLineTIter::of_iter_type(self, iter_type)
-    }
-}
-
-impl<F: Num, const D: usize> BoxedBezier<F, [F; D]> for [[F; D]; 4] {
-    fn closeness_sq_to_reduction(&self) -> Option<F> {
-        None
-    }
-    fn boxed_reduce(&self) -> Option<Box<dyn BoxedBezier<F, [F; D]>>> {
-        Some(Box::new([self[0], self[1]]))
-    }
-    fn boxed_split(
-        &self,
-    ) -> Option<(
-        Box<dyn BoxedBezier<F, [F; D]>>,
-        Box<dyn BoxedBezier<F, [F; D]>>,
-    )> {
-        let (b0, b1) = <Self as BezierSplit<_>>::split(self);
-        Some((Box::new(b0), Box::new(b1)))
     }
 }
 

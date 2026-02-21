@@ -1,5 +1,6 @@
 # TODO
 
+* CHange Mapping trait to be mapping to an &mut [pts]?
 * Make arc and round etc explicit public functions
 * Move BezierOps (all dyn compatible) to BezierEval If Approxmiation can do them
 * Add public function to fill Option<matrix> for 'reduce by N given method', 'elevate by N', 'Bernstein degree N from N+1 uniform points', 'Bernstein degree N to N+1 uniform points'
@@ -43,6 +44,11 @@ Traits are used throughout that define the numeric types that Bezier curves use 
 This is fundamentally to provide support for 'f32' and 'f64' as generic floats, but it (in general) also allows for
 rational number types - provided they are Copy.
 
+The basic trait for number types that are supported for parameter `T` and
+coordinate values is [Num]; this is basically a Copy type that supports the
+[num_traits::Num] and some other simple num_traits number traits (but not the
+whole of [num_traits::Float]).
+
 Two traits are used. Firstly there is [Num], which is effectively a collection of num_traits, with From<32>, PartialOrd, Copy and Display.
 This trait has a blanket implementation for all types that support the required traits. This [Num] trait is all that is required for the Bezier traits.
 
@@ -59,9 +65,11 @@ The simplest Bezier types are just arrays of points, where points are D-dimensio
 An array of two points can be used as a linear Bezier; an array of three points can be used as a quadratic Bezier; and array of four points can be used
 as a cubic Bezier.
 
-A BezierN type is provided that has a generic usize 'N' indicating the *maximum* degree the individual curve can have, but the
+A [BezierND] type is provided that has a generic usize 'N' indicating the *maximum* degree the individual curve can have, but the
 type also includes a degree that the curve actually has. The type stores its control points in an array `[[F;D];N]`, and so
 every Bezier curve the type can describes requires the same memory size.
+
+Arbitrary degree Bezier curves can be stored in a `<Vec[F;D]>`; the degree of the Bezier curve is one fewer than the length of the Vec.
 
 # Bezier traits
 
@@ -208,8 +216,6 @@ the reduction when required.
 
 The [BezierBuilder] provides a means to describe key points and derivatives of Bezier curves, from which
 an actual curve can be derived. Implementing this trait permits the construction of a Bezier from a builder.
-
-## [BasicBezier] (requires BezierEval, BezierSplit, BezierSection, BezierOps)
 
 ## [BezierOps]
 
