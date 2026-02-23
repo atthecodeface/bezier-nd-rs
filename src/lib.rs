@@ -27,6 +27,7 @@ mod implementations;
 pub mod bernstein_fns;
 
 pub mod bignum;
+pub mod fixed_point;
 
 pub mod metrics;
 
