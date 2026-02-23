@@ -3,9 +3,12 @@ mod binary_ops;
 mod fixed_point_i32_i16;
 mod num_traits_fp;
 mod raw;
+mod unsigned_raw;
+
 pub use fixed_point_i32_i16::FixedPoint_i32_16;
 
-pub(crate) use raw::{SignedRaw3232, UnsignedRaw3232};
+pub(crate) use raw::SignedRaw3232;
+pub(crate) use unsigned_raw::UnsignedRaw3232;
 
 pub(crate) trait FPRaw: num_traits::Num + Copy + std::fmt::Debug {}
 
