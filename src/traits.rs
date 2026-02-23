@@ -464,7 +464,7 @@ pub trait BezierOps<F: Num, P: Clone> {
     ///
     /// Returns the value returned by `map`
     ///
-    /// This cannot change the degree of a Bezier - see the [BezierMap] trait to do that
+    /// This cannot change the degree of a Bezier
     fn map_all_pts<'a>(&'a mut self, map: &'a mut dyn FnMut(&'a mut [P]) -> bool) -> bool;
 }
 
@@ -640,6 +640,9 @@ pub trait BezierConstruct<F, const D: usize>: Sized
 where
     F: Num,
 {
+    /// Create a Bezier of the specified degree, with control points at the origin
+    fn of_degree(degree: usize) -> Result<Self, BezierError>;
+
     /// Create the curve with the required control points if possible
     ///
     /// The builder may be overconstrained for the type - for example, a type that permits

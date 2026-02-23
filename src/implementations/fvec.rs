@@ -272,6 +272,10 @@ impl<F: Num, const D: usize> BezierMap<F, [F; D]> for Vec<[F; D]> {
 }
 
 impl<F: Num, const D: usize> BezierConstruct<F, D> for Vec<[F; D]> {
+    fn of_degree(degree: usize) -> Result<Self, BezierError> {
+        Ok(vec![[F::ZERO; D]; degree + 1])
+    }
+
     fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let (mut matrix, pts) = builder.get_matrix_pts()?;
         let degree = pts.len() - 1;

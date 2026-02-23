@@ -387,6 +387,16 @@ where
 }
 
 impl<F: Num, const N: usize, const D: usize> BezierConstruct<F, D> for BezierND<F, N, D> {
+    fn of_degree(degree: usize) -> Result<Self, BezierError> {
+        if degree + 1 < N {
+            let mut s = Self::default();
+            s.degree = degree;
+            Ok(s)
+        } else {
+            Err(BezierError::BadBuildDegree(degree))
+        }
+    }
+
     fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let (mut matrix, pts) = builder.get_matrix_pts()?;
         if pts.len() > N {

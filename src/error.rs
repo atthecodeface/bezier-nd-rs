@@ -19,6 +19,9 @@ pub enum BezierError {
     /// of a higher degree than the type itself supports
     #[error("bezier build would make a degree {0} Bezier but the most possible was {1}")]
     MaxBuildDegree(usize, usize),
+    /// A Bezier was attempted to be built with a particular degree that is not supported by the type
+    #[error("bezier build would make a degree {0} Bezier but that is not supported")]
+    BadBuildDegree(usize),
     /// A Bezier build must provide enough coefficients (from constraints) to
     /// create the control points for the Bezier given its degree, but there
     /// were too few

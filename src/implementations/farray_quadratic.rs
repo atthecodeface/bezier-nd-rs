@@ -246,6 +246,14 @@ impl<F: Num, const D: usize> BezierReduce<F, [F; D]> for [[F; D]; 3] {
 }
 
 impl<F: Num, const D: usize> BezierConstruct<F, D> for [[F; D]; 3] {
+    fn of_degree(degree: usize) -> Result<Self, BezierError> {
+        if degree == 1 {
+            Ok([[F::ZERO; D]; 3])
+        } else {
+            Err(BezierError::BadBuildDegree(degree))
+        }
+    }
+
     fn of_builder(builder: &BezierBuilder<F, D>) -> Result<Self, BezierError> {
         let mut matrix = [F::ZERO; 9];
         let mut pts = [[F::ZERO; D]; 3];
