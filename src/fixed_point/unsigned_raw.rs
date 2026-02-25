@@ -1,4 +1,3 @@
-use super::FPRaw;
 use num_traits::{ConstOne, ConstZero, FromPrimitive, Num, NumCast, One, ToPrimitive, Zero};
 
 // Value is (i + f/2^32)
@@ -89,6 +88,13 @@ impl std::cmp::PartialOrd for UnsignedRaw3232 {
 }
 
 impl UnsignedRaw3232 {
+    pub(crate) fn int(&self) -> u32 {
+        self.i
+    }
+    pub(crate) fn frac(&self) -> u32 {
+        self.f
+    }
+
     /// Take a mantissa (bit 63 set if not zero) and exponent (0=> divide by 2^63)
     /// to generate a (normalized) Raw number
     ///
@@ -123,7 +129,7 @@ impl UnsignedRaw3232 {
         }
     }
 
-    /// Get a RationalN from f64 bits, if it fits in the range
+    /// Get a [UnsignedRaw3232] from f64 bits, if it fits in the range
     /// for the numerator/denominator, by using powers of two
     /// for the denominator
     pub fn of_f64_bits(bits: u64) -> Option<Self> {
@@ -242,21 +248,31 @@ impl UnsignedRaw3232 {
         (mantissa, exponent)
     }
 
-    #[inline(always)]
-    pub(crate) fn do_add(&mut self, other: &Self) {
-        let (f, c) = self.f.overflowing_add(other.f);
-        let (i, c) = self.i.carrying_add(other.i, c);
-        assert!(!c, "Overflow in add");
+    pub(crate) fn overflowing_sub(mut self, other: &Self) -> (Self, bool) {
+        let (f, b) = self.f.overflowing_sub(other.f);
+        let (i, b) = self.i.borrowing_sub(other.i, b);
         self.f = f;
         self.i = i;
+        (self, b)
+    }
+    pub(crate) fn overflowing_add(mut self, other: &Self) -> (Self, bool) {
+        let (f, c) = self.f.overflowing_add(other.f);
+        let (i, c) = self.i.carrying_add(other.i, c);
+        self.f = f;
+        self.i = i;
+        (self, c)
+    }
+    #[inline(always)]
+    pub(crate) fn do_add(&mut self, other: &Self) {
+        let (s, c) = self.overflowing_add(other);
+        assert!(!c, "Overflow in add");
+        *self = s;
     }
     #[inline(always)]
     pub(crate) fn do_sub(&mut self, other: &Self) {
-        let (f, b) = self.f.overflowing_sub(other.f);
-        let (i, b) = self.i.borrowing_sub(other.i, b);
+        let (s, b) = self.overflowing_sub(other);
         assert!(!b, "Underflow in sub");
-        self.f = f;
-        self.i = i;
+        *self = s;
     }
     #[inline(always)]
     pub(crate) fn do_bit_and(&mut self, other: &Self) {
@@ -294,7 +310,7 @@ impl UnsignedRaw3232 {
         if c2 {
             i_i += 1;
         }
-        i_i += (f_i >> 32);
+        i_i += f_i >> 32 ;
         // eprintln!("{i_i} {f_i}");
         self.i = i_i as u32;
         self.f = f_i as u32;
@@ -309,7 +325,7 @@ impl UnsignedRaw3232 {
         let (om, oe) = other.to_mantissa64_exp();
         assert_ne!(om, 0, "Division by zero");
         let sm = (sm as u128) << 64;
-        let om = (om as u128);
+        let om = om as u128 ;
         // rm = sm/om * 2^64; this is in the range of just over (1/2)<<64 to just under (2)<<64
         //
         // Thos requires rm*2^32 so that the fractional part is the bottom 32 bits, and the integer part is above
@@ -356,7 +372,7 @@ impl UnsignedRaw3232 {
 
 impl Num for UnsignedRaw3232 {
     type FromStrRadixErr = ();
-    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::FromStrRadixErr> {
+    fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
         Err(())
     }
 }

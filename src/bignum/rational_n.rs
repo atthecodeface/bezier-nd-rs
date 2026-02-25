@@ -98,6 +98,7 @@ impl<const N: usize> std::convert::From<&RationalN<N>> for f64 {
         r.as_f64_bits().map(f64::from_bits).unwrap_or(f64::NAN)
     }
 }
+
 impl<const N: usize> std::cmp::Ord for RationalN<N> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self.is_neg(), other.is_neg()) {

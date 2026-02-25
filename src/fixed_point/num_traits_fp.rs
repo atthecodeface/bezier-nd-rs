@@ -1,6 +1,5 @@
-use num_traits::{ConstOne, ConstZero, One, Zero};
+use num_traits::{ConstZero, Zero};
 
-use super::FixedPoint;
 use super::FixedPoint_i32_16;
 
 impl Zero for FixedPoint_i32_16 {

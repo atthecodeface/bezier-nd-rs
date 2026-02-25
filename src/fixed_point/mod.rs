@@ -5,6 +5,8 @@ mod num_traits_fp;
 mod signed_raw;
 mod unsigned_raw;
 
+mod trig;
+
 pub use fixed_point_i32_i16::FixedPoint_i32_16;
 
 pub(crate) use signed_raw::SignedRaw3232;

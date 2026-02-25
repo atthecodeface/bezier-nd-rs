@@ -1,4 +1,3 @@
-use super::FixedPoint;
 use super::{FixedPoint_i32_16, SignedRaw3232, UnsignedRaw3232};
 
 macro_rules! binary_op {

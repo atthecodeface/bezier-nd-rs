@@ -1,4 +1,4 @@
-use super::FixedPoint;
+use super::{FixedPoint, SignedRaw3232};
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
@@ -15,13 +15,35 @@ impl FixedPoint_i32_16 {
     }
 }
 
-impl FixedPoint_i32_16 {}
-
-impl std::convert::From<u8> for FixedPoint_i32_16 {
-    fn from(value: u8) -> Self {
+impl std::convert::From<(i16, u16)> for FixedPoint_i32_16 {
+    fn from((i, f): (i16, u16)) -> Self {
         Self {
-            value: (value as i32) << Self::FRAC_BITS,
+            value: ((i as i32) << 16) | (f as i32),
         }
+    }
+}
+
+impl std::convert::TryFrom<SignedRaw3232> for FixedPoint_i32_16 {
+    type Error = ();
+    fn try_from(value: SignedRaw3232) -> Result<Self, ()> {
+        let i = value.int();
+        if i <= (i16::MAX as u32) {
+            let i = i as i16;
+            let f = (value.frac() >> 16) as u16;
+            if value.is_neg() {
+                Ok((-i, f).into())
+            } else {
+                Ok((-i, f).into())
+            }
+        } else {
+            Err(())
+        }
+    }
+}
+
+impl std::convert::From<FixedPoint_i32_16> for SignedRaw3232 {
+    fn from(value: FixedPoint_i32_16) -> Self {
+        (value.value >> 16, (value.value & 0xffff) as u32).into()
     }
 }
 
@@ -48,11 +70,23 @@ impl FixedPoint_i32_16 {
         self.value ^= other.value;
     }
     #[inline(always)]
-    pub(crate) fn do_mul(&mut self, other: &Self) {}
+    pub(crate) fn do_mul(&mut self, other: &Self) {
+        let s: SignedRaw3232 = (*self).into();
+        let o: SignedRaw3232 = (*other).into();
+        *self = (s * o).try_into().unwrap();
+    }
     #[inline(always)]
-    pub(crate) fn do_div(&mut self, other: &Self) {}
+    pub(crate) fn do_div(&mut self, other: &Self) {
+        let s: SignedRaw3232 = (*self).into();
+        let o: SignedRaw3232 = (*other).into();
+        *self = (s / o).try_into().unwrap();
+    }
     #[inline(always)]
-    pub(crate) fn do_rem(&mut self, other: &Self) {}
+    pub(crate) fn do_rem(&mut self, other: &Self) {
+        let s: SignedRaw3232 = (*self).into();
+        let o: SignedRaw3232 = (*other).into();
+        *self = (s % o).try_into().unwrap();
+    }
 }
 
 impl std::fmt::Display for FixedPoint_i32_16 {
