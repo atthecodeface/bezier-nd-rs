@@ -1,46 +1,66 @@
+use crate::fixed_point::functions;
+
+use super::functions::sqrt_u64;
+
+pub trait Roots: Sized {
+    fn sqrt(self) -> Option<Self>;
+    fn cbrt(self) -> Self;
+    fn recip(self) -> Self;
+    fn recip_sqrt(self) -> Self;
+    fn hypot(self) -> Self;
+}
+
 pub trait Trig: Sized {
     fn sincos_first_quad(self) -> (Self, Self);
+    fn atan2(self, x: Self) -> Self;
+    fn asin(self) -> Self;
+    fn acos(self) -> Self;
 }
 
-pub fn apply_rotation_table(
-    mut value: i32,
-    mut vector: (i32, i32),
-    value_table: &[i32],
-    rotate_table_pow2: &[u8],
-) -> (i32, (i32, i32)) {
-    for (v, p) in value_table.iter().zip(rotate_table_pow2.iter()) {
-        if value >= 0 {
-            value -= *v;
-            vector = (vector.0 - (vector.1 >> (*p)), vector.1 + (vector.0 >> (*p)));
+// i32 as i32_30 for now
+impl Roots for i32 {
+    fn sqrt(self) -> Option<Self> {
+        if self < 0 {
+            None
         } else {
-            value += *v;
-            vector = (vector.0 + (vector.1 >> (*p)), vector.1 - (vector.0 >> (*p)));
+            // value is u64_60 with top bit clear, i.e. max of 2<<60
+            let value = (self as u64) << 30;
+            // Treats value as u64, i.e. value * 2^62
+            let sqrt_est_u64_32 = sqrt_u64(value);
+            // sqrt_est_u64_32 is sqrt * 2^31, max of 1.4<<30
+            Some((sqrt_est_u64_32 >> 30) as i32)
         }
     }
-    (value, vector)
+    fn cbrt(self) -> Self {
+        0
+    }
+    fn recip(self) -> Self {
+        0
+    }
+    fn recip_sqrt(self) -> Self {
+        0
+    }
+    fn hypot(self) -> Self {
+        0
+    }
 }
 
-pub const NEG_POW2_I32_30: &[u8] = &[
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-    26, 27, 28, 29, 30,
-];
-pub const ATAN_ANGLES_I32_30: &[i32] = &[
-    0x3243f6a9, 0x1dac6705, 0xfadbafd, 0x7f56ea7, 0x3feab77, 0x1ffd55c, 0xfffaab, 0x7fff55,
-    0x3fffeb, 0x1ffffd, 0x100000, 0x80000, 0x40000, 0x20000, 0x10000, 0x8000, 0x4000, 0x2000,
-    0x1000, 0x800, 0x400, 0x200, 0x100, 0x80, 0x40, 0x20, 0x10, 0x8, 0x4, 0x2, 0x1,
-];
-pub const HALF_PI_U32_30: u32 = 0x6487ed51;
-pub const COS_SCALE_U32_30: u32 = 0x26dd3b6a;
-
+// i32 as i32_30 for now
 impl Trig for i32 {
     fn sincos_first_quad(self) -> (i32, i32) {
-        apply_rotation_table(
-            self,
-            (COS_SCALE_U32_30 as i32, 0),
-            ATAN_ANGLES_I32_30,
-            NEG_POW2_I32_30,
-        )
-        .1
+        functions::i32_30::sincos_first_quad(self)
+    }
+
+    fn atan2(self, x: i32) -> i32 {
+        functions::i32_30::atan2(self, x)
+    }
+
+    fn asin(self) -> i32 {
+        functions::i32_30::asin(self)
+    }
+
+    fn acos(self) -> i32 {
+        functions::i32_30::acos(self)
     }
 }
 

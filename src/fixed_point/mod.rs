@@ -1,6 +1,7 @@
 //! Fixed point values
 mod binary_ops;
 mod fixed_point_i32_i16;
+pub mod functions;
 mod num_traits_fp;
 mod signed_raw;
 mod unsigned_raw;
