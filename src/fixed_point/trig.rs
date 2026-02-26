@@ -1,6 +1,6 @@
 use crate::fixed_point::functions;
 
-use super::functions::sqrt_u64;
+use super::functions::sqrt;
 
 pub trait Roots: Sized {
     fn sqrt(self) -> Option<Self>;
@@ -26,7 +26,7 @@ impl Roots for i32 {
             // value is u64_60 with top bit clear, i.e. max of 2<<60
             let value = (self as u64) << 30;
             // Treats value as u64, i.e. value * 2^62
-            let sqrt_est_u64_32 = sqrt_u64(value);
+            let sqrt_est_u64_32 = sqrt(value);
             // sqrt_est_u64_32 is sqrt * 2^31, max of 1.4<<30
             Some((sqrt_est_u64_32 >> 30) as i32)
         }
