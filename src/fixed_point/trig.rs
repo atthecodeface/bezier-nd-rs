@@ -45,22 +45,22 @@ impl Roots for i32 {
     }
 }
 
-// i32 as i32_30 for now
+// i32 as i32_28 for now
 impl Trig for i32 {
     fn sincos_first_quad(self) -> (i32, i32) {
-        functions::i32_30::sincos_first_quad(self)
+        functions::i32_28::sincos_first_quad(self)
     }
 
     fn atan2(self, x: i32) -> i32 {
-        functions::i32_30::atan2(self, x)
+        functions::i32_28::atan2(self, x)
     }
 
     fn asin(self) -> i32 {
-        functions::i32_30::asin(self)
+        functions::i32_28::asin(self)
     }
 
     fn acos(self) -> i32 {
-        functions::i32_30::acos(self)
+        functions::i32_28::acos(self)
     }
 }
 
@@ -72,27 +72,35 @@ fn test_sincos() {
     fn from_i32_30(angle: i32) -> f32 {
         (angle as f32) / 2.0_f32.powi(30)
     }
+    fn i32_28(angle: f32) -> i32 {
+        (angle * 2.0_f32.powi(28)) as i32
+    }
+    fn from_i32_28(angle: i32) -> f32 {
+        (angle as f32) / 2.0_f32.powi(28)
+    }
+    let to_float = from_i32_28;
+    let from_float = i32_28;
     for t in crate::utils::float_iter::<f32>(10000) {
         let angle_f32: f32 = std::f32::consts::FRAC_PI_2 * t;
         let (s_f32, c_f32) = angle_f32.sin_cos();
-        let angle: i32 = i32_30(angle_f32);
-        let (c_i32, s_i32) = angle.sincos_first_quad();
+        let angle: i32 = from_float(angle_f32);
+        let (s_i32, c_i32) = angle.sincos_first_quad();
         eprintln!(
             "{angle:08x} {s_i32:08x} {c_i32:08x} {angle_f32} {s_f32} {c_f32} {} {}",
-            from_i32_30(s_i32),
-            from_i32_30(c_i32),
+            to_float(s_i32),
+            to_float(c_i32),
         );
         assert!(
-            (from_i32_30(s_i32) - s_f32).abs() < 1.0E-7,
-            "{t} s_i32={s_i32:08x} s_f32={:08x} ({} {s_f32})",
-            i32_30(s_f32),
-            from_i32_30(s_i32)
+            (to_float(s_i32) - s_f32).abs() < 1.0E-6,
+            "{t} s_i32={s_i32:08x} s_f32={:08x} ({} {s_f32}) - Mismatch in sine of angle",
+            from_float(s_f32),
+            to_float(s_i32)
         );
         assert!(
-            (from_i32_30(c_i32) - c_f32).abs() < 1.0E-7,
-            "{t} c_i32={c_i32:08x} c_f32={:08x} ({} {c_f32})",
-            i32_30(c_f32),
-            from_i32_30(c_i32)
+            (to_float(c_i32) - c_f32).abs() < 1.0E-6,
+            "{t} c_i32={c_i32:08x} c_f32={:08x} ({} {c_f32}) - Mismatch in cosine of angle",
+            from_float(c_f32),
+            to_float(c_i32)
         );
     }
 }

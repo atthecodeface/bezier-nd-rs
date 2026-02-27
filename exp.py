@@ -2,13 +2,21 @@
 import math
 
 
-def i32_30(x):
-    x = round(x * (1 << 30))
+def i32(x, n):
+    x = round(x * (1 << n))
     if x >= (1 << 31):
-        raise Exception("Number too large for i32_30 fixed point")
+        raise Exception(f"Number too large for i32_{x} fixed point")
     if -x >= (1 << 31):
-        raise Exception("Number too negative for i32_30 fixed point")
+        raise Exception(f"Number too negative for i32_{x} fixed point")
     return x
+
+
+def i32_28(x):
+    return i32(x, 28)
+
+
+def i32_30(x):
+    return i32(x, 30)
 
 
 def apply_tables(table, e_value):
@@ -67,7 +75,36 @@ inv_log_table = [
     (math.log((math.pow(2, x + 1) - 1) / math.pow(2, x + 1)), x + 1) for x in powers
 ]
 
+NB = 28
+print(f"pub const NEG_POW2_LOG_I32_{NB} :&[u8]= &[", end="")
+for t, x in log_table:
+    t = i32(t, NB)
+    if t == 0:
+        break
+    print(f"{x},")
+    pass
+print("];")
+
+print(f"pub const LOG_POWER_I32_{NB} : &[i32]= &[", end="")
+for l, x in log_table:
+    l_i32 = i32(l, NB)
+    if l == 0:
+        break
+    print(f"0x{l_i32:x},")
+    pass
+print("];")
+
+print(f"pub const INV_LOG_POWER_I32_{NB} : &[i32]= &[", end="")
+for l, x in inv_log_table:
+    l_i32 = i32(l, NB)
+    if l == 0:
+        break
+    print(f"0x{-l_i32:x},")
+    pass
+print("];")
+
 N = 1000
+N = 2
 for i in range(N):
     v = 1 + (i / N)
     log = math.log(v)

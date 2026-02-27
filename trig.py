@@ -1,12 +1,27 @@
 #!/usr/bin/env python3
 import math
-from functools import reduce
+
+
+def i32(x, n):
+    x = round(x * (1 << n))
+    if x >= (1 << 31):
+        raise Exception(f"Number too large for i32_{x} fixed point")
+    if -x >= (1 << 31):
+        raise Exception(f"Number too negative for i32_{x} fixed point")
+    return x
+
+
+def i32_28(x):
+    return i32(x, 28)
+
+
+def i32_30(x):
+    return i32(x, 30)
 
 
 def apply_tables(table, value, d1, d0):
     for base, delta in table:
         scale = 1
-        old_value = value
         if value > 0:  # base / 2:
             scale = -1
             pass
@@ -15,7 +30,6 @@ def apply_tables(table, value, d1, d0):
         new_d1 = d1 - scale * (d0 / 2 ** (-delta))
         d0 = new_d0
         d1 = new_d1
-        # print(".  ", value, d0, d1, old_value, base, math.degrees(base))
         pass
     return (value, (d1, d0))
 
@@ -57,25 +71,16 @@ def acos(c):
     return atan2(s, c)
 
 
-def i32_30(x):
-    x = round(x * (1 << 30))
-    if x >= (1 << 31):
-        raise Exception("Number too large for i32_30 fixed point")
-    if -x >= (1 << 31):
-        raise Exception("Number too negative for i32_30 fixed point")
-    return x
-
-
 angles = [-i for i in range(31)]
 dbl_angles = [-i for j in range(31) for i in [j, j, j, j, j]]
 print(dbl_angles)
 sincos_table = [(math.atan(math.pow(2, x)), x) for x in angles]
 asincos_table = [(math.atan(math.pow(2, x)), x) for x in dbl_angles]
 
-print(f"PI/2 as value 0x{i32_30(math.pi / 2):x}")
-print("pub const NEG_POW2_I32_30 :&[u8]= &[", end="")
+print(f"PI/2 as value 0x{i32_28(math.pi / 2):x}")
+print("pub const NEG_POW2_I32_28 :&[u8]= &[", end="")
 for t, x in sincos_table:
-    t = i32_30(t)
+    t = i32_28(t)
     if t == 0:
         break
     print(f"{-x},")
@@ -83,21 +88,21 @@ for t, x in sincos_table:
 print("];")
 
 cos_scale = 1
-print("pub const ATAN_ANGLES_I32_30 : &[i32]= &[", end="")
+print("pub const ATAN_ANGLES_I32_28 : &[i32]= &[", end="")
 for angle, x in sincos_table:
-    angle_i32 = i32_30(angle)
+    angle_i32 = i32_28(angle)
     if angle_i32 == 0:
         break
     cos_scale *= math.cos(angle)
     print(f"0x{angle_i32:x},")
     pass
 print("];")
-print(f"pub const COS_SCALE_I32_30:i32 = 0x{i32_30(cos_scale):x};")
+print(f"pub const COS_SCALE_I32_28:i32 = 0x{i32_28(cos_scale):x};")
 
 print(cos_scale, sincos_table)
 
 
-for angle in range(100):
+for angle in range(10):
     angle = math.pi * (angle / 100 / 2)
     sc = sincos(angle)
     remainder = sc[0]
