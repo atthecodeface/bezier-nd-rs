@@ -233,7 +233,7 @@ pub fn recip_sqrt<F: UsefulUInt>(x: F) -> F {
 ///
 /// The log table can be in any base; normally N is 1,
 pub fn apply_log_table<F: UsefulInt, const N: usize>(
-    mut value: F,
+    value: F,
     one: F,
     log_table: &[F],
     pow2_table: &[u8],
@@ -242,7 +242,7 @@ pub fn apply_log_table<F: UsefulInt, const N: usize>(
     let mut exp = one;
     for (l, p) in log_table.iter().zip(pow2_table.iter().copied()) {
         for _ in 0..N {
-            let new_exp = exp + exp >> p;
+            let new_exp = exp + (exp >> p);
             let cmp = new_exp.cmp(&value);
             if cmp != std::cmp::Ordering::Greater {
                 exp = new_exp;
@@ -268,7 +268,7 @@ pub fn apply_m_log_table<F: UsefulInt, const N: usize>(
     let mut exp = one;
     for (l, p) in log_table.iter().zip(pow2_table.iter().copied()) {
         for _ in 0..N {
-            let new_exp = exp - exp >> p;
+            let new_exp = exp - (exp >> (p + 1));
             let cmp = new_exp.cmp(&value);
             if cmp != std::cmp::Ordering::Less {
                 exp = new_exp;
@@ -659,7 +659,9 @@ fn test_i32_28_exp() {
     let to_float = from_i32_28;
     let from_float = i32_28;
 
-    for l_f in [1.0, 0.75, 0.5, 0.25, 0.125, 0.0625] {
+    // for l_f in [1.2, 1.0, 0.75, 0.5, 0.25, 0.125, 0.0625] {
+    for i in 1..=500 {
+        let l_f = ((i as f64) / 500.0) * 1.4;
         let l = from_float(l_f);
         let e = i32_28::exp(l).expect("Should have managed exp");
         let e_f = to_float(e);
@@ -667,9 +669,52 @@ fn test_i32_28_exp() {
         let e_r = i32_28::exp_m(l).expect("Should have managed exp_m");
         let e_r_f = to_float(e_r);
 
-        eprintln!("{l_f} {e_f} {} {e_r_f} {}", l_f.exp(), e_r_f * e_f);
+        if false {
+            eprintln!(
+                "l:{l_f} e^l:{e_f} {} 1/e^l:{e_r_f} {}",
+                l_f.exp(),
+                e_r_f * e_f
+            );
+        }
+
+        assert!(
+            (l_f.exp() - e_f).abs() < 1E-5,
+            "Exp(l) versus float version should be equal",
+        );
+        assert!(
+            (e_r_f * e_f - 1.0).abs() < 1E-5,
+            "Exp(l) * exp(-l) should be 1.0"
+        );
     }
-    assert!(false, "Force failure");
+
+    for i in 1..=500 {
+        let e_f = ((i as f64) / 500.0) * 3.5 + 1.0;
+        //    for e_f in [
+        //        1.0, 1.05, 1.1, 1.15, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0,
+        //        3.2, 3.4, 3.8, 4.5,
+        //    ] {
+        let e = from_float(e_f);
+        let e_r = from_float(1.0 / e_f);
+        let l = i32_28::ln(e).expect("Should have managed ln");
+        let l_f = to_float(l);
+
+        let l_r = i32_28::ln_recip(e_r).expect("Should have managed ln_m");
+        let l_r_f = to_float(l_r);
+
+        if (false) {
+            eprintln!(
+                "e:{e_f} ln(e):{l_f} {l:08x} {} {l_r_f} {}",
+                e_f.ln(),
+                l_r_f - l_f
+            );
+        }
+        assert!(
+            (l_f - e_f.ln()).abs() < 1E-5,
+            "Ln(e) versus float version should be equal",
+        );
+        assert!((l_r_f - l_f).abs() < 1E-5, "Ln(e) + ln(1/e) should be 0.0");
+    }
+    // assert!(false, "Force failure");
 }
 
 #[test]
