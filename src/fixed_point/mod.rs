@@ -1,28 +1,35 @@
 //! Fixed point values
-mod binary_ops;
-mod fixed_point_i32_i16;
+// mod binary_ops;
+mod fixed;
 pub mod functions;
-mod num_traits_fp;
-mod signed_raw;
-mod unsigned_raw;
+
+// mod num_traits_fp;
+// mod fixed_point_i32_i16;
+// mod signed_raw;
+// mod unsigned_raw;
+
+mod useful;
+
+pub use useful::{Int, UsefulConsts, UsefulInt, UsefulUInt};
 
 mod trig;
 
-pub use fixed_point_i32_i16::FixedPoint_i32_16;
+pub use fixed::Fixed;
 
-pub(crate) use signed_raw::SignedRaw3232;
-pub(crate) use unsigned_raw::UnsignedRaw3232;
+// pub use fixed_point_i32_i16::FixedPoint_i32_16;
+// pub(crate) use signed_raw::SignedRaw3232;
+// pub(crate) use unsigned_raw::UnsignedRaw3232;
 
-pub(crate) trait FPRaw: num_traits::Num + Copy + std::fmt::Debug {}
+// pub(crate) trait FPRaw: num_traits::Num + Copy + std::fmt::Debug {}
+// pub(crate) trait FPInt: num_traits::Num + Copy + std::fmt::Debug {}
+// pub(crate) trait FPFrac: num_traits::Num + Copy + std::fmt::Debug {}
 
-pub(crate) trait FPInt: num_traits::Num + Copy + std::fmt::Debug {}
-pub(crate) trait FPFrac: num_traits::Num + Copy + std::fmt::Debug {}
-
-impl<T> FPInt for T where T: num_traits::Num + Copy + std::fmt::Debug {}
-impl<T> FPFrac for T where T: num_traits::Num + Copy + std::fmt::Debug {}
+// impl<T> FPInt for T where T: num_traits::Num + Copy + std::fmt::Debug {}
+// impl<T> FPFrac for T where T: num_traits::Num + Copy + std::fmt::Debug {}
 
 // Trait implemented by fixed point numbers
-pub(crate) trait FixedPoint: Sized {
+/*
+pub(crate) trait OldFixedPoint: Sized {
     /// Number of bits in the fractional part
     const FRAC_BITS: usize;
     /// True if signed, False if unsigned
@@ -67,3 +74,4 @@ pub(crate) trait FixedPoint: Sized {
     //    (self.as_raw() >> Self::FRACT_BITS) as Self::INT
     // }
 }
+*/

@@ -1,130 +1,5 @@
-use num_traits::{ConstOne, ConstZero, Num};
-pub trait Int:
-    Copy
-    + PartialOrd
-    + Ord
-    + std::fmt::Display
-    + std::fmt::LowerHex
-    + Num
-    + ConstOne
-    + ConstZero
-    + std::ops::AddAssign<Self>
-    + std::ops::SubAssign<Self>
-    + std::ops::MulAssign<Self>
-    + std::ops::Not<Output = Self>
-    + std::ops::Shl<usize, Output = Self>
-    + std::ops::Shr<usize, Output = Self>
-    + std::ops::Shr<u8, Output = Self>
-{
-}
-impl<T> Int for T where
-    T: Copy
-        + PartialOrd
-        + Ord
-        + std::fmt::Display
-        + std::fmt::LowerHex
-        + Num
-        + ConstOne
-        + ConstZero
-        + std::ops::AddAssign<Self>
-        + std::ops::SubAssign<Self>
-        + std::ops::MulAssign<Self>
-        + std::ops::Not<Output = Self>
-        + std::ops::Shl<usize, Output = Self>
-        + std::ops::Shr<usize, Output = Self>
-        + std::ops::Shr<u8, Output = Self>
-{
-}
-
-pub trait UsefulInt: Int {
-    type Unsigned: UsefulUInt;
-    type Dbl: Int;
-    const NB: usize;
-    fn as_dbl(self) -> Self::Dbl;
-    fn as_dbl_upper(self) -> Self::Dbl {
-        self.as_dbl() << Self::NB
-    }
-    fn unsigned(self) -> Self::Unsigned;
-    fn of_unsigned(v: Self::Unsigned) -> Self;
-}
-
-pub trait UsefulUInt: Int {
-    type Dbl: Int;
-    const NB: usize;
-    fn as_dbl(self) -> Self::Dbl;
-    fn as_dbl_upper(self) -> Self::Dbl {
-        self.as_dbl() << Self::NB
-    }
-}
-
-impl UsefulUInt for u16 {
-    type Dbl = u32;
-    const NB: usize = 16;
-    fn as_dbl(self) -> u32 {
-        self as u32
-    }
-}
-
-impl UsefulInt for i16 {
-    type Unsigned = u16;
-    type Dbl = i32;
-    const NB: usize = 16;
-    fn as_dbl(self) -> i32 {
-        self as i32
-    }
-    fn unsigned(self) -> Self::Unsigned {
-        self as u16
-    }
-    fn of_unsigned(v: Self::Unsigned) -> Self {
-        v as Self
-    }
-}
-
-impl UsefulUInt for u32 {
-    type Dbl = u64;
-    const NB: usize = 32;
-    fn as_dbl(self) -> u64 {
-        self as u64
-    }
-}
-
-impl UsefulInt for i32 {
-    type Unsigned = u32;
-    type Dbl = i64;
-    const NB: usize = 32;
-    fn as_dbl(self) -> i64 {
-        self as i64
-    }
-    fn unsigned(self) -> Self::Unsigned {
-        self as u32
-    }
-    fn of_unsigned(v: Self::Unsigned) -> Self {
-        v as Self
-    }
-}
-
-impl UsefulUInt for u64 {
-    type Dbl = u128;
-    const NB: usize = 64;
-    fn as_dbl(self) -> u128 {
-        self as u128
-    }
-}
-
-impl UsefulInt for i64 {
-    type Unsigned = u64;
-    type Dbl = i128;
-    const NB: usize = 64;
-    fn as_dbl(self) -> i128 {
-        self as i128
-    }
-    fn unsigned(self) -> Self::Unsigned {
-        self as u64
-    }
-    fn of_unsigned(v: Self::Unsigned) -> Self {
-        v as Self
-    }
-}
+use super::{UsefulInt, UsefulUInt};
+use num_traits::{ConstOne, ConstZero};
 
 /// Takes a value that is an integer
 ///
@@ -388,8 +263,8 @@ pub fn apply_rotation_table_inv<F: UsefulInt, const N: usize>(
 
 pub mod i32_28 {
     use crate::fixed_point::functions::{
-        apply_inv_log_table, apply_inv_m_log_table, apply_log_table, apply_rotation_table,
-        apply_rotation_table_inv,
+        apply_inv_log_table, apply_inv_m_log_table, apply_log_table, apply_m_log_table,
+        apply_rotation_table, apply_rotation_table_inv,
     };
 
     pub const NEG_POW2_I32_30: &[u8] = &[
@@ -450,7 +325,7 @@ pub mod i32_28 {
     ///
     /// Should clamp in range
     pub fn sincos_first_quad(angle: i32) -> (i32, i32) {
-        let (c, s) = super::apply_rotation_table::<_, 1>(
+        let (c, s) = apply_rotation_table::<_, 1>(
             angle,
             (COS_SCALE_U32_28 as i32, 0),
             ATAN_ANGLES_I32_28,
@@ -460,12 +335,34 @@ pub mod i32_28 {
         (s, c)
     }
 
+    /// Calculate atan2(y,x), returning a result in the range -PI/2 to PI/2
     pub fn atan2(y: i32, x: i32) -> i32 {
-        if x > y {
-            apply_rotation_table_inv::<_, 2>((x, y), ATAN_ANGLES_I32_28, NEG_POW2_I32_28).0
-        } else {
-            HALF_PI_U32_28 as i32
-                - apply_rotation_table_inv::<_, 2>((y, x), ATAN_ANGLES_I32_28, NEG_POW2_I32_28).0
+        let result_is_neg = (x < 0) != (y < 0);
+
+        let x = x.abs();
+        let y = y.abs();
+        match (x == 0, y == 0) {
+            (true, _) => {
+                if result_is_neg {
+                    -(HALF_PI_U32_28 as i32)
+                } else {
+                    HALF_PI_U32_28 as i32
+                }
+            }
+            (_, true) => 0,
+            _ => {
+                if x > y {
+                    apply_rotation_table_inv::<_, 2>((x, y), ATAN_ANGLES_I32_28, NEG_POW2_I32_28).0
+                } else {
+                    HALF_PI_U32_28 as i32
+                        - apply_rotation_table_inv::<_, 2>(
+                            (y, x),
+                            ATAN_ANGLES_I32_28,
+                            NEG_POW2_I32_28,
+                        )
+                        .0
+                }
+            }
         }
     }
 
@@ -500,7 +397,7 @@ pub mod i32_28 {
         }
     }
     pub fn ln(x: i32) -> Option<i32> {
-        Some(super::apply_log_table::<_, 1>(
+        Some(apply_log_table::<_, 1>(
             x,
             1 << 28,
             LOG_POWER_I32_28,
@@ -509,7 +406,7 @@ pub mod i32_28 {
     }
 
     pub fn ln_recip(x: i32) -> Option<i32> {
-        Some(super::apply_m_log_table::<_, 2>(
+        Some(apply_m_log_table::<_, 2>(
             x,
             1 << 28,
             INV_LOG_POWER_I32_28,
@@ -519,7 +416,7 @@ pub mod i32_28 {
 
     /// Range supported: ???
     pub fn exp(x: i32) -> Option<i32> {
-        Some(super::apply_inv_log_table::<_, 1>(
+        Some(apply_inv_log_table::<_, 1>(
             x,
             1 << 28,
             LOG_POWER_I32_28,
@@ -529,7 +426,7 @@ pub mod i32_28 {
 
     /// Range supported: ???
     pub fn exp_m(x: i32) -> Option<i32> {
-        Some(super::apply_inv_m_log_table::<_, 2>(
+        Some(apply_inv_m_log_table::<_, 2>(
             x,
             1 << 28,
             INV_LOG_POWER_I32_28,
@@ -714,7 +611,7 @@ fn test_i32_28_exp() {
         );
         assert!((l_r_f - l_f).abs() < 1E-5, "Ln(e) + ln(1/e) should be 0.0");
     }
-    // assert!(false, "Force failure");
+    assert!(true, "Force failure");
 }
 
 #[test]
@@ -786,4 +683,5 @@ fn test_i32_28_trig() {
         assert!((e_s_f - s_f).abs() < 1E-4, "Error in sin too large");
         assert!((e_c_f - c_f).abs() < 1E-4, "Error in cos too large");
     }
+    assert!(true, "Force failure");
 }

@@ -1,5 +1,9 @@
 # TODO
 
+* Added BezierPath<degree> trait of [[F;D]] which is endpoint, control points, end point, control points, end point etc
+* Add ClosedPath of [[F;D]] which is lines
+* Add Stroke which maps ClosedPath to a set of BezierPath (or somesuch) that has a dot/dash pattern with join types
+* Add Stroke which maps OpenPath to a set of BezierPath (or somesuch) that has a dot/dash pattern with endcaps
 * CHange Mapping trait to be mapping to an &mut [pts]?
 * Make arc and round etc explicit public functions
 * Move BezierOps (all dyn compatible) to BezierEval If Approxmiation can do them

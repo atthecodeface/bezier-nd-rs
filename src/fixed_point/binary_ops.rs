@@ -1,4 +1,4 @@
-use super::{FixedPoint_i32_16, SignedRaw3232, UnsignedRaw3232};
+// use super::{FixedPoint_i32_16, SignedRaw3232, UnsignedRaw3232};
 
 macro_rules! binary_op {
     {$t:ty, $trait:ident, $fn:ident, $f:ident} => {
@@ -65,7 +65,3 @@ macro_rules! fp_arith {
         binary_assign_op! {$t, BitXorAssign, bitxor_assign, do_bit_xor}
     }
 }
-
-fp_arith! {FixedPoint_i32_16}
-fp_arith! {UnsignedRaw3232}
-fp_arith! {SignedRaw3232}
