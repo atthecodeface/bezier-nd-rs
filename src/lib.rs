@@ -55,5 +55,5 @@ pub use implementations::bezier_nd::BezierND;
 
 #[test]
 fn test_me() {
-    let x = BezierND::<fixed_point::Fixed<i8, 4>, 2, 1>::default();
+    let _x = BezierND::<fixed_point::Fixed<i8, 4>, 2, 1>::default();
 }

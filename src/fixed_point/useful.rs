@@ -1,60 +1,8 @@
-use num_traits::{ConstOne, ConstZero, Num};
-pub trait OverflowingMul: Sized {
-    fn overflowing_mul(self, rhs: Self) -> (Self, bool);
-}
-pub trait CarryingAdd: Sized {
-    /// Calculate the subtraction of rhs from self, and a further subtraction of the borrow if set, returning the wrapped value and a boolean indication of overflow
-    ///
-    /// Since the bool in the result indicates *overflow* not carry out, it must not be used as a carry in to other operations
-    fn carrying_add(self, rhs: Self, carry: bool) -> (Self, bool);
-}
-pub trait BorrowingSub: Sized {
-    /// Calculate the sum of self and rhs and a carry in, returning the wrapped value and a boolean indication of overflow
-    ///
-    /// Since the bool in the result indicates *overflow* not carry out, it must not be used as a carry in to other operations
-    fn borrowing_sub(self, rhs: Self, carry: bool) -> (Self, bool);
-}
+use super::{BorrowingSub, CarryingAdd, OverflowingMul};
+use num_traits::{ConstOne, ConstZero};
 
-macro_rules! make_signed_int_deps {
-    {$t:ty} => {
-    impl OverflowingMul for $t {
-        fn overflowing_mul(self, rhs: Self) -> (Self, bool) {
-            self.overflowing_mul(rhs)
-        }
-    }
-    impl CarryingAdd for $t {
-        fn carrying_add(self, rhs: Self, carry: bool) -> (Self, bool) {
-            let (r, o) = self.overflowing_add(rhs);
-            if !carry {
-                (r, o)
-            } else {
-                let (r2, o2) = r.overflowing_add(1);
-                (r2, o | o2)
-            }
-        }
-    }
-    impl BorrowingSub for $t {
-        fn borrowing_sub(self, rhs: Self, borrow: bool) -> (Self, bool) {
-            let (r, o) = self.overflowing_sub(rhs);
-            if !borrow {
-                (r, o)
-            } else {
-                let (r2, o2) = r.overflowing_sub(1);
-                (r2, o | o2)
-            }
-        }
-    }
-    }
-}
-
-make_signed_int_deps!(i8);
-make_signed_int_deps!(i16);
-make_signed_int_deps!(i32);
-make_signed_int_deps!(i64);
-make_signed_int_deps!(isize);
-make_signed_int_deps!(i128);
-
-pub trait Int:
+/// Internal trait that bundles up traits required for UsefulInt and UsefulUInt
+pub(crate) trait Int:
     Copy
     + 'static
     + Default
@@ -65,9 +13,13 @@ pub trait Int:
     + std::fmt::Debug
     + std::fmt::Display
     + std::fmt::LowerHex
-    + Num
-    + ConstOne
-    + ConstZero
+    + num_traits::Num
+    + num_traits::NumCast
+    + num_traits::ToPrimitive
+    + num_traits::FromPrimitive
+    + num_traits::PrimInt
+    + num_traits::ConstOne
+    + num_traits::ConstZero
     + std::ops::AddAssign<Self>
     + std::ops::SubAssign<Self>
     + std::ops::MulAssign<Self>
@@ -94,7 +46,9 @@ impl<T> Int for T where
         + std::fmt::Debug
         + std::fmt::Display
         + std::fmt::LowerHex
-        + Num
+        + num_traits::Num
+        + num_traits::PrimInt
+        + num_traits::FromPrimitive
         + ConstOne
         + ConstZero
         + std::ops::AddAssign<Self>
@@ -194,36 +148,3 @@ make_useful!(i8, u8, i16, u16, 8);
 make_useful!(i16, u16, i32, u32, 16);
 make_useful!(i32, u32, i64, u64, 32);
 make_useful!(i64, u64, i128, u128, 64);
-
-/// ```ignore
-/// const PI: Self = Self::TAU >> 1;
-/// const FRAC_PI_2: Self = Self::PI >> 1;
-/// const FRAC_PI_4: Self = Self::FRAC_PI_2 >> 1;
-/// const FRAC_PI_6: Self = Self::FRAC_PI_3 >> 1;
-/// const FRAC_PI_8: Self = Self::FRAC_PI_4 >> 1;
-/// const FRAC_1_PI: Self = Self::FRAC_2_PI >> 1;
-/// ```
-pub trait UsefulConsts {
-    const E: Self;
-    const LN_2: Self;
-    const LN_10: Self;
-    const LOG2_E: Self;
-    const LOG2_10: Self;
-    const LOG10_2: Self;
-    const LOG10_E: Self;
-    const SQRT_2: Self;
-    const TAU: Self;
-
-    const FRAC_2_PI: Self;
-    const FRAC_PI_3: Self;
-    const FRAC_1_SQRT_2: Self;
-    const FRAC_2_SQRT_PI: Self;
-
-    const PI: Self;
-    const FRAC_PI_2: Self;
-    const FRAC_PI_4: Self;
-    const FRAC_PI_6: Self;
-    const FRAC_PI_8: Self;
-
-    const FRAC_1_PI: Self;
-}
