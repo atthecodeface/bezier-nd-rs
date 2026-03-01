@@ -88,9 +88,10 @@ pub trait UsefulInt: SignedInt {
     fn as_dbl_upper(self) -> Self::Dbl;
     fn unsigned(self) -> Self::Unsigned;
     fn of_unsigned(v: Self::Unsigned) -> Self;
+    /// Get a value from the least significant half of the Dbl
     #[inline]
     fn of_dbl_unchecked(dbl: Self::Dbl) -> Self {
-        Self::of_unsigned(Self::unsigned_of_dbl(dbl).0)
+        Self::of_unsigned(Self::unsigned_of_dbl(dbl).1)
     }
     fn unsigned_of_dbl(dbl: Self::Dbl) -> (Self::Unsigned, Self::Unsigned);
     fn dbl_mult(self, other: &Self) -> Self::Dbl;

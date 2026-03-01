@@ -51,15 +51,5 @@ pub trait HowIsFixedPoint<T: Int> {
     const ONE: T;
 }
 
-impl HowIsFixedPoint<i8> for FPType<i8, 4> {
-    const NB: usize = 8;
-    const NB_FRAC: usize = 4;
-    const SIGN_MASK: i8 = i8::ONE << (Self::NB - 1);
-    const SIGNED_INT_MASK: i8 = (-i8::ONE) << Self::NB_FRAC;
-    const FRAC_MASK: i8 = !Self::SIGNED_INT_MASK;
-    const MAX_INT_MASK: i8 = (!i8::ZERO) >> (Self::NB_FRAC + 1);
-    const ONE: i8 = i8::ONE << Self::NB_FRAC;
-}
-
 /// Type for which `HowIsFixedPoint<T>` must be implemented for `Fixed<T,N>` to be valid
 pub struct FPType<T, const N: usize>([T; N]);

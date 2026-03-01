@@ -8,7 +8,7 @@ use num_traits::{ConstOne, ConstZero, Zero};
 /// fractional part; the value of `N` must be more than zero, and the number of
 /// integer bits must be at least one.
 #[repr(transparent)]
-#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd)]
+#[derive(Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Fixed<T: UsefulInt, const N: usize>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
@@ -25,10 +25,35 @@ where
     }
 }
 
+impl<T: UsefulInt, const N: usize> std::borrow::Borrow<T> for Fixed<T, N>
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    fn borrow(&self) -> &T {
+        &self.value
+    }
+}
+
+impl<T: UsefulInt, const N: usize> std::borrow::BorrowMut<T> for Fixed<T, N>
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    fn borrow_mut(&mut self) -> &mut T {
+        &mut self.value
+    }
+}
+
 impl<T: UsefulInt, const N: usize> Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
 {
+    /// Return the underlying value
+    ///
+    /// Do we want to support Borrow instead? As well?
+    pub fn raw(&self) -> T {
+        self.value
+    }
+
     /// Take a double and shift it down, using the dropped bits to help round appropriately; return True if it does not overflow,
     /// but always set the value
     ///
@@ -57,11 +82,13 @@ where
         if *dbl < T::Dbl::ZERO && bits_to_drop == T::DBL_SIGN_MASK {
             add_one_after_shift = false;
         }
+
         let mut dbl = *dbl >> shr;
         if add_one_after_shift {
             dbl += T::Dbl::ONE;
         }
         self.value = T::of_dbl_unchecked(dbl);
+
         let all_set_or_clr = T::DBL_SIGN_MASK | T::DBL_UPPER_MASK;
         dbl &= all_set_or_clr;
         (dbl == all_set_or_clr) || dbl.is_zero()
@@ -118,6 +145,7 @@ where
     pub(crate) fn do_div(&mut self, other: &Self) {
         // If T = x*2^NB_FRAC, then s=x*2^(NB_FRAC+NB), o=y*2^NB_FRAC, r=x/y*2^NB, and the result should be x/y*2^NB_FRAC, so shift right by NB-NB_FRAC = NB_INT
         let shr = <FPType<T, N> as HowIsFixedPoint<T>>::NB_SIGN_AND_INT;
+
         let s = self.value.as_dbl_upper();
         let o = other.value.as_dbl();
         // r = self/other * 2^(T::NB);
