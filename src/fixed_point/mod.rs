@@ -19,7 +19,9 @@ pub use fp_type::{FPType, HowIsFixedPoint};
 mod fixed;
 pub use fixed::Fixed;
 
-mod nt_binary;
+mod binary;
+mod unary;
+
 mod nt_casts;
 mod nt_consts;
 mod nt_float;
@@ -27,4 +29,3 @@ mod nt_float_const;
 mod nt_num_ops;
 mod nt_saturating;
 mod nt_signed;
-mod nt_unary;
