@@ -73,6 +73,16 @@ where
 /// An explicit test that requires sub and mul to work fully
 ///
 /// With the arithmetic operations this can test that (e.g.) 1/PI * PI == 1
+///
+/// This tests TAU, PI, PI/2, PI/3, PI/4, PI/6, PI/8, 1/PI, 2/PI, 2/PI.sqrt()
+///
+/// SQRT(2), 1/SQRT(2)
+///
+/// E, LN2, LN10
+///
+/// LOG2(E), LOG2(10)
+///
+/// LOG10(E), LOG10(2)
 pub fn float_constants<T, I, const N: usize>()
 where
     T: TestKind<I, N> + num_traits::FloatConst + num_traits::Float,
@@ -81,7 +91,10 @@ where
     let int_bits = utils::int_bits(&T::ZERO);
     let mut half = T::ZERO;
     utils::set_raw(&mut half, 1 << (N - 1));
-    let raw_u64_48: u64 = 0x3243f6a8885a3;
+    let pi_raw_u64_48: u64 = 0x3243f6a8885a3;
+    let e_raw_u64_48: u64 = 0x2b7e151628aed;
+    let ln2_raw_u64_48: u64 = 0xb17217f7d1cf;
+    let ln10_raw_u64_48: u64 = 0x24d763776aaa3;
 
     let half_pi = T::FRAC_PI_2();
 
@@ -95,9 +108,9 @@ where
         //
         // This assumes no rounding, which is poor...
         if N < 48 {
-            assert_eq!(utils::raw_u64(&pi), raw_u64_48 >> (48 - N));
+            assert_eq!(utils::raw_u64(&pi), pi_raw_u64_48 >> (48 - N));
         } else {
-            assert_eq!(utils::raw_u64(&pi) >> (N - 48), raw_u64_48);
+            assert_eq!(utils::raw_u64(&pi) >> (N - 48), pi_raw_u64_48);
         }
         assert!(
             utils::nearly_equal(pi, half_pi + half_pi, 2),
@@ -126,9 +139,9 @@ where
         assert!(half_pi < T::from_u8(2).unwrap(), "PI/2 is less than 2!");
     }
     if N < 49 {
-        assert_eq!(utils::raw_u64(&half_pi), raw_u64_48 >> (49 - N));
+        assert_eq!(utils::raw_u64(&half_pi), pi_raw_u64_48 >> (49 - N));
     } else {
-        assert_eq!(utils::raw_u64(&half_pi) >> (N - 49), raw_u64_48);
+        assert_eq!(utils::raw_u64(&half_pi) >> (N - 49), pi_raw_u64_48);
     }
 
     if int_bits >= 2 {
@@ -165,6 +178,30 @@ where
     );
 
     assert!(
+        utils::nearly_equal(T::FRAC_PI_6(), half * T::FRAC_PI_3(), 2),
+        "PI/6 should be PI/3 * 1/2"
+    );
+
+    assert!(
+        utils::nearly_equal(
+            T::FRAC_PI_6() + T::FRAC_PI_6() + T::FRAC_PI_6(),
+            T::FRAC_PI_2(),
+            3
+        ),
+        "PI/6 + PI/6 + PI/6  should be PI/2"
+    );
+
+    eprintln!("{:?}", T::FRAC_2_SQRT_PI() * T::FRAC_2_SQRT_PI() * T::PI());
+    assert!(
+        utils::nearly_equal(
+            T::FRAC_2_SQRT_PI() * half * half * T::FRAC_2_SQRT_PI() * T::PI(),
+            T::ONE,
+            8
+        ),
+        "2/PI.sqrt() /4 * 2/PI.sqrt() should be PI"
+    );
+
+    assert!(
         utils::nearly_equal(T::SQRT_2() * half, T::FRAC_1_SQRT_2(), 2),
         "sqrt(2)/2 should be 1/sqrt(2)",
     );
@@ -176,5 +213,34 @@ where
     assert!(
         utils::nearly_equal(T::FRAC_1_SQRT_2() * T::FRAC_1_SQRT_2(), half, 2),
         "1/sqrt(2)*1/sqrt(2) should be half",
+    );
+
+    if N < 48 {
+        assert_eq!(utils::raw_u64(&T::E()), e_raw_u64_48 >> (48 - N));
+        assert_eq!(utils::raw_u64(&T::LN_2()), ln2_raw_u64_48 >> (48 - N));
+        assert_eq!(utils::raw_u64(&T::LN_10()), ln10_raw_u64_48 >> (48 - N));
+    } else {
+        assert_eq!(utils::raw_u64(&T::E()) >> (N - 48), e_raw_u64_48);
+        assert_eq!(utils::raw_u64(&T::LN_2()) >> (N - 48), ln2_raw_u64_48);
+        assert_eq!(utils::raw_u64(&T::LN_10()) >> (N - 48), ln10_raw_u64_48 - 1);
+        // ah hack the rounding for now
+    }
+
+    assert!(
+        utils::nearly_equal(T::LOG2_E() * T::LN_2(), T::ONE, 2),
+        "logs"
+    );
+    assert!(
+        utils::nearly_equal(T::LOG2_10() * T::LN_2(), T::LN_10(), 2),
+        "logs"
+    );
+
+    assert!(
+        utils::nearly_equal(T::LOG10_E() * T::LN_10(), T::ONE, 2),
+        "logs"
+    );
+    assert!(
+        utils::nearly_equal(T::LOG10_2() * T::LN_10(), T::LN_2(), 2),
+        "logs"
     );
 }

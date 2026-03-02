@@ -6,9 +6,11 @@ use super::Int;
 /// type; so the value for `e` will (for a signed type) have a zero type bit
 /// (sign bit) then a one bit (indicating two) then a zero units bit, etc
 ///
-/// The following cannot be provided by the trait itself (as `>>` is not const)
-/// but can be copied verbatim to implementations
+/// Unsigned types will always have the top bit set (so PI which is just over 201/64 is encoded in 8 bits as 0xc9)
 ///
+/// This means that the amount to shift right by (which power of 2 to divide by)
+/// requires knowledge of the actual scale of the value; this also permits the
+/// same value to be used here for (e.g.) 1/PI and 2/PI, etc.
 pub trait UsefulConsts: Int {
     /// The value 'e' (2.718281828459045...) shifted to provide maximum precision
     const E: Self;
@@ -48,22 +50,19 @@ pub trait UsefulConsts: Int {
 }
 
 impl UsefulConsts for u128 {
-    const E: Self = 0;
-    const LN_2: Self = 0;
-    const LN_10: Self = 0;
-    const LOG2_E: Self = 0;
-    const LOG2_10: Self = 0;
-    const LOG10_2: Self = 0;
-    const LOG10_E: Self = 0;
-    // sqrt(2)/2 = 0xb504f333f9de6484597d89b3754abe9f1d6
+    // All of these are created by constants.py to much higher precision
+    const E: Self = 0xadf8_5458_a2bb_4a9a_afdc_5620_273d_3cf2;
+    const LN_2: Self = 0xb172_17f7_d1cf_79ab_c9e3_b398_03f2_f6af;
+    const LN_10: Self = 0x935d_8ddd_aaa8_ac16_ea56_d62b_82d3_0a29;
+    const LOG2_E: Self = 0xb8aa_3b29_5c17_f0bb_be87_fed0_691d_3e89;
+    const LOG2_10: Self = 0xd49a_784b_cd1b_8afe_492b_f6ff_4daf_db4d;
+    const LOG10_2: Self = 0x9a20_9a84_fbcf_f798_8f89_59ac_0b7c_9178;
+    const LOG10_E: Self = 0xde5b_d8a9_3728_7195_355b_aaaf_ad33_dc32;
     const SQRT_2: Self = 0xb504_f333_f9de_6484_597d_89b3_754a_be9f;
-    // PI<<2 = 0x_c90fdaa22168c234c4c6628b80dc1cd129024e088a67cc74020bbea63b139b224
     const PI: Self = 0x_c90f_daa2_2168_c234_c4c6_628b_80dc_1cd1;
-    // 1/PI = 0x_a2f9836e4e441529fc2757d1f534ddc0db6295993c439041fe5163abdebbc561c5
     const FRAC_2_PI: Self = 0x_a2f9_836e_4e44_1529_fc27_57d1_f534_ddc1;
-    // PI/3 = 0x_860a91c16b9b2c232dd99707ab3d688b70ac3405b19a884d56b27f197cb7bcc18
     const FRAC_PI_3: Self = 0x_860a_91c1_6b9b_2c23_2dd9_9707_ab3d_688b;
-    const FRAC_1_SQRT_PI: Self = 0;
+    const FRAC_1_SQRT_PI: Self = 0x906e_ba82_14db_688d_71d4_8a7f_6bfe_c344;
 }
 
 macro_rules! useful_consts {
