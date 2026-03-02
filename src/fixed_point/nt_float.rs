@@ -106,7 +106,7 @@ where
         if self.value < T::ZERO {
             Self { value: -self.value }
         } else {
-            Self { value: -self.value }
+            Self { value: self.value }
         }
     }
     fn signum(self) -> Self {

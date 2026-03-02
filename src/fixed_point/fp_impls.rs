@@ -53,3 +53,5 @@ fp_impl! {i32, 32, 27}
 fp_impl! {i32, 32, 28}
 fp_impl! {i32, 32, 29}
 fp_impl! {i32, 32, 30}
+
+fp_impl! {i64, 64, 60}

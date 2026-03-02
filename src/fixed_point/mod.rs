@@ -30,10 +30,13 @@ mod nt_num_ops;
 mod nt_saturating;
 mod nt_signed;
 
-pub trait IsFixed<const N: usize> {}
-impl<T: UsefulInt, const N: usize> IsFixed<N> for Fixed<T, N> where FPType<T, N>: HowIsFixedPoint<T> {}
+pub trait IsFixed<T, const N: usize> {}
+impl<T: UsefulInt, const N: usize> IsFixed<T, N> for Fixed<T, N> where
+    FPType<T, N>: HowIsFixedPoint<T>
+{
+}
 
 mod fp_impls;
 
 #[cfg(test)]
-mod test_basic;
+mod test;

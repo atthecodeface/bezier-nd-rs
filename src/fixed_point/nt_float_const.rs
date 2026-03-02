@@ -7,8 +7,8 @@ where
     FPType<T, N>: HowIsFixedPoint<T>,
 {
     fn cnst(c: T, int_bits: isize) -> Self {
-        let shr =
-            ((<FPType<T, N> as HowIsFixedPoint<T>>::NB_SIGN_AND_INT as isize) - int_bits) as usize;
+        let shr = ((<FPType<T, N> as HowIsFixedPoint<T>>::NB_SIGN_AND_INT as isize) - 1 - int_bits)
+            as usize;
         Self { value: c >> shr }
     }
 }
