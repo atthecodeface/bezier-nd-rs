@@ -19,7 +19,7 @@ pub fn pi_scaled_by<const N: usize>() -> UIntN<N> {
         let s2 = one_scale / UIntN::<N>::from_u64(8 * k + 5).unwrap();
         let s3 = one_scale / UIntN::<N>::from_u64(8 * k + 6).unwrap();
         let mut s = s0 - s1 - s2 - s3;
-        s.shift_right(4 * (k as u32));
+        s >>= 4 * k;
         sum += s;
     }
     sum
@@ -54,7 +54,7 @@ pub fn ln_two_scaled_by<const N: usize>() -> UIntN<N> {
     for k in 1.. {
         let mut s = one_scale;
         s = s / UIntN::<N>::from_u32(k).unwrap();
-        s.shift_right((k - 1) as u32);
+        s >>= k - 1;
         if s.is_zero() {
             break;
         }
@@ -83,16 +83,17 @@ pub fn ln_one_plus_two_neg_power<const N: usize>(power: u32, base: UIntN<N>) -> 
             base
         }
     };
-    value.shift_right(power);
+    value >>= power;
+
     let mut sign_positive = true;
     let mut k: u32 = 1;
     loop {
         if sign_positive {
-            sum = sum + value / UIntN::<N>::from_u32(k).unwrap();
+            sum += value / UIntN::<N>::from_u32(k).unwrap();
         } else {
             sum -= value / UIntN::<N>::from_u32(k).unwrap();
         }
-        value.shift_right(power);
+        value >>= power;
         if value.is_zero() {
             break;
         }
@@ -114,8 +115,7 @@ pub fn atan_two_neg_power<const N: usize>(power: u32) -> UIntN<N> {
     let one_scale = UIntN::<N>::with_bit_set(num_bits - 1);
 
     let mut sum = UIntN::<N>::default();
-    let mut value = { one_scale };
-    value.shift_right(power);
+    let mut value = one_scale >> power;
     let mut sign_positive = true;
     let mut k = 1;
     loop {
@@ -124,7 +124,7 @@ pub fn atan_two_neg_power<const N: usize>(power: u32) -> UIntN<N> {
         } else {
             sum -= value / UIntN::<N>::from_u32(k).unwrap();
         }
-        value.shift_right(power * 2);
+        value >>= power * 2;
         if value.is_zero() {
             break;
         }

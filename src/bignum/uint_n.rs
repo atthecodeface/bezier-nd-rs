@@ -154,6 +154,25 @@ impl<const N: usize> std::fmt::Display for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::fmt::Binary for UIntN<N> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let mut value_string = String::with_capacity(N * 64 + 16);
+        let mut has_been_nonzero = false;
+        for c in self.value.iter().copied() {
+            if has_been_nonzero {
+                value_string.push_str(&format!("{:064b}", c));
+            } else if c != 0 {
+                value_string.push_str(&format!("{:b}", c));
+                has_been_nonzero = true;
+            }
+        }
+        if !has_been_nonzero {
+            value_string.push('0');
+        }
+        fmt.pad_integral(true, "0b", &value_string)
+    }
+}
+
 impl<const N: usize> std::fmt::LowerHex for UIntN<N> {
     fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
         let mut value_string = String::with_capacity(N * 16 + 16);
@@ -192,7 +211,31 @@ impl<const N: usize> std::fmt::UpperHex for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::ops::Not for UIntN<N> {
+    type Output = UIntN<N>;
+    fn not(mut self) -> UIntN<N> {
+        self.do_bit_not();
+        self
+    }
+}
+
+impl<const N: usize> std::ops::Not for &UIntN<N> {
+    type Output = UIntN<N>;
+    fn not(self) -> UIntN<N> {
+        let mut r = *self;
+        r.do_bit_not();
+        r
+    }
+}
+
 impl<const N: usize> std::ops::Neg for UIntN<N> {
+    type Output = Self;
+    fn neg(self) -> Self {
+        panic!("UIntN does not support negation");
+    }
+}
+
+impl<const N: usize> std::ops::Neg for &UIntN<N> {
     type Output = Self;
     fn neg(self) -> Self {
         panic!("UIntN does not support negation");
@@ -266,6 +309,83 @@ binary_assign_op! {BitOrAssign, bitor_assign, do_bit_or}
 binary_op! {BitXor, bitxor, do_bit_xor}
 binary_assign_op! {BitXorAssign, bitxor_assign, do_bit_xor}
 
+macro_rules! shf_op {
+    {$trait:ident, $t:ty, $fn:ident, $f:ident} => {
+        impl<const N: usize> $trait<$t> for UIntN<N> {
+            type Output = UIntN<N>;
+            fn $fn(mut self, rhs: $t) ->UIntN<N> {
+                let rhs = rhs as u32;
+                self. $f (rhs);
+                self
+            }
+        }
+        impl<const N: usize> $trait<&$t> for UIntN<N> {
+            type Output = UIntN<N>;
+            fn $fn(mut self, rhs: &$t) ->UIntN<N> {
+                let rhs = *rhs as u32;
+                self. $f (rhs);
+                self
+            }
+        }
+        impl<const N: usize> $trait<$t> for &UIntN<N> {
+            type Output = UIntN<N>;
+            fn $fn(self, rhs: $t) -> UIntN<N> {
+                let mut r = *self;
+                let rhs = rhs as u32;
+                r. $f (rhs);
+                r
+            }
+        }
+        impl<const N: usize> $trait<&$t> for &UIntN<N> {
+            type Output = UIntN<N>;
+            fn $fn(self, rhs: &$t) -> UIntN<N> {
+                let mut r = *self;
+                let rhs = *rhs as u32;
+                r. $f (rhs);
+                r
+            }
+        }
+    }
+}
+macro_rules! shf_assign_op {
+    {$trait:ident, $t:ty, $fn:ident, $f:ident} => {
+        impl<const N: usize> $trait<$t> for UIntN<N> {
+            fn $fn(&mut self, rhs: $t) {
+                let rhs = rhs as u32;
+                self. $f (rhs);
+            }
+        }
+        impl<const N: usize> $trait<&$t> for UIntN<N> {
+            fn $fn(&mut self, rhs: &$t) {
+                let rhs = *rhs as u32;
+                self. $f (rhs);
+            }
+        }
+    }
+}
+
+shf_op! {Shr, u8, shr, shift_right}
+shf_op! {Shr, u16, shr, shift_right}
+shf_op! {Shr, u32, shr, shift_right}
+shf_op! {Shr, u64, shr, shift_right}
+shf_op! {Shr, usize, shr, shift_right}
+shf_op! {Shl, u8, shl, shift_left}
+shf_op! {Shl, u16, shl, shift_left}
+shf_op! {Shl, u32, shl, shift_left}
+shf_op! {Shl, u64, shl, shift_left}
+shf_op! {Shl, usize, shl, shift_left}
+
+shf_assign_op! {ShrAssign, u8, shr_assign, shift_right}
+shf_assign_op! {ShrAssign, u16, shr_assign, shift_right}
+shf_assign_op! {ShrAssign, u32, shr_assign, shift_right}
+shf_assign_op! {ShrAssign, u64, shr_assign, shift_right}
+shf_assign_op! {ShrAssign, usize, shr_assign, shift_right}
+shf_assign_op! {ShlAssign, u8, shl_assign, shift_left}
+shf_assign_op! {ShlAssign, u16, shl_assign, shift_left}
+shf_assign_op! {ShlAssign, u32, shl_assign, shift_left}
+shf_assign_op! {ShlAssign, u64, shl_assign, shift_left}
+shf_assign_op! {ShlAssign, usize, shl_assign, shift_left}
+
 impl<const N: usize> num_traits::FromPrimitive for UIntN<N> {
     fn from_i64(n: i64) -> Option<Self> {
         n.try_into().ok()
@@ -303,8 +423,13 @@ impl<const N: usize> num_traits::identities::ConstOne for UIntN<N> {
 }
 
 impl<const N: usize> UIntN<N> {
+    /// Return the number of bits in the value
     pub const fn num_bits() -> u32 {
         (N as u32) * 64
+    }
+
+    pub fn raw(&self) -> &[u64] {
+        &self.value
     }
 
     /// Generate an iterator of char for the digits of the number given a radix
@@ -312,6 +437,7 @@ impl<const N: usize> UIntN<N> {
         UIntNDigitIter::new(*self, radix).map(move |c| char::from_digit(c, radix).unwrap())
     }
 
+    /// Shift a u64 left by an amount to produce the shift out and the bits remaining
     fn shift_u64(value: u64, shl: u32) -> (u64, u64) {
         if shl == 0 {
             (0, value)
@@ -604,21 +730,28 @@ impl<const N: usize> UIntN<N> {
     }
 
     #[track_caller]
-    fn do_bit_and(mut self, other: &Self) {
+    fn do_bit_not(&mut self) {
+        for s in self.value.iter_mut() {
+            *s = !*s;
+        }
+    }
+
+    #[track_caller]
+    fn do_bit_and(&mut self, other: &Self) {
         for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
             *s &= *o;
         }
     }
 
     #[track_caller]
-    fn do_bit_or(mut self, other: &Self) {
+    fn do_bit_or(&mut self, other: &Self) {
         for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
             *s |= *o;
         }
     }
 
     #[track_caller]
-    fn do_bit_xor(mut self, other: &Self) {
+    fn do_bit_xor(&mut self, other: &Self) {
         for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
             *s ^= *o;
         }

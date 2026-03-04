@@ -53,7 +53,15 @@ fn test_pi() {
         eprintln!("{i} : {x:#034x}");
     }
 
-    //   assert!(false, "Force fail");
+    assert_eq!(pi_125.raw()[0], 0x6487ed5110b4611a);
+    assert_eq!(e_126.raw()[0], 0xadf85458a2bb4a9a);
+    assert_eq!(ln_two_128.raw()[0], 0xb17217f7d1cf79ab);
+    assert_eq!(ln_ten_126.raw()[3], 0x935d8dddaaa8ac16);
+    assert_eq!(log2_e_129.raw()[3], 0xe2a8eca5705fc2ee);
+    assert_eq!(log10_e_129.raw()[3], 0x0de5bd8a937287195);
+    assert_eq!(log2_ten_129.raw()[3], 0xa4d3c25e68dc57f2);
+    assert_eq!(log10_two_129.raw()[3], 0x09a209a84fbcff798);
+    // assert!(false, "Force fail");
 }
 
 /// An explicit test that requires add to work, that tests 0, 1, 2, 4, 6 and half, using a small amount of raw
