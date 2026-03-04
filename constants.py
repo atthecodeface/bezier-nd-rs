@@ -103,15 +103,53 @@ def ln_half_scaled_by_scale(scale):
     return sum
 
 
-def ln_four_fifths_scaled_by_scale(scale):
-    # Use the Taylor expansion at 1 with x=-1/5 yields -5^-1 - 5^-2/2 - 5^-3/3 - 2^-4/4 ...
+def ln_one_plus_two_neg_power(scale, power, base_scale=None):
+    """
+    Calculate log(1+2^-power)*2^scale using the Taylor expansion, with a specified scaling for the base.
+
+    If base is unspecified it uses natural logarithm; for base 'B' base_scale should be math.log(e, B) * 2^scale
+
+    Use the Taylor expansion at 1 with x=2^-power yields 2^-power - 2^(-2*poewr)/2 + 2^(-3*power)/3 - 2^(-4*power)/4 ...
+    """
+
     sum = 0
-    fifths = 5
+    if base_scale is None:
+        base_scale = 1 << scale
+    value = base_scale >> power
+    sign = 1
     k = 1
-    while fifths < (5 << scale):
-        sum -= (1 << scale) // (fifths * k)
-        fifths *= 5
+    while value > 0:
+        if sign > 0:
+            sum += value // k
+        else:
+            sum -= value // k
+        value = value >> power
         k += 1
+        sign = -sign
+        pass
+    return sum
+
+
+def atan_two_neg_power(scale, power):
+    """
+    Calculate atan(2^-power)*2^scale
+
+    arctan(x) = x - x^3/3 + x^5/5 - x^7/7 etc
+    """
+    if power < 1:
+        raise Exception("Does not work for power == 0")
+    sum = 0
+    value = (1 << scale) >> power
+    sign = 1
+    k = 1
+    while value > 0:
+        if sign > 0:
+            sum += value // k
+        else:
+            sum -= value // k
+        value = value >> (2 * power)
+        k += 2
+        sign = -sign
         pass
     return sum
 
@@ -119,7 +157,7 @@ def ln_four_fifths_scaled_by_scale(scale):
 ln_two_2048 = -ln_half_scaled_by_scale(2048)
 ln_two_256 = ln_two_2048 >> (2048 - 256)
 
-ln_five_quarters_2048 = -ln_four_fifths_scaled_by_scale(2048)
+ln_five_quarters_2048 = ln_one_plus_two_neg_power(2048, 2)
 ln_ten_2048 = ln_five_quarters_2048 + 3 * ln_two_2048
 ln_ten_256 = ln_ten_2048 >> (2048 - 256)
 
@@ -147,6 +185,24 @@ diff_log10_two = math.log(2, 10) - log10_two_256 / (1 << 256)
 e_2048 = e_scaled_by_scale(2048)
 e_256 = e_2048 >> (2048 - 256)
 diff_e = math.e - e_256 / (1 << 256)
+
+
+print(ln_one_plus_two_neg_power(256, 1) / (1 << 256) - math.log(1 + 1 / 2))
+print(ln_one_plus_two_neg_power(256, 2) / (1 << 256) - math.log(1 + 1 / 4))
+
+print(
+    ln_one_plus_two_neg_power(256, 1, log2_e_256) / (1 << 256) - math.log(1 + 1 / 2, 2)
+)
+print(
+    ln_one_plus_two_neg_power(256, 2, log2_e_256) / (1 << 256) - math.log(1 + 1 / 4, 2)
+)
+print(atan_two_neg_power(256, 1) / (1 << 256), math.atan2(1, 2))
+print(atan_two_neg_power(256, 2) / (1 << 256), math.atan2(1, 4))
+print(atan_two_neg_power(256, 3) / (1 << 256), math.atan2(1, 8))
+print(atan_two_neg_power(256, 4) / (1 << 256), math.atan2(1, 16))
+d = atan_two_neg_power(256, 128)
+d_f = math.atan2(1, 1 << 128)
+print(f"{d:064x} {d} {d / (1 << 256)} {d_f}")
 
 print(f"e - f64.e = {diff_e}")
 

@@ -1,4 +1,60 @@
+use crate::bignum::UIntN;
+
 use super::{utils, BackingKind, TestKind};
+
+use super::calculate_constants;
+#[test]
+fn test_pi() {
+    let pi_125 = calculate_constants::pi_scaled_by::<2>();
+    eprintln!("{pi_125:#034x} {pi_125}");
+
+    let e_126 = calculate_constants::e_scaled_by::<2>();
+    eprintln!("{e_126:#034x} {e_126}");
+
+    let ln_two_128 = calculate_constants::ln_two_scaled_by::<2>();
+    eprintln!("{ln_two_128:#034x} {ln_two_128}");
+
+    let ln_five_quarters_127 =
+        calculate_constants::ln_one_plus_two_neg_power::<2>(2, UIntN::<2>::default());
+
+    let mut ln_two_126 = ln_two_128;
+    ln_two_126.shift_right(2);
+    let mut ln_five_quarters_126 = ln_five_quarters_127;
+    ln_five_quarters_126.shift_right(1);
+    let ln_ten_126 = ln_five_quarters_126 + ln_two_126 + ln_two_126 + ln_two_126;
+
+    eprintln!("ln(10) = {ln_ten_126:#034x} {ln_two_126}");
+
+    let one_255 = UIntN::<5>::with_bit_set(255);
+
+    let ln_two_126: UIntN<5> = (&ln_two_126).try_into().unwrap();
+    let log2_e_129 = one_255 / ln_two_126;
+
+    eprintln!("log2(e) = {log2_e_129:#035x} {log2_e_129}");
+
+    let ln_ten_126: UIntN<5> = (&ln_ten_126).try_into().unwrap();
+    let log10_e_129 = one_255 / ln_ten_126;
+
+    eprintln!("log10(e) = {log10_e_129:#035x} {log10_e_129}");
+
+    let mut log2_e_129_s_129 = log2_e_129;
+    log2_e_129_s_129.shift_left(129);
+    let log2_ten_129 = log2_e_129_s_129 / log10_e_129;
+    eprintln!("log2(10) = {log2_ten_129:#035x} {log2_ten_129}");
+
+    let mut log10_e_129_s_129 = log10_e_129;
+    log10_e_129_s_129.shift_left(129);
+    let log10_two_129 = log10_e_129_s_129 / log2_e_129;
+    eprintln!("log10(2) = {log10_two_129:#035x} {log10_two_129}");
+
+    eprintln!("atan table - needs PI/2 as its first entry");
+    for i in 1..20 {
+        let mut x = calculate_constants::atan_two_neg_power::<4>(i);
+        eprintln!("{i} : {x:#034x}");
+    }
+
+    assert!(false, "Force fail");
+}
 
 /// An explicit test that requires add to work, that tests 0, 1, 2, 4, 6 and half, using a small amount of raw
 ///

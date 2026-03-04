@@ -51,6 +51,7 @@ impl<T> BackingKind for T where
 {
 }
 
+pub(self) mod calculate_constants;
 pub(self) mod constants;
 mod test_i8;
 pub(self) mod utils;

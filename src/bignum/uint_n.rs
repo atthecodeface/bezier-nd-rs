@@ -1,6 +1,6 @@
+use geo_nd::quat::new;
 use num_traits::{ConstOne, ConstZero, Zero};
-use std::fmt::Write;
-
+use std::{fmt::Write, ops::Sub};
 
 /// Unsigned integer of N*64 bits, supporting copy
 ///
@@ -26,6 +26,26 @@ impl<const N: usize> std::ops::Deref for UIntN<N> {
     type Target = [u64; N];
     fn deref(&self) -> &Self::Target {
         &self.value
+    }
+}
+
+impl<const N: usize, const N1: usize> std::convert::TryFrom<&UIntN<N1>> for UIntN<N> {
+    type Error = ();
+    fn try_from(other: &UIntN<N1>) -> Result<Self, ()> {
+        let mut s = Self::default();
+        if N1 > N {
+            if s.value.iter().take(N1 - N).any(|s| !s.is_zero()) {
+                return Err(());
+            }
+            for (s, o) in s.value.iter_mut().zip(other.value.iter().skip(N1 - N)) {
+                *s = *o;
+            }
+        } else {
+            for (s, o) in s.value.iter_mut().skip(N - N1).zip(other.value.iter()) {
+                *s = *o;
+            }
+        }
+        Ok(s)
     }
 }
 
@@ -131,6 +151,25 @@ impl<const N: usize> std::fmt::Display for UIntN<N> {
             fmt.write_char(c)?;
         }
         Ok(())
+    }
+}
+
+impl<const N: usize> std::fmt::LowerHex for UIntN<N> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let mut value_string = String::with_capacity(N * 16 + 16);
+        let mut has_been_nonzero = false;
+        for c in self.value.iter().copied() {
+            if has_been_nonzero {
+                value_string.push_str(&format!("{:016x}", c));
+            } else if c != 0 {
+                value_string.push_str(&format!("{:x}", c));
+                has_been_nonzero = true;
+            }
+        }
+        if !has_been_nonzero {
+            value_string.push('0');
+        }
+        fmt.pad_integral(true, "0x", &value_string)
     }
 }
 
@@ -281,9 +320,37 @@ impl<const N: usize> num_traits::identities::ConstOne for UIntN<N> {
 }
 
 impl<const N: usize> UIntN<N> {
+    pub const fn num_bits() -> u32 {
+        (N as u32) * 64
+    }
+
     /// Generate an iterator of char for the digits of the number given a radix
     pub fn as_digits(&self, radix: u32) -> impl Iterator<Item = char> {
         UIntNDigitIter::new(*self, radix).map(move |c| char::from_digit(c, radix).unwrap())
+    }
+
+    fn shift_u64(value: u64, shl: u32) -> (u64, u64) {
+        if shl == 0 {
+            (0, value)
+        } else if shl < 64 {
+            ((value >> 64 - shl), (value << shl))
+        } else {
+            (value << (shl - 64), 0)
+        }
+    }
+
+    /// Return the value with just the specified bit set
+    pub fn with_bit_set(bit: u32) -> Self {
+        let mut s = Self::default();
+        s.set_bit(bit);
+        s
+    }
+
+    /// Set bit n
+    fn set_bit(&mut self, n: u32) {
+        assert!(n < 64 * (N as u32), "Set bit {n} out of range {}", N * 64);
+        let bit = 1 << (n & 63);
+        self.value[N - 1 - (n >> 6) as usize] |= bit;
     }
 
     fn value_is_zero(&self) -> bool {
@@ -417,6 +484,41 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Shift right by n bits
+    ///
+    /// Right shift cannot overflow
+    #[track_caller]
+    pub fn shift_right(&mut self, amount: u32) {
+        if amount == 0 {
+            return;
+        }
+        let bit_shift = amount & 63;
+        let byte_shift = (amount >> 6) as usize;
+        if byte_shift >= N {
+            *self = Self::default();
+            return;
+        }
+        if bit_shift == 0 {
+            self.value.copy_within(0..(N - byte_shift), byte_shift);
+            self.value[0..byte_shift].fill(0);
+        } else {
+            let left_shift = 64 - bit_shift;
+            let mut v_i = self.value[N - byte_shift - 1];
+            for i in (0..N).rev() {
+                let v_im1 = {
+                    if i >= byte_shift + 1 {
+                        self.value[i - byte_shift - 1]
+                    } else {
+                        0
+                    }
+                };
+                let shift_in = v_im1.wrapping_shl(left_shift);
+                self.value[i] = v_i.wrapping_shr(bit_shift) | shift_in;
+                v_i = v_im1;
+            }
+        }
+    }
+
     /// Shift right by 64 bits
     pub fn shift_right_64(&mut self) {
         self.value.copy_within(0..N - 1, 1);
@@ -438,12 +540,6 @@ impl<const N: usize> UIntN<N> {
             };
             shift_in = shift_out;
         }
-    }
-
-    /// Set bit n
-    fn set_bit(&mut self, n: u32) {
-        let bit = 1 << (n & 63);
-        self.value[N - 1 - (n >> 6) as usize] |= bit;
     }
 
     /// Divide value by divisor which MUST NOT BE ZERO
@@ -620,6 +716,32 @@ impl<const N: usize> UIntN<N> {
         } else {
             std::cmp::Ordering::Greater
         }
+    }
+
+    /// Calculate the square root of this value
+    pub fn sqrt(&self) -> Self {
+        let mut sqrt_est = Self::ZERO;
+        let mut sqrt_est_sq = Self::ZERO;
+
+        // If sqrt_est <- sqrt_est + (1<<n)
+        // sqrt_est_sq <- sqrt_est_sq + (1<<(2n)) + sqrt_est<<(n+1)
+        //
+        // If sqrt_est_sq < self then do the addition
+        let n = self.find_top_bit_set() / 2 + 1;
+        let mut two_n = Self::default();
+        two_n.set_bit(n);
+        for i in (0..n).rev() {
+            let mut two_n_sq = Self::default();
+            two_n_sq.set_bit(2 * i);
+            let mut s = sqrt_est;
+            s.shift_left(i + 1);
+            let new_sqrt_est_sq = sqrt_est_sq + two_n_sq + s;
+            if new_sqrt_est_sq <= *self {
+                sqrt_est_sq = new_sqrt_est_sq;
+                sqrt_est.set_bit(i);
+            }
+        }
+        sqrt_est
     }
 }
 
