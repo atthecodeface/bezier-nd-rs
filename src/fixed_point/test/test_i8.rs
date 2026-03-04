@@ -11,5 +11,5 @@ fn basic() {
 
     constants::float_constants::<Fixed<i64, 60>, i64, 60>();
 
-    assert!(false, "Forced failure");
+    //    assert!(false, "Forced failure");
 }

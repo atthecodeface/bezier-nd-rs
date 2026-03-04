@@ -1,4 +1,4 @@
-use num_traits::{sign, Zero};
+use num_traits::{sign, FromPrimitive, Zero};
 
 use crate::bignum::UIntN;
 
@@ -14,10 +14,10 @@ pub fn pi_scaled_by<const N: usize>() -> UIntN<N> {
     let two_scale = UIntN::<N>::with_bit_set(num_bits - 2);
     let one_scale = UIntN::<N>::with_bit_set(num_bits - 3);
     for k in 0..(num_bits as u64 / 4) {
-        let s0 = four_scale / (8 * k + 1).into();
-        let s1 = two_scale / (8 * k + 4).into();
-        let s2 = one_scale / (8 * k + 5).into();
-        let s3 = one_scale / (8 * k + 6).into();
+        let s0 = four_scale / UIntN::<N>::from_u64(8 * k + 1).unwrap();
+        let s1 = two_scale / UIntN::<N>::from_u64(8 * k + 4).unwrap();
+        let s2 = one_scale / UIntN::<N>::from_u64(8 * k + 5).unwrap();
+        let s3 = one_scale / UIntN::<N>::from_u64(8 * k + 6).unwrap();
         let mut s = s0 - s1 - s2 - s3;
         s.shift_right(4 * (k as u32));
         sum += s;
@@ -32,7 +32,7 @@ pub fn e_scaled_by<const N: usize>() -> UIntN<N> {
     let mut r_factorial = one_scale;
     for k in 0.. {
         sum += r_factorial;
-        r_factorial /= (k + 1).into();
+        r_factorial /= UIntN::<N>::from_u32(k + 1).unwrap();
         if r_factorial.is_zero() {
             break;
         }
@@ -53,7 +53,7 @@ pub fn ln_two_scaled_by<const N: usize>() -> UIntN<N> {
 
     for k in 1.. {
         let mut s = one_scale;
-        s = s / k.into();
+        s = s / UIntN::<N>::from_u32(k).unwrap();
         s.shift_right((k - 1) as u32);
         if s.is_zero() {
             break;
@@ -85,12 +85,12 @@ pub fn ln_one_plus_two_neg_power<const N: usize>(power: u32, base: UIntN<N>) -> 
     };
     value.shift_right(power);
     let mut sign_positive = true;
-    let mut k = 1;
+    let mut k: u32 = 1;
     loop {
         if sign_positive {
-            sum += value / k.into();
+            sum = sum + value / UIntN::<N>::from_u32(k).unwrap();
         } else {
-            sum -= value / k.into();
+            sum -= value / UIntN::<N>::from_u32(k).unwrap();
         }
         value.shift_right(power);
         if value.is_zero() {
@@ -120,9 +120,9 @@ pub fn atan_two_neg_power<const N: usize>(power: u32) -> UIntN<N> {
     let mut k = 1;
     loop {
         if sign_positive {
-            sum += value / k.into();
+            sum += value / UIntN::<N>::from_u32(k).unwrap();
         } else {
-            sum -= value / k.into();
+            sum -= value / UIntN::<N>::from_u32(k).unwrap();
         }
         value.shift_right(power * 2);
         if value.is_zero() {

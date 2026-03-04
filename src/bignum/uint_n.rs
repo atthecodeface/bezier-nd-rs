@@ -173,115 +173,98 @@ impl<const N: usize> std::fmt::LowerHex for UIntN<N> {
     }
 }
 
+impl<const N: usize> std::fmt::UpperHex for UIntN<N> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        let mut value_string = String::with_capacity(N * 16 + 16);
+        let mut has_been_nonzero = false;
+        for c in self.value.iter().copied() {
+            if has_been_nonzero {
+                value_string.push_str(&format!("{:016X}", c));
+            } else if c != 0 {
+                value_string.push_str(&format!("{:X}", c));
+                has_been_nonzero = true;
+            }
+        }
+        if !has_been_nonzero {
+            value_string.push('0');
+        }
+        fmt.pad_integral(true, "0x", &value_string)
+    }
+}
+
 impl<const N: usize> std::ops::Neg for UIntN<N> {
     type Output = Self;
     fn neg(self) -> Self {
         panic!("UIntN does not support negation");
     }
 }
+use std::ops::*;
 
-impl<const N: usize> std::ops::Add for UIntN<N> {
-    type Output = Self;
+macro_rules! binary_op {
+    {$trait:ident, $fn:ident, $f:ident} => {
+        impl<const N: usize> $trait<UIntN<N>> for UIntN<N> {
 
-    #[track_caller]
-    fn add(self, other: Self) -> Self {
-        self.do_add(&other)
+            type Output = UIntN<N>;
+            fn $fn (mut self, other:UIntN<N>) -> UIntN<N> {
+                self.$f(&other); self
+            }
+        }
+        impl<const N: usize> $trait<&UIntN<N>> for UIntN<N> {
+
+            type Output = UIntN<N>;
+            fn $fn (mut self, other:&UIntN<N>) -> UIntN<N> {
+                self.$f(other); self
+            }
+        }
+        impl<const N: usize> $trait<UIntN<N>> for &UIntN<N> {
+
+            type Output = UIntN<N>;
+            fn $fn (self, other:UIntN<N>) -> UIntN<N> {
+                let mut s = *self; s.$f(&other); s
+            }
+        }
+        impl<const N: usize> $trait<&UIntN<N>> for &UIntN<N> {
+
+            type Output = UIntN<N>;
+            fn $fn (self, other:&UIntN<N>) -> UIntN<N> {
+                let mut s = *self; s.$f(&other); s
+            }
+        }
     }
 }
 
-impl<const N: usize> std::ops::AddAssign for UIntN<N> {
-    #[track_caller]
-    fn add_assign(&mut self, other: Self) {
-        *self = self.do_add(&other);
+macro_rules! binary_assign_op {
+    {$trait:ident, $fn:ident, $f:ident} => {
+        impl<const N: usize> $trait<UIntN<N>> for UIntN<N> {
+
+            fn $fn (&mut self, other:UIntN< N>) {
+                self.$f(&other);
+            }
+        }
+        impl<const N: usize> $trait<&UIntN<N>> for UIntN<N> {
+            fn $fn (&mut self, other:&UIntN<N>) {
+                self.$f(other);
+            }
+        }
     }
 }
 
-impl<const N: usize> std::ops::Sub for UIntN<N> {
-    type Output = Self;
-
-    #[track_caller]
-    fn sub(self, other: Self) -> Self {
-        self.do_subtract(&other)
-    }
-}
-
-impl<const N: usize> std::ops::SubAssign for UIntN<N> {
-    #[track_caller]
-    fn sub_assign(&mut self, other: Self) {
-        *self = self.do_subtract(&other);
-    }
-}
-
-impl<const N: usize> std::ops::Mul<&UIntN<N>> for UIntN<N> {
-    type Output = UIntN<N>;
-
-    #[track_caller]
-    fn mul(self, other: &UIntN<N>) -> UIntN<N> {
-        self.do_multiply(other)
-    }
-}
-
-impl<const N: usize> std::ops::Mul for UIntN<N> {
-    type Output = Self;
-
-    #[track_caller]
-    fn mul(self, other: Self) -> Self {
-        self.do_multiply(&other)
-    }
-}
-
-impl<const N: usize> std::ops::MulAssign for UIntN<N> {
-    #[track_caller]
-    fn mul_assign(&mut self, other: Self) {
-        *self = self.do_multiply(&other);
-    }
-}
-
-impl<const N: usize> std::ops::Div for UIntN<N> {
-    type Output = Self;
-
-    #[track_caller]
-    fn div(self, other: Self) -> Self {
-        let Some((d, _r)) = self.do_div_rem(&other) else {
-            panic!("Division by zero");
-        };
-        d
-    }
-}
-
-impl<const N: usize> std::ops::DivAssign for UIntN<N> {
-    #[track_caller]
-    fn div_assign(&mut self, other: Self) {
-        // eprintln!("Divide {:?} {:?}", self.value, other.value);
-        let Some((d, _r)) = self.do_div_rem(&other) else {
-            panic!("Division by zero");
-        };
-        // eprintln!("Result {:?} {:?}", d, _r);
-        *self = d;
-    }
-}
-
-impl<const N: usize> std::ops::Rem for UIntN<N> {
-    type Output = Self;
-
-    #[track_caller]
-    fn rem(self, other: Self) -> Self {
-        let Some((_d, r)) = self.do_div_rem(&other) else {
-            panic!("Division by zero");
-        };
-        r
-    }
-}
-
-impl<const N: usize> std::ops::RemAssign for UIntN<N> {
-    #[track_caller]
-    fn rem_assign(&mut self, other: Self) {
-        let Some((_d, r)) = self.do_div_rem(&other) else {
-            panic!("Division by zero");
-        };
-        *self = r;
-    }
-}
+binary_op! {Add, add, do_add}
+binary_assign_op! {AddAssign, add_assign, do_add}
+binary_op! {Sub, sub, do_sub}
+binary_assign_op! {SubAssign, sub_assign, do_sub}
+binary_op! {Mul, mul, do_mul}
+binary_assign_op! {MulAssign, mul_assign, do_mul}
+binary_op! {Div, div, do_div}
+binary_assign_op! {DivAssign, div_assign, do_div}
+binary_op! {Rem, rem, do_rem}
+binary_assign_op! {RemAssign, rem_assign, do_rem}
+binary_op! {BitAnd, bitand, do_bit_and}
+binary_assign_op! {BitAndAssign, bitand_assign, do_bit_and}
+binary_op! {BitOr, bitor, do_bit_or}
+binary_assign_op! {BitOrAssign, bitor_assign, do_bit_or}
+binary_op! {BitXor, bitxor, do_bit_xor}
+binary_assign_op! {BitXorAssign, bitxor_assign, do_bit_xor}
 
 impl<const N: usize> num_traits::FromPrimitive for UIntN<N> {
     fn from_i64(n: i64) -> Option<Self> {
@@ -621,7 +604,28 @@ impl<const N: usize> UIntN<N> {
     }
 
     #[track_caller]
-    fn do_add(mut self, other: &Self) -> Self {
+    fn do_bit_and(mut self, other: &Self) {
+        for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
+            *s &= *o;
+        }
+    }
+
+    #[track_caller]
+    fn do_bit_or(mut self, other: &Self) {
+        for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
+            *s |= *o;
+        }
+    }
+
+    #[track_caller]
+    fn do_bit_xor(mut self, other: &Self) {
+        for (s, o) in self.value.iter_mut().zip(other.value.iter()) {
+            *s ^= *o;
+        }
+    }
+
+    #[track_caller]
+    fn do_add(&mut self, other: &Self) {
         let mut carry = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
             let (r, carry_out) = (*p0).carrying_add(*p1, carry);
@@ -629,7 +633,6 @@ impl<const N: usize> UIntN<N> {
             carry = carry_out;
         }
         assert!(!carry, "Addition overflowed");
-        self
     }
 
     /// Negate the value using twos complement
@@ -653,7 +656,7 @@ impl<const N: usize> UIntN<N> {
         borrow
     }
 
-    fn do_subtract(mut self, other: &Self) -> Self {
+    fn do_sub(&mut self, other: &Self) {
         let mut borrow = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
             let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
@@ -661,14 +664,29 @@ impl<const N: usize> UIntN<N> {
             borrow = borrow_out;
         }
         assert!(!borrow, "Subtraction underflowed");
-        self
     }
 
     #[track_caller]
-    fn do_multiply(&self, other: &Self) -> Self {
+    fn do_mul(&mut self, other: &Self) {
         let (overflow, r) = self.multiply_value(other);
         assert!(!overflow, "Multiplication overflowed");
-        r
+        *self = r;
+    }
+
+    #[track_caller]
+    fn do_div(&mut self, other: &Self) {
+        let Some((d, _r)) = self.do_div_rem(other) else {
+            panic!("Division by zero");
+        };
+        *self = d;
+    }
+
+    #[track_caller]
+    fn do_rem(&mut self, other: &Self) {
+        let Some((_d, r)) = self.do_div_rem(other) else {
+            panic!("Division by zero");
+        };
+        *self = r;
     }
 
     /// Calculate the GCD of two UIntN

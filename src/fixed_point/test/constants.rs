@@ -53,7 +53,7 @@ fn test_pi() {
         eprintln!("{i} : {x:#034x}");
     }
 
-    assert!(false, "Force fail");
+    //   assert!(false, "Force fail");
 }
 
 /// An explicit test that requires add to work, that tests 0, 1, 2, 4, 6 and half, using a small amount of raw

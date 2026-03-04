@@ -58,7 +58,7 @@ fn test_multiply_small_n<N: Num + From<u64>>(a: N) {
 
 fn test_gcd_n<const N: usize>(a: UIntN<N>) {
     assert_eq!(a.gcd(&a), a);
-    assert_eq!(a.gcd(&(a + 1.into())), 1.into());
+    assert_eq!(a.gcd(&(a + UIntN::<N>::ONE)), 1.into());
 }
 
 fn test_number_n<N: Num + From<u64>>(a: N) {
