@@ -1,6 +1,5 @@
-use super::{FPType, Fixed, HowIsFixedPoint, UsefulConsts, UsefulInt};
+use super::{FPType, Fixed, HowIsFixedPoint, UsefulInt};
 
-use num_traits::FloatConst;
 
 use std::ops::*;
 

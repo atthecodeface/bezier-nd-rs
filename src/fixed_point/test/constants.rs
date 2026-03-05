@@ -3,8 +3,9 @@ use crate::bignum::UIntN;
 use super::{utils, BackingKind, TestKind};
 
 use super::calculate_constants;
+
 #[test]
-fn test_pi() {
+fn calcuation_of_constants() {
     let pi_125 = calculate_constants::pi_scaled_by::<2>();
     eprintln!("{pi_125:#034x} {pi_125}");
 
@@ -49,10 +50,11 @@ fn test_pi() {
 
     eprintln!("atan table - needs PI/2 as its first entry");
     for i in 1..20 {
-        let mut x = calculate_constants::atan_two_neg_power::<4>(i);
+        let x = calculate_constants::atan_two_neg_power::<4>(i);
         eprintln!("{i} : {x:#034x}");
     }
 
+    // These are known good values
     assert_eq!(pi_125.raw()[0], 0x6487ed5110b4611a);
     assert_eq!(e_126.raw()[0], 0xadf85458a2bb4a9a);
     assert_eq!(ln_two_128.raw()[0], 0xb17217f7d1cf79ab);

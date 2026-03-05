@@ -1,4 +1,4 @@
-use super::{Fixed, IsFixed};
+use super::IsFixed;
 
 trait TestKind<I, const N: usize>:
     num_traits::Num

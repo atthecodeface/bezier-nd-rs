@@ -1,4 +1,4 @@
-use num_traits::{sign, FromPrimitive, Zero};
+use num_traits::{FromPrimitive, Zero};
 
 use crate::bignum::UIntN;
 

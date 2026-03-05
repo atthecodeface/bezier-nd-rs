@@ -1,6 +1,5 @@
 use super::Int;
 
-use num_traits::{ConstOne, ConstZero};
 
 /// A trait for how 'FpType<T,N>` can be a fixed point value with base type `T` and `N` fractional bits
 ///

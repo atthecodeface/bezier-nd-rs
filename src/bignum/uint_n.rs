@@ -1,4 +1,3 @@
-use geo_nd::quat::new;
 use num_traits::{ConstOne, ConstZero, Zero};
 use std::{fmt::Write, ops::Sub};
 

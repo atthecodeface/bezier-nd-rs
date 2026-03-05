@@ -1,7 +1,6 @@
-use super::{FPType, Fixed, HowIsFixedPoint, UsefulConsts, UsefulInt};
+use super::{FPType, Fixed, HowIsFixedPoint, UsefulInt};
 use std::ops::*;
 
-use num_traits::FloatConst;
 
 impl<T: UsefulInt, const N: usize> Neg for Fixed<T, N>
 where
