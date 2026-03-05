@@ -6,17 +6,16 @@ use super::calculate_constants;
 
 #[test]
 fn calcuation_of_constants() {
-    let pi_125 = calculate_constants::pi_scaled_by::<2>();
+    let pi_125 = calculate_constants::pi_scaled_by::<2>(125);
     eprintln!("{pi_125:#034x} {pi_125}");
 
-    let e_126 = calculate_constants::e_scaled_by::<2>();
+    let e_126 = calculate_constants::e_scaled_by::<2>(126);
     eprintln!("{e_126:#034x} {e_126}");
 
-    let ln_two_128 = calculate_constants::ln_two_scaled_by::<2>();
+    let ln_two_128 = calculate_constants::ln_two_scaled_by::<2>(128);
     eprintln!("{ln_two_128:#034x} {ln_two_128}");
 
-    let ln_five_quarters_127 =
-        calculate_constants::ln_one_plus_two_neg_power::<2>(2, UIntN::<2>::default());
+    let ln_five_quarters_127 = calculate_constants::ln_one_plus_two_neg_power::<2>(127, 2, None);
 
     let mut ln_two_126 = ln_two_128;
     ln_two_126.shift_right(2);
@@ -50,19 +49,43 @@ fn calcuation_of_constants() {
 
     eprintln!("atan table - needs PI/2 as its first entry");
     for i in 1..20 {
-        let x = calculate_constants::atan_two_neg_power::<4>(i);
+        let x = calculate_constants::atan_two_neg_power::<4>(128, i);
         eprintln!("{i} : {x:#034x}");
     }
 
     // These are known good values
-    assert_eq!(pi_125.raw()[0], 0x6487ed5110b4611a);
-    assert_eq!(e_126.raw()[0], 0xadf85458a2bb4a9a);
-    assert_eq!(ln_two_128.raw()[0], 0xb17217f7d1cf79ab);
-    assert_eq!(ln_ten_126.raw()[3], 0x935d8dddaaa8ac16);
-    assert_eq!(log2_e_129.raw()[3], 0xe2a8eca5705fc2ee);
-    assert_eq!(log10_e_129.raw()[3], 0x0de5bd8a937287195);
-    assert_eq!(log2_ten_129.raw()[3], 0xa4d3c25e68dc57f2);
-    assert_eq!(log10_two_129.raw()[3], 0x09a209a84fbcff798);
+    assert_eq!(pi_125.raw()[0], 0x6487ed5110b4611a, "Error in value of PI");
+    assert_eq!(e_126.raw()[0], 0xadf85458a2bb4a9a, "Error in value of E");
+    assert_eq!(
+        ln_two_128.raw()[0],
+        0xb17217f7d1cf79ab,
+        "Error in value of ln(2)"
+    );
+    assert_eq!(
+        ln_ten_126.raw()[3],
+        0x935d8dddaaa8ac16,
+        "Error in value of ln(10)"
+    );
+    assert_eq!(
+        log2_e_129.raw()[3],
+        0xe2a8eca5705fc2ee,
+        "Error in value of log2(e)"
+    );
+    assert_eq!(
+        log10_e_129.raw()[3],
+        0x0de5bd8a937287195,
+        "Error in value of log10(e)"
+    );
+    assert_eq!(
+        log2_ten_129.raw()[3],
+        0xa4d3c25e68dc57f2,
+        "Error in value of log2(10)"
+    );
+    assert_eq!(
+        log10_two_129.raw()[3],
+        0x09a209a84fbcff798,
+        "Error in value of log10(2)"
+    );
     // assert!(false, "Force fail");
 }
 
