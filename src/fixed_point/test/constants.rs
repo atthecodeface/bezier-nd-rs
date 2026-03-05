@@ -6,87 +6,87 @@ use super::calculate_constants;
 
 #[test]
 fn calcuation_of_constants() {
-    let pi_125 = calculate_constants::pi_scaled_by::<2>(125);
-    eprintln!("{pi_125:#034x} {pi_125}");
+    let pi_126 = calculate_constants::pi_scaled_by::<3>(126);
+    eprintln!("{pi_126:#034x} {pi_126}");
+    assert_eq!(
+        pi_126.integer_decode(),
+        (0xc90f_daa2_2168_c234, 63, 1),
+        "Error in value of PI"
+    );
 
     let e_126 = calculate_constants::e_scaled_by::<2>(126);
     eprintln!("{e_126:#034x} {e_126}");
+    assert_eq!(
+        e_126.integer_decode(),
+        (0xadf8_5458_a2bb_4a9a, 63, 1),
+        "Error in value of e"
+    );
 
-    let ln_two_128 = calculate_constants::ln_two_scaled_by::<2>(128);
+    let ln_two_128 = calculate_constants::ln_two_scaled_by::<3>(128);
     eprintln!("{ln_two_128:#034x} {ln_two_128}");
+    assert_eq!(
+        ln_two_128.integer_decode(),
+        (0xb172_17f7_d1cf_79ab, 63, 1),
+        "Error in value of ln(2)"
+    );
 
-    let ln_five_quarters_127 = calculate_constants::ln_one_plus_two_neg_power::<2>(127, 2, None);
+    let ln_five_quarters_128 = calculate_constants::ln_one_plus_two_neg_power::<3>(128, 2, None);
+    let ln_ten_128 = ln_five_quarters_128 + ln_two_128 + ln_two_128 + ln_two_128;
+    eprintln!("ln(10) = {ln_ten_128:#034x} {ln_ten_128}");
+    assert_eq!(
+        ln_ten_128.integer_decode(),
+        (0x935d_8ddd_aaa8_ac16, 65, 1),
+        "Error in value of ln(10)"
+    );
 
-    let mut ln_two_126 = ln_two_128;
-    ln_two_126.shift_right(2);
-    let mut ln_five_quarters_126 = ln_five_quarters_127;
-    ln_five_quarters_126.shift_right(1);
-    let ln_ten_126 = ln_five_quarters_126 + ln_two_126 + ln_two_126 + ln_two_126;
+    let one_257 = UIntN::<5>::with_bit_set(257);
 
-    eprintln!("ln(10) = {ln_ten_126:#034x} {ln_two_126}");
-
-    let one_255 = UIntN::<5>::with_bit_set(255);
-
-    let ln_two_126: UIntN<5> = (&ln_two_126).try_into().unwrap();
-    let log2_e_129 = one_255 / ln_two_126;
-
+    let ln_two_128: UIntN<5> = (&ln_two_128).try_into().unwrap();
+    let log2_e_129 = one_257 / ln_two_128;
     eprintln!("log2(e) = {log2_e_129:#035x} {log2_e_129}");
+    assert_eq!(
+        log2_e_129.integer_decode(),
+        (0xb8aa_3b29_5c17_f0bb, 65, 1),
+        "Error in value of log2(e)"
+    );
 
-    let ln_ten_126: UIntN<5> = (&ln_ten_126).try_into().unwrap();
-    let log10_e_129 = one_255 / ln_ten_126;
-
+    let ln_ten_128: UIntN<5> = (&ln_ten_128).try_into().unwrap();
+    let log10_e_129 = one_257 / ln_ten_128;
     eprintln!("log10(e) = {log10_e_129:#035x} {log10_e_129}");
+    assert_eq!(
+        log10_e_129.integer_decode(),
+        (0xde5b_d8a9_3728_7195, 63, 1),
+        "Error in value of log10(e)"
+    );
 
-    let mut log2_e_129_s_129 = log2_e_129;
-    log2_e_129_s_129.shift_left(129);
-    let log2_ten_129 = log2_e_129_s_129 / log10_e_129;
+    let log2_ten_129 = (log2_e_129 << 129_u32) / log10_e_129;
     eprintln!("log2(10) = {log2_ten_129:#035x} {log2_ten_129}");
+    assert_eq!(
+        log2_ten_129.integer_decode(),
+        (0xd49a_784b_cd1b_8afe, 66, 1),
+        "Error in value of log2(10)"
+    );
 
-    let mut log10_e_129_s_129 = log10_e_129;
-    log10_e_129_s_129.shift_left(129);
-    let log10_two_129 = log10_e_129_s_129 / log2_e_129;
+    let log10_two_129 = (log10_e_129 << 129_u32) / log2_e_129;
     eprintln!("log10(2) = {log10_two_129:#035x} {log10_two_129}");
+    assert_eq!(
+        log10_two_129.integer_decode(),
+        (0x9a20_9a84_fbcf_f798, 63, 1),
+        "Error in value of log10(2)"
+    );
 
     eprintln!("atan table - needs PI/2 as its first entry");
     for i in 1..20 {
         let x = calculate_constants::atan_two_neg_power::<4>(128, i);
-        eprintln!("{i} : {x:#034x}");
+        let (m, e, s) = x.integer_decode();
+        let x_f = (m as f64) * (s as f64) * (2.0_f64.powi(e as i32 - 127));
+        let t_f = ((0.5_f64).powi((i as i32))).atan();
+        let diff = (t_f - x_f).abs();
+        eprintln!("{i} : {x:#034x} {x_f} {t_f}");
+        assert!(diff < 1E-10, "Difference in atan(2^-{i}) was too large");
     }
 
-    // These are known good values
-    assert_eq!(pi_125.raw()[0], 0x6487ed5110b4611a, "Error in value of PI");
-    assert_eq!(e_126.raw()[0], 0xadf85458a2bb4a9a, "Error in value of E");
-    assert_eq!(
-        ln_two_128.raw()[0],
-        0xb17217f7d1cf79ab,
-        "Error in value of ln(2)"
-    );
-    assert_eq!(
-        ln_ten_126.raw()[3],
-        0x935d8dddaaa8ac16,
-        "Error in value of ln(10)"
-    );
-    assert_eq!(
-        log2_e_129.raw()[3],
-        0xe2a8eca5705fc2ee,
-        "Error in value of log2(e)"
-    );
-    assert_eq!(
-        log10_e_129.raw()[3],
-        0x0de5bd8a937287195,
-        "Error in value of log10(e)"
-    );
-    assert_eq!(
-        log2_ten_129.raw()[3],
-        0xa4d3c25e68dc57f2,
-        "Error in value of log2(10)"
-    );
-    assert_eq!(
-        log10_two_129.raw()[3],
-        0x09a209a84fbcff798,
-        "Error in value of log10(2)"
-    );
-    // assert!(false, "Force fail");
+    //    assert!(false, "Force fail");
 }
 
 /// An explicit test that requires add to work, that tests 0, 1, 2, 4, 6 and half, using a small amount of raw

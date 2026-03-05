@@ -868,6 +868,18 @@ impl<const N: usize> UIntN<N> {
         }
     }
 
+    /// Returns the mantissa, base 2 exponent, and sign as integers,
+    /// respectively. The original number, with 64 bits of accuracy, can be
+    /// recovered by sign * mantissa * 2 ^ exponent.
+    pub fn integer_decode(self) -> (u64, i16, i8) {
+        let (mantissa, exp) = self.most_significant_u128();
+        if exp < 64 {
+            (self.value[N - 1], 0, 1)
+        } else {
+            ((mantissa >> 64) as u64, (exp as i16) - 64, 1)
+        }
+    }
+
     /// Calculate the square root of this value
     pub fn sqrt(&self) -> Self {
         let mut sqrt_est = Self::ZERO;
