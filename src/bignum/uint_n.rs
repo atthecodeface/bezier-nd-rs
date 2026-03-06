@@ -470,8 +470,9 @@ impl<const N: usize> num_traits::identities::ConstOne for UIntN<N> {
 }
 
 impl<const N: usize> UIntN<N> {
-    /// Create a new value
-    pub const fn new(value: [u64; N]) -> Self {
+    /// Create a new value, using the values provided (starting at the first) as much as is required, with zeros above
+    pub const fn new(value: &[u64; N]) -> Self {
+        let value = *value;
         Self { value }
     }
 

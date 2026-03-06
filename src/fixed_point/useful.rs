@@ -1,4 +1,3 @@
-use super::{BorrowingSub, CarryingAdd, OverflowingMul};
 use num_traits::{ConstOne, ConstZero};
 
 /// Internal trait that bundles up traits required for UsefulInt and UsefulUInt

@@ -326,7 +326,7 @@ impl<const N: usize> std::ops::Div<UIntN<N>> for IntN<N> {
 
 impl<const N: usize> IntN<N> {
     /// Create a new value
-    pub const fn new(is_neg: bool, value: [u64; N]) -> Self {
+    pub const fn new(is_neg: bool, value: &[u64; N]) -> Self {
         Self {
             is_neg,
             value: UIntN::new(value),

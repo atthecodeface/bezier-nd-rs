@@ -1,4 +1,101 @@
-use super::Int;
+/// 256-bit Constants for various mathematical values, shifted such that the most significant bit is set
+pub mod u64_4 {
+    /// The value `e`, the natural logarithm base
+    pub const E: &[u64; 4] = &[
+        0xadf85458a2bb4a9a,
+        0xafdc5620273d3cf1,
+        0xd8b9c583ce2d3695,
+        0xa9e13641146433f4,
+    ];
+
+    /// The natural logarithm of 2
+    pub const LN_2: &[u64; 4] = &[
+        0xb17217f7d1cf79ab,
+        0xc9e3b39803f2f6af,
+        0x40f343267298b62d,
+        0x8a0d175b8baafa2b,
+    ];
+
+    /// The natural logarithm of 10
+    pub const LN_10: &[u64; 4] = &[
+        0x935d8dddaaa8ac16,
+        0xea56d62b82d30a28,
+        0xe28fecf9da5df90e,
+        0x83c61e8201f02d72,
+    ];
+
+    /// The log in base 2 of e
+    pub const LOG2_E: &[u64; 4] = &[
+        0xb8aa3b295c17f0bb,
+        0xbe87fed0691d3e88,
+        0xeb577aa8dd695a58,
+        0x8b25166cd1a13247,
+    ];
+
+    /// The log in base 2 of 10
+    pub const LOG2_10: &[u64; 4] = &[
+        0xd49a784bcd1b8afe,
+        0x492bf6ff4dafdb4c,
+        0xd96c55fe37b3ad4e,
+        0x91b6ac8082e7859d,
+    ];
+
+    /// The log in base 10 of e
+    pub const LOG10_E: &[u64; 4] = &[
+        0xde5bd8a937287195,
+        0x355baaafad33dc32,
+        0x3ee3460245c9a202,
+        0x3a3f2d44f78ea53c,
+    ];
+
+    /// The log in base 10 of 2
+    pub const LOG10_2: &[u64; 4] = &[
+        0x9a209a84fbcff798,
+        0x8f8959ac0b7c9178,
+        0x26ad30c543d1f349,
+        0x8a5e6f26b7cc63cb,
+    ];
+
+    /// The square root of 2
+    pub const SQRT_2: &[u64; 4] = &[
+        0xb504f333f9de6484,
+        0x597d89b3754abe9f,
+        0x1d6f60ba893ba84c,
+        0xed17ac8583339915,
+    ];
+
+    /// The value of pi
+    pub const PI: &[u64; 4] = &[
+        0xc90fdaa22168c234,
+        0xc4c6628b80dc1cd1,
+        0x29024e088a67cc74,
+        0x20bbea63b139b1a,
+    ];
+
+    /// The value of 2/pi
+    pub const FRAC_2_PI: &[u64; 4] = &[
+        0xa2f9836e4e441529,
+        0xfc2757d1f534ddc0,
+        0xdb6295993c439041,
+        0xfe5163abdebbc568,
+    ];
+
+    /// The value of pi/3
+    pub const FRAC_PI_3: &[u64; 4] = &[
+        0x860a91c16b9b2c23,
+        0x2dd99707ab3d688b,
+        0x70ac3405b19a884d,
+        0x56b27f197cb7bcbc,
+    ];
+
+    /// The value of 1/sqrt(pi)
+    pub const FRAC_1_SQRT_PI: &[u64; 4] = &[
+        0x906eba8214db688d,
+        0x71d48a7f6bfec344,
+        0x1409a0ebac3e7517,
+        0x39a15830cce620b0,
+    ];
+}
 
 /// This provides the constants required for trigonometry and logarithmic operations, for integer types
 ///
@@ -11,7 +108,7 @@ use super::Int;
 /// This means that the amount to shift right by (which power of 2 to divide by)
 /// requires knowledge of the actual scale of the value; this also permits the
 /// same value to be used here for (e.g.) 1/PI and 2/PI, etc.
-pub trait UsefulConsts: Int {
+pub trait UsefulConsts: num_traits::ConstZero {
     /// The value 'e' (2.718281828459045...) shifted to provide maximum precision
     const E: Self;
 
@@ -48,7 +145,10 @@ pub trait UsefulConsts: Int {
     /// The value '1/sqrt(PI)' (0.5641895835477563...) shifted to provide maximum precision
     const FRAC_1_SQRT_PI: Self;
 
+    /// The value that converts degrees to radians, i.e. pi/180, to maximum precision
     const TO_RADIANS: Self = Self::ZERO;
+
+    /// The value that converts radians to degrees, i.e. 180/pi, to maximum precision
     const TO_DEGREES: Self = Self::ZERO;
 }
 
@@ -98,3 +198,4 @@ useful_consts!(u8, 0, 8);
 useful_consts!(u16, 0, 16);
 useful_consts!(u32, 0, 32);
 useful_consts!(u64, 0, 64);
+// u128 has its explicit implementation
