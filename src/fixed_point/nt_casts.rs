@@ -16,7 +16,8 @@ where
         // an unsigned value; so if any of the *other* bits are set then the
         // value will not fit
         let nb_frac = <FPType<T, N> as HowIsFixedPoint<T>>::NB_FRAC;
-        let nb_max_int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::MAX_INT_MASK;
+        let nb_int = <FPType<T, N> as HowIsFixedPoint<T>>::NB_INT;
+        let nb_max_int_mask = !((!T::ZERO) << nb_int);
         let v_upper_bits = v & !nb_max_int_mask;
         if v_upper_bits.is_zero() {
             Some(Self {
@@ -35,7 +36,8 @@ where
         // v must be shifted left by NB_FRAC; if it is +ve and any of the *other* bits are set then the
         // value will not fit. If it is -ve and any of the *other* bits are clear then the value will not fit
         let nb_frac = <FPType<T, N> as HowIsFixedPoint<T>>::NB_FRAC;
-        let nb_max_int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::MAX_INT_MASK;
+        let nb_int = <FPType<T, N> as HowIsFixedPoint<T>>::NB_INT;
+        let nb_max_int_mask = !((!T::ZERO) << nb_int);
         let v_upper_bits = v & !nb_max_int_mask;
         if v_upper_bits.is_zero() || v_upper_bits == !nb_max_int_mask {
             Some(Self {

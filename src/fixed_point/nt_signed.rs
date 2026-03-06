@@ -42,12 +42,12 @@ where
 {
     fn min_value() -> Self {
         Self {
-            value: T::SIGN_MASK,
+            value: T::min_value(),
         }
     }
     fn max_value() -> Self {
         Self {
-            value: !T::SIGN_MASK,
+            value: !T::max_value(),
         }
     }
 }

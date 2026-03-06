@@ -86,7 +86,7 @@ fn calcuation_of_constants() {
         assert!(diff < 1E-10, "Difference in atan(2^-{i}) was too large");
     }
 
-    //    assert!(false, "Force fail");
+    // assert!(false, "Force fail");
 }
 
 /// An explicit test that requires add to work, that tests 0, 1, 2, 4, 6 and half, using a small amount of raw
@@ -190,8 +190,14 @@ where
     if int_bits >= 2 {
         let pi = T::PI();
         eprintln!("PI :{:0x}", utils::raw_u64(&pi));
-        assert!(pi > T::from_u8(3).unwrap(), "PI is more than 3!");
-        assert!(pi - half < T::from_u8(3).unwrap(), "PI is less than 3.5!");
+        assert!(
+            pi > T::from_u8(3).unwrap(),
+            "PI is supposed to be more than 3!"
+        );
+        assert!(
+            pi - half < T::from_u8(3).unwrap(),
+            "PI is supposed to be less than 3.5!"
+        );
 
         // The test value is only 48 bits of fraction, so check as many of those as possible
         //

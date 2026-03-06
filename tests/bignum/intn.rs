@@ -18,6 +18,7 @@ fn prime_25519<N: Num + From<u64>>() -> N {
 }
 
 fn test_add_subtract_n<N: Num + From<u64>>(a: N) {
+    eprintln!("test_add_subtract_n {a}");
     let b = a + a;
     let c = b + a;
 

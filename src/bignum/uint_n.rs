@@ -1,5 +1,6 @@
 use num_traits::{ConstOne, ConstZero, Zero};
-use std::{fmt::Write, ops::Sub};
+use std::fmt::Write;
+use std::ops::*;
 
 /// Unsigned integer of N*64 bits, supporting copy
 ///
@@ -240,7 +241,6 @@ impl<const N: usize> std::ops::Neg for &UIntN<N> {
         panic!("UIntN does not support negation");
     }
 }
-use std::ops::*;
 
 macro_rules! binary_op {
     {$trait:ident, $fn:ident, $f:ident} => {
@@ -290,6 +290,44 @@ macro_rules! binary_assign_op {
         }
     }
 }
+
+macro_rules! extra_binary_ops {
+    {overflowing, $trait:ident, $fn:ident, $f:ident} => {
+        impl<const N: usize> num_traits::ops::overflowing::$trait for UIntN<N> {
+            fn $fn(&self, v: &Self) -> (Self, bool) {
+                let mut s = *self;
+                let overflow = s.$f(v);
+                (s, overflow)
+            }
+        }
+    };
+{wrapping, $trait:ident, $fn:ident, $f:ident} => {
+impl<const N: usize> num_traits::ops::wrapping::$trait for UIntN<N> {
+    fn $fn(&self, v: &Self) -> Self {
+        let mut s = *self;
+        s.$f(v);
+        s
+    }
+}
+};
+{checked, $trait:ident, $fn:ident, $f:ident} => {
+impl<const N: usize> num_traits::ops::checked::$trait for UIntN<N> {
+    fn $fn(&self, v: &Self) -> Option<Self> {
+        let mut s = *self;
+        s.$f(v).then_some(s)
+    }
+}
+}
+}
+extra_binary_ops! {overflowing, OverflowingAdd, overflowing_add, do_add_overflow}
+extra_binary_ops! {wrapping, WrappingAdd, wrapping_add, do_add_overflow}
+extra_binary_ops! {checked, CheckedAdd, checked_add, do_add_overflow}
+extra_binary_ops! {overflowing, OverflowingSub, overflowing_sub, do_sub_overflow}
+extra_binary_ops! {wrapping, WrappingSub, wrapping_sub, do_sub_overflow}
+extra_binary_ops! {checked, CheckedSub, checked_sub, do_sub_overflow}
+extra_binary_ops! {overflowing, OverflowingMul, overflowing_mul, do_mul_overflow}
+extra_binary_ops! {wrapping, WrappingMul, wrapping_mul, do_mul_overflow}
+extra_binary_ops! {checked, CheckedMul, checked_mul, do_mul_overflow}
 
 binary_op! {Add, add, do_add}
 binary_assign_op! {AddAssign, add_assign, do_add}
@@ -422,6 +460,11 @@ impl<const N: usize> num_traits::identities::ConstOne for UIntN<N> {
 }
 
 impl<const N: usize> UIntN<N> {
+    /// Create a new value
+    pub const fn new(value: [u64; N]) -> Self {
+        Self { value }
+    }
+
     /// Return the number of bits in the value
     pub const fn num_bits() -> u32 {
         (N as u32) * 64
@@ -448,9 +491,24 @@ impl<const N: usize> UIntN<N> {
     }
 
     /// Return the value with just the specified bit set
-    pub fn with_bit_set(bit: u32) -> Self {
-        let mut s = Self::default();
-        s.set_bit(bit);
+    #[track_caller]
+    pub const fn with_bit_set(bit: u32) -> Self {
+        if N < 1 + (bit as usize >> 6) {
+            panic!("bit is beyond the size of the integer to set");
+        }
+        let mut s = Self { value: [0; N] };
+        let bit_value = 1 << (bit & 63);
+        s.value[N - 1 - (bit >> 6) as usize] |= bit_value;
+        s
+    }
+
+    /// Return the value with just the specified bit set
+    pub fn mask(num_bits: u32) -> Self {
+        let mut s = Self { value: [0; N] };
+        for i in 0..num_bits {
+            let bit = 1 << (i & 63);
+            s.value[N - 1 - (bit >> 6) as usize] |= bit;
+        }
         s
     }
 
@@ -466,6 +524,8 @@ impl<const N: usize> UIntN<N> {
     }
 
     /// Find top bit set + 1
+    ///
+    /// This returns 0 for a value 0 or 1, 1 for a value of 2 or 3, 2 for a value of 4-7, etc
     pub(crate) fn find_top_bit_set(&self) -> u32 {
         if let Some(n) = self.most_significant_n() {
             ((N as u32) - n - 1) * 64 + Self::find_top_bit(self.value[n as usize]).unwrap()
@@ -728,6 +788,27 @@ impl<const N: usize> UIntN<N> {
         (false, result)
     }
 
+    /// Negate the value using twos complement
+    pub fn twos_complement(&mut self) {
+        let mut carry = true;
+        for v in self.value.iter_mut().rev() {
+            let (r, carry_out) = (!(*v)).carrying_add(0, carry);
+            *v = r;
+            carry = carry_out;
+        }
+    }
+
+    /// Subtract other value from self
+    pub fn subtract(&mut self, other: &Self) -> bool {
+        let mut borrow = false;
+        for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
+            let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
+            *p0 = r;
+            borrow = borrow_out;
+        }
+        borrow
+    }
+
     #[track_caller]
     fn do_bit_not(&mut self) {
         for s in self.value.iter_mut() {
@@ -757,28 +838,18 @@ impl<const N: usize> UIntN<N> {
     }
 
     #[track_caller]
-    fn do_add(&mut self, other: &Self) {
+    fn do_add_overflow(&mut self, other: &Self) -> bool {
         let mut carry = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
             let (r, carry_out) = (*p0).carrying_add(*p1, carry);
             *p0 = r;
             carry = carry_out;
         }
-        assert!(!carry, "Addition overflowed");
+        carry
     }
 
-    /// Negate the value using twos complement
-    pub fn twos_complement(&mut self) {
-        let mut carry = true;
-        for v in self.value.iter_mut().rev() {
-            let (r, carry_out) = (!(*v)).carrying_add(0, carry);
-            *v = r;
-            carry = carry_out;
-        }
-    }
-
-    /// Subtract other value from self
-    pub fn subtract(&mut self, other: &Self) -> bool {
+    #[track_caller]
+    fn do_sub_overflow(&mut self, other: &Self) -> bool {
         let mut borrow = false;
         for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
             let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
@@ -788,14 +859,21 @@ impl<const N: usize> UIntN<N> {
         borrow
     }
 
+    #[track_caller]
+    fn do_mul_overflow(&mut self, other: &Self) -> bool {
+        let (overflow, r) = self.multiply_value(other);
+        *self = r;
+        overflow
+    }
+
+    #[track_caller]
+    fn do_add(&mut self, other: &Self) {
+        assert!(!self.do_add_overflow(other), "Addition overflowed");
+    }
+
+    #[track_caller]
     fn do_sub(&mut self, other: &Self) {
-        let mut borrow = false;
-        for (p0, p1) in self.value.iter_mut().rev().zip(other.value.iter().rev()) {
-            let (r, borrow_out) = (*p0).borrowing_sub(*p1, borrow);
-            *p0 = r;
-            borrow = borrow_out;
-        }
-        assert!(!borrow, "Subtraction underflowed");
+        assert!(!self.do_sub_overflow(other), "Subtratcion underflowed");
     }
 
     #[track_caller]
@@ -926,6 +1004,29 @@ impl<const N: usize> num_traits::Num for UIntN<N> {
         } else {
             Err("".parse::<i32>().unwrap_err())
         }
+    }
+}
+impl<const N: usize> num_traits::ToPrimitive for UIntN<N> {
+    fn to_i64(&self) -> Option<i64> {
+        if self.find_top_bit_set() < 63 {
+            Some(self.value[N - 1] as i64)
+        } else {
+            None
+        }
+    }
+    fn to_u64(&self) -> Option<u64> {
+        if self.find_top_bit_set() < 64 {
+            Some(self.value[N - 1])
+        } else {
+            None
+        }
+    }
+}
+
+use num_traits::FromPrimitive;
+impl<const N: usize> num_traits::NumCast for UIntN<N> {
+    fn from<V: num_traits::ToPrimitive>(n: V) -> Option<Self> {
+        n.to_u64().map(Self::from_u64).flatten()
     }
 }
 

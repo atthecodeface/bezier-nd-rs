@@ -17,7 +17,7 @@ pub(crate) trait Int:
     + num_traits::NumCast
     + num_traits::ToPrimitive
     + num_traits::FromPrimitive
-    + num_traits::PrimInt
+    // + num_traits::PrimInt
     + num_traits::ConstOne
     + num_traits::ConstZero
     + std::ops::AddAssign<Self>
@@ -47,7 +47,8 @@ impl<T> Int for T where
         + std::fmt::Display
         + std::fmt::LowerHex
         + num_traits::Num
-        + num_traits::PrimInt
+        + num_traits::NumCast
+        //        + num_traits::PrimInt
         + num_traits::FromPrimitive
         + ConstOne
         + ConstZero
@@ -66,83 +67,92 @@ impl<T> Int for T where
 {
 }
 
-pub trait SignedInt:
-    Int + std::ops::Neg<Output = Self> + CarryingAdd + BorrowingSub + OverflowingMul
+pub(crate) trait SignedInt:
+    Int
+    + std::ops::Neg<Output = Self>
+    + num_traits::ops::overflowing::OverflowingSub
+    + num_traits::ops::overflowing::OverflowingAdd // + CarryingAdd + BorrowingSub + OverflowingMul
 {
 }
 impl<T> SignedInt for T where
-    T: Int + std::ops::Neg<Output = Self> + CarryingAdd + BorrowingSub + OverflowingMul
+    T: Int
+        + std::ops::Neg<Output = Self>
+        + num_traits::ops::overflowing::OverflowingAdd
+        + num_traits::ops::overflowing::OverflowingSub // + CarryingAdd + BorrowingSub + OverflowingMul
 {
 }
 
-pub trait UsefulInt: SignedInt {
+pub(crate) trait UsefulInt: SignedInt {
     type Unsigned: UsefulUInt;
     type Dbl: Int;
+    type DblUnsigned: Int;
     const NB: usize;
     const NB_DBL: usize = Self::NB * 2;
-    const SIGN_MASK: Self;
-    const DBL_LOWER_MASK: Self::Dbl;
-    const DBL_UPPER_MASK: Self::Dbl;
-    const DBL_SIGN_MASK: Self::Dbl;
     fn as_dbl(self) -> Self::Dbl;
     fn as_dbl_upper(self) -> Self::Dbl;
+    fn as_dbl_unsigned(self) -> Self::DblUnsigned;
     fn unsigned(self) -> Self::Unsigned;
     fn of_unsigned(v: Self::Unsigned) -> Self;
-    /// Get a value from the least significant half of the Dbl
-    #[inline]
-    fn of_dbl_unchecked(dbl: Self::Dbl) -> Self {
-        Self::of_unsigned(Self::unsigned_of_dbl(dbl).1)
-    }
-    fn unsigned_of_dbl(dbl: Self::Dbl) -> (Self::Unsigned, Self::Unsigned);
+    fn of_dbl(dbl: Self::Dbl) -> (Self, bool);
+    // fn unsigned_of_dbl(dbl: Self::Dbl) -> (Self::Unsigned, Self::Unsigned);
     fn dbl_mult(self, other: &Self) -> Self::Dbl;
+    fn min_value() -> Self;
+    fn max_value() -> Self;
 }
 
 pub trait UsefulUInt: Int {
     type Dbl: Int;
     const NB: usize;
     fn as_dbl(self) -> Self::Dbl;
-    fn as_dbl_upper(self) -> Self::Dbl {
-        self.as_dbl() << Self::NB
-    }
 }
 
 macro_rules! make_useful {
     {$t:ty, $uns:ty, $dbl:ty, $dbl_uns:ty, $nb:expr} => {
-    impl UsefulInt for $t {
-        type Unsigned = $uns;
-        type Dbl = $dbl;
-        const NB: usize = $nb;
-        const SIGN_MASK : Self = Self::ONE << ($nb-1);
-        const DBL_LOWER_MASK : Self::Dbl = !Self::DBL_UPPER_MASK;
-        const DBL_UPPER_MASK : Self::Dbl = (-Self::Dbl::ONE) << $nb;
-        const DBL_SIGN_MASK : Self::Dbl = Self::Dbl::ONE << ($nb*2-1);
-        fn as_dbl(self) -> Self::Dbl {
-            self as $dbl
+        impl UsefulInt for $t {
+            type Unsigned = $uns;
+            type Dbl = $dbl;
+            type DblUnsigned = $dbl_uns;
+            const NB: usize = $nb;
+            fn as_dbl(self) -> Self::Dbl {
+                self as $dbl
+            }
+            fn as_dbl_upper(self) -> Self::Dbl {
+                self.as_dbl() << Self::NB
+            }
+            fn as_dbl_unsigned(self) -> Self::DblUnsigned {
+                self as $dbl_uns
+            }
+            fn unsigned(self) -> Self::Unsigned {
+                self as $uns
+            }
+            fn of_unsigned(v: Self::Unsigned) -> Self {
+                v as Self
+            }
+            fn dbl_mult(self, other: &Self) -> Self::Dbl {
+                (self as $dbl) * (*other as $dbl)
+            }
+            // Get a value from the least significant half of the Dbl
+            #[inline]
+            fn of_dbl(dbl: Self::Dbl) -> (Self, bool) {
+                // Consider the upper $nb+1 bits - if they are all one, or all zero, then there is no overflow
+                let upper_bits = dbl >> ($nb-1);
+                let overflow = !(upper_bits==0) || (upper_bits+1==0);
+                (Self::of_unsigned(dbl as $uns), overflow)
+            }
+            fn min_value() -> Self { ((1 as $uns)<<($nb-1)) as $t}
+            fn max_value() -> Self { (((1 as $uns)<<($nb-1))-1) as $t }
+            // fn unsigned_of_dbl(dbl:Self::Dbl) -> (Self::Unsigned, Self::Unsigned) {
+            //     ((dbl >> $nb) as $uns, dbl as $uns)
+            // }
         }
-        fn as_dbl_upper(self) -> Self::Dbl {
-            self.as_dbl() << Self::NB
+        impl UsefulUInt for $uns {
+            type Dbl = $dbl_uns;
+            const NB: usize = $nb;
+            fn as_dbl(self) -> Self::Dbl {
+                self as $dbl_uns
+            }
         }
-        fn unsigned(self) -> Self::Unsigned {
-            self as $uns
-        }
-        fn of_unsigned(v: Self::Unsigned) -> Self {
-            v as Self
-        }
-        fn dbl_mult(self, other: &Self) -> Self::Dbl {
-            (self as $dbl) * (*other as $dbl)
-        }
-        fn unsigned_of_dbl(dbl:Self::Dbl) -> (Self::Unsigned, Self::Unsigned) {
-            ((dbl >> $nb) as $uns, dbl as $uns)
-        }
-    }
-    impl UsefulUInt for $uns {
-        type Dbl = $dbl_uns;
-        const NB: usize = $nb;
-        fn as_dbl(self) -> Self::Dbl {
-            self as $dbl_uns
-        }
-    }
-};
+    };
 }
 
 make_useful!(i8, u8, i16, u16, 8);

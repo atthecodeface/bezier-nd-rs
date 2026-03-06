@@ -472,7 +472,7 @@ impl<const N: usize> RationalN<N> {
             Self::default()
         } else {
             let gcd = numer.magnitude().gcd(&denom);
-            numer /= gcd.into();
+            numer.value /= gcd;
             denom /= gcd;
             Self { numer, denom }
         }

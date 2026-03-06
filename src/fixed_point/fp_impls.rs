@@ -7,10 +7,6 @@ macro_rules! fp_impl{
         impl HowIsFixedPoint<$t> for FPType<$t, $nf> {
             const NB: usize = $nb;
             const NB_FRAC: usize = $nf;
-            const SIGN_MASK: $t = < $t >  :: ONE << (Self::NB - 1);
-            const SIGNED_INT_MASK: $t = (- < $t > ::ONE) << Self::NB_FRAC;
-            const FRAC_MASK: $t = !Self::SIGNED_INT_MASK;
-            const MAX_INT_MASK: $t = (!< $t> ::ZERO) >> (Self::NB_FRAC + 1);
             const ONE: $t = < $t >::ONE << Self::NB_FRAC;
         }
      }

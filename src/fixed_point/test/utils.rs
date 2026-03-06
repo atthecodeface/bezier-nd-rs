@@ -1,11 +1,12 @@
 use super::{BackingKind, TestKind};
 
+#[track_caller]
 pub fn raw_u64<T, I, const N: usize>(t: &T) -> u64
 where
     T: TestKind<I, N>,
     I: BackingKind,
 {
-    t.borrow().to_i64().unwrap() as u64
+    t.borrow().to_u64().unwrap()
 }
 
 pub fn set_raw<T, I, const N: usize>(t: &mut T, value: u64)

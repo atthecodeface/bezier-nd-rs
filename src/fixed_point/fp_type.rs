@@ -1,6 +1,5 @@
 use super::Int;
 
-
 /// A trait for how 'FpType<T,N>` can be a fixed point value with base type `T` and `N` fractional bits
 ///
 /// The fixed point type must have one bit for sign, at least one bit for
@@ -27,23 +26,6 @@ pub trait HowIsFixedPoint<T: Int> {
     ///
     /// The double has twice the number of integer bits and twice the number of fractional bits
     const NB_DBLINT: usize = Self::NB_SIGN_AND_INT * 2;
-    /// Bit mask of T of all zeros except the top bit (the sign bit)
-    ///
-    /// Must equal T::ONE << (Self::NB - 1)
-    const SIGN_MASK: T;
-    /// Bit mask of T of zeros in the fractional part, ones elsewhwere
-    ///
-    /// Must equal  (-T::ONE) << Self::NB_FRAC
-    const SIGNED_INT_MASK: T;
-    /// Bit mask of T of ones in the fractional part, zeros elsewhwere
-    ///
-    /// Must equal  !Self::SIGNED_INT_MASK
-    const FRAC_MASK: T;
-    /// Bit mask of a T with lower NB_INT-1 bits set
-    ///
-    /// If a value of T contains an integer where any of these bits are set but
-    /// not all then the value cannot be represented by the fixed point type
-    const MAX_INT_MASK: T;
     /// The value of one as a fixed point number
     ///
     /// Must equal T::ONE << Self::NB_FRAC;

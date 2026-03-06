@@ -19,16 +19,16 @@ where
         Self::ZERO
     }
     fn min_value() -> Self {
-        Self { value: T::ONE }
+        Self {
+            value: T::min_value(),
+        }
     }
     fn min_positive_value() -> Self {
         Self { value: T::ONE }
     }
     fn max_value() -> Self {
-        let sign_bit = <FPType<T, N> as HowIsFixedPoint<T>>::SIGN_MASK;
-        let int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::SIGNED_INT_MASK;
         Self {
-            value: int_mask & !sign_bit,
+            value: T::max_value(),
         }
     }
     fn is_nan(self) -> bool {
@@ -51,56 +51,37 @@ where
         }
     }
     fn floor(self) -> Self {
-        let int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::SIGNED_INT_MASK;
+        // This is trunc for values with a sign bit
         Self {
-            value: self.value & int_mask,
+            value: self.value & (!T::ZERO << N),
         }
     }
     fn ceil(self) -> Self {
-        let frac_mask = <FPType<T, N> as HowIsFixedPoint<T>>::FRAC_MASK;
-        let int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::SIGNED_INT_MASK;
-        let int_one = <FPType<T, N> as HowIsFixedPoint<T>>::ONE;
-        if self.value & frac_mask == T::ZERO {
-            self
-        } else {
+        // This is not ceil for values with a sign bit
+        let s = self.floor();
+        if s != self {
             Self {
-                // This should panic on overflow
-                value: (self.value & int_mask) + int_one,
+                value: s.value + (<FPType<T, N> as HowIsFixedPoint<T>>::ONE),
             }
+        } else {
+            s
         }
     }
     fn round(self) -> Self {
-        let frac_mask = <FPType<T, N> as HowIsFixedPoint<T>>::FRAC_MASK;
-        let half_frac_mask = frac_mask >> 1_u8;
-        if self.value > T::ZERO {
-            Self {
-                value: (self.value + (half_frac_mask + T::ONE)) & frac_mask,
-            }
-        } else {
-            Self {
-                value: (self.value + half_frac_mask) & frac_mask,
-            }
+        todo!();
+        // This is trunc for values with a sign bit, floor for two's complement values
+        Self {
+            value: self.value & (!T::ZERO << N),
         }
     }
     fn trunc(self) -> Self {
-        let frac_mask = <FPType<T, N> as HowIsFixedPoint<T>>::FRAC_MASK;
-        let int_mask = <FPType<T, N> as HowIsFixedPoint<T>>::SIGNED_INT_MASK;
-        // remove the fractional part; for +ve numbers this is clear the bits, for -ve numbers add the fractional mask the clear the bits
-        if self.value < T::ZERO {
-            Self {
-                value: (self.value + frac_mask) & int_mask,
-            }
-        } else {
-            Self {
-                value: self.value & int_mask,
-            }
+        // This is trunc for values with a sign bit, floor for two's complement values
+        Self {
+            value: self.value & (!T::ZERO << N),
         }
     }
     fn fract(self) -> Self {
-        let frac_mask = <FPType<T, N> as HowIsFixedPoint<T>>::FRAC_MASK;
-        Self {
-            value: self.value & frac_mask,
-        }
+        self - self.trunc()
     }
     fn abs(self) -> Self {
         if self.value < T::ZERO {

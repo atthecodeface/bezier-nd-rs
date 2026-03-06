@@ -77,26 +77,27 @@ where
     fn reduce_double(&mut self, dbl: &T::Dbl, shr: usize) -> bool {
         // Shift left by double size minus the shift right gives an (unsigned) bits we will drop
         // If this is (signed) negative then we are dropping >=1/2; if -itself==itself then it is zero or half
-        let bits_to_drop = *dbl << (T::NB_DBL - shr);
-        let mut add_one_after_shift = !(bits_to_drop & T::DBL_SIGN_MASK).is_zero();
-        if *dbl < T::Dbl::ZERO && bits_to_drop == T::DBL_SIGN_MASK {
+        let bits_to_drop = *dbl & !(!T::Dbl::ZERO << shr);
+        let half = T::Dbl::ONE << (shr - 1);
+        let bits_to_drop_is_half = bits_to_drop == half;
+        let bits_to_drop_is_under_half = (bits_to_drop & half).is_zero();
+        let mut add_one_after_shift = !bits_to_drop_is_under_half;
+        if *dbl < T::Dbl::ZERO && bits_to_drop_is_half {
             add_one_after_shift = false;
         }
 
-        let mut dbl = *dbl >> shr;
+        let mut reduced = *dbl >> shr;
         if add_one_after_shift {
-            dbl += T::Dbl::ONE;
+            reduced += T::Dbl::ONE;
         }
-        self.value = T::of_dbl_unchecked(dbl);
-
-        let all_set_or_clr = T::DBL_SIGN_MASK | T::DBL_UPPER_MASK;
-        dbl &= all_set_or_clr;
-        (dbl == all_set_or_clr) || dbl.is_zero()
+        let (value, overflow) = T::of_dbl(reduced);
+        self.value = value;
+        !overflow
     }
 
     #[inline(always)]
     pub(crate) fn do_add(&mut self, other: &Self) -> ArithCode {
-        let (r, o) = self.value.carrying_add(other.value, false);
+        let (r, o) = self.value.overflowing_add(&other.value);
         self.value = r;
         if !o {
             ArithCode::Ok
@@ -106,9 +107,10 @@ where
             ArithCode::OverflowMax
         }
     }
+
     #[inline(always)]
     pub(crate) fn do_sub(&mut self, other: &Self) -> ArithCode {
-        let (r, o) = self.value.borrowing_sub(other.value, false);
+        let (r, o) = self.value.overflowing_sub(&other.value);
         self.value = r;
         if !o {
             ArithCode::Ok
@@ -181,6 +183,7 @@ fn test_thing() {
 // num_traits::Wrapping*
 // num_traits::Saturating*
 // num_traits::Checked*
+// num_traits::ops::overflowing::*
 impl<T: UsefulInt, const N: usize> num_traits::Num for Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,

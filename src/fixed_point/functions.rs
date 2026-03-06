@@ -15,7 +15,7 @@ pub fn sqrt_dbl<F: UsefulUInt>(value: F::Dbl) -> F {
             est_sqrt_sq + (est_sqrt.as_dbl() << (i + 1)) + (F::Dbl::ONE << (2 * i));
         if new_est_sqrt_sq <= value {
             est_sqrt_sq = new_est_sqrt_sq;
-            est_sqrt += F::ONE << i ;
+            est_sqrt += F::ONE << i;
         }
     }
     est_sqrt
@@ -33,7 +33,7 @@ pub fn sqrt_dbl<F: UsefulUInt>(value: F::Dbl) -> F {
 /// For example, a u32_24 input produces a u32_28 output; a u64_0 (pure integer) produces a u64_32 output
 #[inline]
 pub fn sqrt<F: UsefulUInt>(x_sq: F) -> F {
-    sqrt_dbl(x_sq.as_dbl_upper())
+    sqrt_dbl(x_sq.as_dbl() << F::NB)
 }
 
 /// Given a pure fractional value of type `F` (i.e. one is F::MAX+1), return sqrt(1-x^2)
@@ -92,7 +92,7 @@ pub fn recip_sqrt<F: UsefulUInt>(x: F) -> F {
         let cmp = new_xtesq.cmp(&one);
         if cmp != std::cmp::Ordering::Greater {
             x_times_est_r_sqrt_sq = new_xtesq;
-            x_times_est_r_sqrt += x.as_dbl_upper() >> (F::NB - i);
+            x_times_est_r_sqrt += (x.as_dbl() << F::NB) >> (F::NB - i);
             est_r_sqrt += F::ONE << i;
             if cmp == std::cmp::Ordering::Equal {
                 return est_r_sqrt;
@@ -598,7 +598,7 @@ fn test_i32_28_exp() {
         let l_r = i32_28::ln_recip(e_r).expect("Should have managed ln_m");
         let l_r_f = to_float(l_r);
 
-        if false  {
+        if false {
             eprintln!(
                 "e:{e_f} ln(e):{l_f} {l:08x} {} {l_r_f} {}",
                 e_f.ln(),
@@ -629,7 +629,7 @@ fn test_i32_28_trig() {
     let x = i32_28::atan2(1 << 27, 1 << 27);
     let x_f = to_float(x);
     eprintln!("{x:x} {x_f} {}", x_f.to_degrees());
-    let e = i32_28::HALF_PI_U32_28 as i32 / 2 ;
+    let e = i32_28::HALF_PI_U32_28 as i32 / 2;
     let err = (e - x).abs();
     assert!(
         err < 4,
@@ -640,7 +640,7 @@ fn test_i32_28_trig() {
     let x_f = to_float(x);
 
     eprintln!("{x:x} {x_f} {}", x_f.to_degrees());
-    let e = i32_28::HALF_PI_U32_28 as i32 ;
+    let e = i32_28::HALF_PI_U32_28 as i32;
     let err = (e - x).abs();
     assert!(
         err < 4,
@@ -650,7 +650,7 @@ fn test_i32_28_trig() {
     let x = i32_28::atan2(1 << 28, 0x376cf5d0 >> 1);
     let x_f = to_float(x);
     eprintln!("{x:x} {x_f} {}", x_f.to_degrees());
-    let e = i32_28::HALF_PI_U32_28 as i32 / 3 ;
+    let e = i32_28::HALF_PI_U32_28 as i32 / 3;
     let err = (e - x).abs();
     assert!(
         err < 4,
@@ -660,14 +660,14 @@ fn test_i32_28_trig() {
     let x = i32_28::asin(0x2d413ccc >> 2);
     let x_f = to_float(x);
     eprintln!("{x:x} {x_f} {}", x_f.to_degrees());
-    let e = i32_28::HALF_PI_U32_28 as i32 / 2 ;
+    let e = i32_28::HALF_PI_U32_28 as i32 / 2;
     let err = (e - x).abs();
     assert!(
         err < 4,
         "asin of 1/sqrt(2) is PI/4 (got {x:08x} expected {e:08x}"
     );
 
-    for i in -20..=20  {
+    for i in -20..=20 {
         let i_f = (i as f64) / 20.0;
         let angle_f = std::f64::consts::FRAC_PI_2 * i_f;
         let angle = from_float(angle_f);
