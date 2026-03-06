@@ -1,6 +1,6 @@
 use super::{FPType, Fixed, HowIsFixedPoint, UsefulInt};
 
-use num_traits::{Bounded, ConstOne, ConstZero, Signed};
+use num_traits::{Bounded, Signed};
 
 impl<T: UsefulInt, const N: usize> Signed for Fixed<T, N>
 where

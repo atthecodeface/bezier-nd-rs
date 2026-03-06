@@ -1,3 +1,4 @@
+/// The code returned by some arithmentic operations to provide for saturating, wrapping, and checked results
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArithCode {
     /// Indicates a perfectly valid result was obtained

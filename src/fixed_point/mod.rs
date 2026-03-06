@@ -5,7 +5,7 @@ pub use arith_code::ArithCode;
 mod consts;
 mod useful;
 pub use consts::{u64_4, UsefulConsts};
-pub(crate) use useful::{Int, UsefulInt, UsefulUInt};
+pub use useful::{Int, UsefulInt, UsefulUInt};
 
 pub(crate) mod functions;
 mod trig;
@@ -27,6 +27,13 @@ mod nt_num_ops;
 mod nt_saturating;
 mod nt_signed;
 
+/// A marker trait that is implemented for `Fixed<T,N>` for any type T providing a fixed point value with N fraction bits
+///
+/// This is implemented automatically when the trait `HowIsFixedPoint<T>` is implemented for `FPType<T,N>`.
+///
+/// Quite probably the [UsefulConsts] should be somehow part of this? But they are for T...
+///
+/// This should probably be sealed as external types *cannot* implement it?
 pub trait IsFixed<T, const N: usize> {}
 impl<T: UsefulInt, const N: usize> IsFixed<T, N> for Fixed<T, N> where
     FPType<T, N>: HowIsFixedPoint<T>
@@ -41,6 +48,9 @@ mod test;
 use crate::bignum::{IntN, UIntN};
 use num_traits::ConstZero;
 
+// It would be nice to punt this into bignum; then it proves that Fixed can run
+// on user types. It is probably better that way round than Fixed running only
+// on types that it knows about
 impl UsefulInt for IntN<4> {
     type Unsigned = UIntN<4>;
     type Dbl = IntN<8>;

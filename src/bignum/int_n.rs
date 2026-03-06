@@ -423,12 +423,14 @@ impl<const N: usize> IntN<N> {
         assert!(!self.do_sub_overflow(other), "Subtratcion underflowed");
     }
 
+    /// Shift the value left by an amount
     #[track_caller]
-    pub fn shift_left(&mut self, amount: u32) -> bool {
+    fn shift_left(&mut self, amount: u32) -> bool {
         self.value.shift_left(amount)
     }
+    /// Shift the value right by an amount
     #[track_caller]
-    pub fn shift_right(&mut self, amount: u32) {
+    fn shift_right(&mut self, amount: u32) {
         self.value.shift_right(amount)
     }
 

@@ -1,4 +1,4 @@
-use num_traits::{ConstOne, ConstZero};
+use num_traits::ConstOne;
 
 use super::{FPType, HowIsFixedPoint};
 

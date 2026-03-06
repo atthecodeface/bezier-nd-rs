@@ -481,6 +481,7 @@ impl<const N: usize> UIntN<N> {
         (N as u32) * 64
     }
 
+    /// Return a reference to the raw values
     pub fn raw(&self) -> &[u64] {
         &self.value
     }
@@ -488,17 +489,6 @@ impl<const N: usize> UIntN<N> {
     /// Generate an iterator of char for the digits of the number given a radix
     pub fn as_digits(&self, radix: u32) -> impl Iterator<Item = char> {
         UIntNDigitIter::new(*self, radix).map(move |c| char::from_digit(c, radix).unwrap())
-    }
-
-    /// Shift a u64 left by an amount to produce the shift out and the bits remaining
-    fn shift_u64(value: u64, shl: u32) -> (u64, u64) {
-        if shl == 0 {
-            (0, value)
-        } else if shl < 64 {
-            ((value >> 64 - shl), (value << shl))
-        } else {
-            (value << (shl - 64), 0)
-        }
     }
 
     /// Return the value with just the specified bit set

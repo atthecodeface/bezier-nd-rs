@@ -1,7 +1,9 @@
 use num_traits::{ConstOne, ConstZero};
 
-/// Internal trait that bundles up traits required for UsefulInt and UsefulUInt
-pub(crate) trait Int:
+/// A trait that bundles up traits required for UsefulInt and UsefulUInt
+///
+/// We want UsefulInt and UsefulUInt to probably be visible externally
+pub trait Int:
     Copy
     + 'static
     + Default
@@ -66,7 +68,7 @@ impl<T> Int for T where
 {
 }
 
-pub(crate) trait SignedInt:
+pub trait SignedInt:
     Int
     + std::ops::Neg<Output = Self>
     + num_traits::ops::overflowing::OverflowingSub
@@ -81,27 +83,53 @@ impl<T> SignedInt for T where
 {
 }
 
-pub(crate) trait UsefulInt: SignedInt {
+/// The trait supplying the methods and associated types required for a value to be used in fixed point calculations
+pub trait UsefulInt: SignedInt {
+    /// The associated unsigned value type
     type Unsigned: UsefulUInt;
+    /// The associated signed value type with double the number of bits
     type Dbl: Int;
+    /// The associated unsigned value type with double the number of bits
     type DblUnsigned: Int;
+    /// The number of bits (including a sign bit if negative numbers are twos complement)
     const NB: usize;
+    /// The number of bits in the double type
     const NB_DBL: usize = Self::NB * 2;
+    /// Return this sign extended into a value with double the number of bits
     fn as_dbl(self) -> Self::Dbl;
+    /// Return this as a value with double the number of bits, with the least significant bits set to zero
     fn as_dbl_upper(self) -> Self::Dbl;
+    /// Return this zero-extended into a value with double the number of bits
     fn as_dbl_unsigned(self) -> Self::DblUnsigned;
+    /// Reutrn this as an unsigned value using the associated type
+    ///
+    /// Does this panic if the value is negative?
     fn unsigned(self) -> Self::Unsigned;
+    /// Return a value given an unsigned value
+    ///
+    /// Does this panic if the value has the top bit set and this is twos complement?
     fn of_unsigned(v: Self::Unsigned) -> Self;
+    /// Return the value of the least significant bits of the double as this
+    /// type, and indicate whether the value overflowed (i.e. the value returned
+    /// does not match the value in the original double)
     fn of_dbl(dbl: Self::Dbl) -> (Self, bool);
-    // fn unsigned_of_dbl(dbl: Self::Dbl) -> (Self::Unsigned, Self::Unsigned);
+    /// Multiply by another value producing a value that is double the number of bits; this loses no precision
     fn dbl_mult(self, other: &Self) -> Self::Dbl;
+    /// The minimum value representable; for two's complement this is the value with only the top bit set
     fn min_value() -> Self;
+    /// The maximum value representable; for two's complement this is the value with only the top bit clear
     fn max_value() -> Self;
 }
 
+/// The trait that must be implemented for the Fixed value to be able to use stuff
+///
+/// Can we lose this one if we have the methods in UsefulInt?
 pub trait UsefulUInt: Int {
+    /// A type with double the number of bits
     type Dbl: Int;
+    /// The number of bits
     const NB: usize;
+    /// Convert Self to a double version with the most significant bits all zeros
     fn as_dbl(self) -> Self::Dbl;
 }
 
