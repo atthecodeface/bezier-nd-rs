@@ -212,7 +212,40 @@ where
         todo!();
     }
     fn integer_decode(self) -> (u64, i16, i8) {
-        todo!();
+        if self.is_zero() {
+            (0, 0, 1)
+        } else {
+            let num_bits = <FPType<T, N> as HowIsFixedPoint<T>>::NB;
+            let num_frac_bits = N as i16;
+            let (sign, s) = if self.is_sign_negative() {
+                (-1, -self.value)
+            } else {
+                (1, self.value)
+            };
+            if let Some(value) = s.to_u64() {
+                return (value, -num_frac_bits, sign);
+            }
+            // Can optimize this with a binary search
+            let mut top_bit: usize = 63;
+            let mut x = s >> top_bit;
+            for _ in 0..num_bits {
+                if x <= T::ONE {
+                    break;
+                }
+                x = x >> 1_usize;
+                top_bit += 1;
+            }
+
+            // If the top bit is bit 79 then we need to shift that down to bit 63, ie. by 16
+            //
+            // This *must* (or else things are pear-shaped) be convertible to a u64
+            let s = s >> (top_bit - 63);
+            (
+                s.to_u64().unwrap(),
+                (top_bit as i16) - num_frac_bits - 63,
+                sign,
+            )
+        }
     }
 
     fn epsilon() -> Self {

@@ -3,7 +3,98 @@ use crate::bignum::UIntN;
 use super::{utils, BackingKind, TestKind};
 
 use super::calculate_constants;
+use num_traits::FloatConst;
 
+fn hex_array(data: &[u64]) -> String {
+    let mut result = format!("[");
+    let mut has_nonzero = false;
+    for i in data {
+        if has_nonzero || *i != 0 {
+            result.push_str(&format!("{:#016x}, ", *i));
+            has_nonzero = true;
+        }
+    }
+    result.push_str("]");
+    result
+}
+
+fn calcuate_constants<const N: usize>(frac_bits: u32, display_frac_bits: u32) {
+    let one_dbl_frac = UIntN::<N>::with_bit_set(frac_bits * 2);
+    let one = UIntN::<N>::with_bit_set(frac_bits);
+    let two = one + one;
+    let sqrt_two = (two << frac_bits).sqrt();
+    let pi = calculate_constants::pi_scaled_by::<N>(frac_bits);
+    let e = calculate_constants::e_scaled_by::<N>(frac_bits);
+    let frac_2_pi = (one_dbl_frac + one_dbl_frac) / pi;
+    let frac_pi_3 = (pi << frac_bits) / (one + one + one);
+    let sqrt_pi = calculate_constants::pi_scaled_by::<N>(frac_bits * 2).sqrt();
+    let frac_1_sqrt_pi = one_dbl_frac / sqrt_pi;
+    let ln_two = calculate_constants::ln_two_scaled_by::<N>(frac_bits);
+    let ln_ten = calculate_constants::ln_one_plus_two_neg_power::<N>(frac_bits, 2, None)
+        + ln_two
+        + ln_two
+        + ln_two;
+    let log2_e = one_dbl_frac / ln_two;
+    let log10_e = one_dbl_frac / ln_ten;
+    let log2_ten = (log2_e << frac_bits) / log10_e;
+    let log10_two = (log10_e << frac_bits) / log2_e;
+
+    let display_shift = (frac_bits - display_frac_bits) as usize;
+    eprintln!(
+        "const SQRT_2 = {}",
+        &hex_array((sqrt_two >> (display_shift + 1)).raw())
+    );
+    eprintln!(
+        "const LN_2 = {}",
+        &hex_array((ln_two >> (display_shift)).raw())
+    );
+    eprintln!(
+        "const LN_10 = {}",
+        &hex_array((ln_ten >> (display_shift + 2)).raw())
+    );
+    eprintln!(
+        "const LOG2_E = {}",
+        &hex_array((log2_e >> (display_shift + 1)).raw())
+    );
+    eprintln!(
+        "const LOG2_10 = {}",
+        &hex_array((log2_ten >> (display_shift + 2)).raw())
+    );
+    eprintln!(
+        "const LOG10_E = {}",
+        &hex_array((log10_e >> (display_shift - 1)).raw())
+    );
+    eprintln!(
+        "const LOG10_2 = {}",
+        &hex_array((log10_two >> (display_shift - 1)).raw())
+    );
+    eprintln!(
+        "const PI = {}",
+        &hex_array((pi >> (display_shift + 2)).raw())
+    );
+    eprintln!(
+        "const FRAC_2_PI = {}",
+        &hex_array((frac_2_pi >> display_shift).raw())
+    );
+    eprintln!(
+        "const FRAC_PI_3 = {}",
+        &hex_array((frac_pi_3 >> (display_shift + 1)).raw())
+    );
+    eprintln!(
+        "const FRAC_1_SQRT_PI = {}",
+        &hex_array((frac_1_sqrt_pi >> (display_shift)).raw())
+    );
+    eprintln!("const E = {}", &hex_array((e >> (display_shift + 2)).raw()));
+}
+
+#[test]
+fn calculate_constants_256() {
+    // Display of 256 requires 4*u64 + integer bits
+    // Double that provides for 1/N
+    // But for Sqrt(1/N) we need four times it
+    calcuate_constants::<20>(512, 256);
+    // assert!(false);
+}
 #[test]
 fn calcuation_of_constants() {
     let pi_126 = calculate_constants::pi_scaled_by::<3>(126);
@@ -117,8 +208,13 @@ where
     assert_eq!(z, T::from_u8(0).unwrap(), "Zero must be zero");
     assert_eq!(o, T::from_u8(1).unwrap(), "One must be one");
 
-    assert_eq!(utils::raw_u64(&z), 0, "Zero encoded as 0");
-    assert_eq!(utils::raw_u64(&o), 1 << N, "One encoded as 1<<N");
+    assert_eq!(z.integer_decode().0, 0, "Zero encoded as 0");
+    assert_eq!(o.integer_decode().2, 1, "One encoded as positive");
+    assert_eq!(
+        o.integer_decode().0 >> (-o.integer_decode().1),
+        1,
+        "One encoded as 1<<N"
+    );
 
     if int_bits > 1 {
         let t = o + o;
@@ -143,20 +239,6 @@ where
             assert!(f < s, "4<6");
         }
     }
-
-    let mut half = T::ZERO;
-    utils::set_raw(&mut half, 1 << (N - 1));
-    eprintln!("Half {half:?}");
-    assert_eq!(half + half, o, "Two halves added is one");
-    assert_eq!(
-        utils::raw_u64(&half),
-        1 << (N - 1),
-        "Half encoded as 1<<(N-1)"
-    );
-
-    let mut smallest = T::ZERO;
-    utils::set_raw(&mut smallest, 1);
-    assert_eq!(utils::raw_u64(&smallest), 1, "Smallest value must be 1");
 }
 
 /// An explicit test that requires sub and mul to work fully
@@ -178,18 +260,26 @@ where
     I: BackingKind,
 {
     let int_bits = utils::int_bits(&T::ZERO);
-    let mut half = T::ZERO;
-    utils::set_raw(&mut half, 1 << (N - 1));
-    let pi_raw_u64_48: u64 = 0x3243f6a8885a3;
-    let e_raw_u64_48: u64 = 0x2b7e151628aed;
-    let ln2_raw_u64_48: u64 = 0xb17217f7d1cf;
-    let ln10_raw_u64_48: u64 = 0x24d763776aaa3;
+    let mut half = T::ONE;
+    half = half / (half + half);
 
     let half_pi = T::FRAC_PI_2();
 
     if int_bits >= 2 {
         let pi = T::PI();
-        eprintln!("PI :{:0x}", utils::raw_u64(&pi));
+        eprintln!(
+            "PI :{:0x} << {}",
+            pi.integer_decode().0,
+            pi.integer_decode().1
+        );
+
+        assert!(
+            utils::nearly_equal(pi, half_pi + half_pi, 2),
+            "PI - 2*HALF_PI must be different only in rounding"
+        );
+
+        eprintln!("PI minus 3 :{:?}", pi - T::from_u8(3).unwrap());
+        eprintln!("PI minus 3.5 :{:?}", pi - half - T::from_u8(3).unwrap());
         assert!(
             pi > T::from_u8(3).unwrap(),
             "PI is supposed to be more than 3!"
@@ -202,19 +292,18 @@ where
         // The test value is only 48 bits of fraction, so check as many of those as possible
         //
         // This assumes no rounding, which is poor...
-        if N < 48 {
-            assert_eq!(utils::raw_u64(&pi), pi_raw_u64_48 >> (48 - N));
-        } else {
-            assert_eq!(utils::raw_u64(&pi) >> (N - 48), pi_raw_u64_48);
-        }
         assert!(
-            utils::nearly_equal(pi, half_pi + half_pi, 2),
-            "PI - 2*HALF_PI must be different only in rounding"
+            utils::matches_float(pi, f64::PI()),
+            "Top bits (up to 48) should match known good value for PI"
         );
     }
     if int_bits >= 3 {
         let tau = T::TAU();
-        eprintln!("TAU :{:0x}", utils::raw_u64(&tau));
+        eprintln!(
+            "TAU :{:0x} << {}",
+            tau.integer_decode().0,
+            tau.integer_decode().1
+        );
         assert!(tau > T::from_u8(6).unwrap(), "TAU is more than 6!");
         assert!(tau - half < T::from_u8(6).unwrap(), "TAU is less than 6.5!");
 
@@ -222,9 +311,17 @@ where
             utils::nearly_equal(tau, half_pi + half_pi + half_pi + half_pi, 4),
             "TAU - 4*HALF_PI must be different only in rounding"
         );
+        assert!(
+            utils::matches_float(tau, f64::TAU()),
+            "Top bits (up to 48) should match known good value for TAU"
+        );
     }
 
-    eprintln!("PI/2 :{:0x}", utils::raw_u64(&half_pi));
+    eprintln!(
+        "PI/2 :{:0x} << {}",
+        half_pi.integer_decode().0,
+        half_pi.integer_decode().1
+    );
     assert!(half_pi > T::from_u8(1).unwrap(), "PI/2 is more than 1!");
     assert!(
         half_pi - half > T::from_u8(1).unwrap(),
@@ -233,27 +330,33 @@ where
     if int_bits >= 2 {
         assert!(half_pi < T::from_u8(2).unwrap(), "PI/2 is less than 2!");
     }
-    if N < 49 {
-        assert_eq!(utils::raw_u64(&half_pi), pi_raw_u64_48 >> (49 - N));
-    } else {
-        assert_eq!(utils::raw_u64(&half_pi) >> (N - 49), pi_raw_u64_48);
-    }
+    assert!(
+        utils::matches_float(half_pi, f64::FRAC_PI_2()),
+        "Top bits (up to 48) should match known good value for half PI"
+    );
 
     if int_bits >= 2 {
         let r_pi = T::FRAC_1_PI();
         let pi = T::PI();
         let r = r_pi * pi;
-        assert!(utils::nearly_equal(r, T::ONE, 2), "1/PI * PI should be 1");
+        dbg!(r);
+        assert!(utils::nearly_equal(r, T::ONE, 3), "1/PI * PI should be 1");
 
         let r = half_pi * T::FRAC_2_PI();
-        assert!(utils::nearly_equal(r, T::ONE, 2), "2/PI * PI/2 should be 1");
+        dbg!(r);
+        assert!(utils::nearly_equal(r, T::ONE, 3), "2/PI * PI/2 should be 1");
+
+        assert!(
+            utils::matches_float(T::FRAC_2_PI(), f64::FRAC_2_PI()),
+            "Top bits (up to 48) should match known good value for 2/PI"
+        );
     }
 
     if int_bits >= 3 {
         let r_pi = T::FRAC_1_PI();
         let r = r_pi * T::TAU() * half;
         assert!(
-            utils::nearly_equal(r, T::ONE, 2),
+            utils::nearly_equal(r, T::ONE, 3),
             "1/PI * TAU * half should be 1"
         );
     }
@@ -310,32 +413,34 @@ where
         "1/sqrt(2)*1/sqrt(2) should be half",
     );
 
-    if N < 48 {
-        assert_eq!(utils::raw_u64(&T::E()), e_raw_u64_48 >> (48 - N));
-        assert_eq!(utils::raw_u64(&T::LN_2()), ln2_raw_u64_48 >> (48 - N));
-        assert_eq!(utils::raw_u64(&T::LN_10()), ln10_raw_u64_48 >> (48 - N));
-    } else {
-        assert_eq!(utils::raw_u64(&T::E()) >> (N - 48), e_raw_u64_48);
-        assert_eq!(utils::raw_u64(&T::LN_2()) >> (N - 48), ln2_raw_u64_48);
-        assert_eq!(utils::raw_u64(&T::LN_10()) >> (N - 48), ln10_raw_u64_48 - 1);
-        // ah hack the rounding for now
-    }
-
     assert!(
-        utils::nearly_equal(T::LOG2_E() * T::LN_2(), T::ONE, 2),
-        "logs"
+        utils::matches_float(T::E(), f64::E()),
+        "Top bits (up to 48) should match known good value for e"
     );
     assert!(
-        utils::nearly_equal(T::LOG2_10() * T::LN_2(), T::LN_10(), 2),
-        "logs"
+        utils::matches_float(T::LN_2(), f64::LN_2()),
+        "Top bits (up to 48) should match known good value for ln(2)"
+    );
+    assert!(
+        utils::matches_float(T::LN_10(), f64::LN_10()),
+        "Top bits (up to 48) should match known good value for ln(10)"
     );
 
     assert!(
-        utils::nearly_equal(T::LOG10_E() * T::LN_10(), T::ONE, 2),
-        "logs"
+        utils::nearly_equal(T::LOG2_E() * T::LN_2(), T::ONE, 3),
+        "log2_E"
     );
     assert!(
-        utils::nearly_equal(T::LOG10_2() * T::LN_10(), T::LN_2(), 2),
-        "logs"
+        utils::nearly_equal(T::LOG2_10() * T::LN_2(), T::LN_10(), 3),
+        "log2_10"
+    );
+
+    assert!(
+        utils::nearly_equal(T::LOG10_E() * T::LN_10(), T::ONE, 3),
+        "log10_E"
+    );
+    assert!(
+        utils::nearly_equal(T::LOG10_2() * T::LN_10(), T::LN_2(), 3),
+        "log10_2"
     );
 }

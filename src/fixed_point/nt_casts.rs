@@ -60,7 +60,9 @@ where
     }
     fn to_u64(&self) -> Option<u64> {
         let nb_frac = <FPType<T, N> as HowIsFixedPoint<T>>::NB_FRAC;
+        dbg!(self);
         let s = self.value >> nb_frac;
+        dbg!(&s);
         s.to_u64()
     }
 }

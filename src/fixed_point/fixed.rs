@@ -1,4 +1,4 @@
-use super::{UsefulInt, UsefulUInt};
+use super::UsefulInt;
 
 use super::{ArithCode, FPType, HowIsFixedPoint};
 

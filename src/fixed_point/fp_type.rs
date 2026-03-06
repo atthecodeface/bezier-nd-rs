@@ -9,6 +9,8 @@ pub trait HowIsFixedPoint<T: Int> {
     /// Number of bits in T
     const NB: usize = 0;
     /// Number of bits in the fractional part
+    ///
+    /// This is given by 'N' in `Fixed<T,N>`; it is here because it is needed for the other constants
     const NB_FRAC: usize = 0;
     /// Number of bits in the integer part (including the sign bit)
     ///
@@ -16,8 +18,10 @@ pub trait HowIsFixedPoint<T: Int> {
     const NB_SIGN_AND_INT: usize = Self::NB - Self::NB_FRAC;
     /// Number of bits in the pure integer part (excluding the sign bit)
     ///
-    /// This *MUST* conform to NB = 1 + NB_INT + NB_FRAC
-    const NB_INT: usize = Self::NB - Self::NB_FRAC;
+    /// This *MUST* conform to NB = 1 + NB_INT + NB_FRAC for two's complement values
+    ///
+    /// This *MUST* conform to NB = NB_INT + NB_FRAC for values with a separate sign
+    const NB_INT: usize = Self::NB - Self::NB_FRAC - 1;
     /// Number of fractional bits in the double, when treated as our associated fixed point value
     ///
     /// The double has twice the number of integer bits and twice the number of fractional bits

@@ -1,5 +1,6 @@
 use super::UIntN;
 use num_traits::Zero;
+use num_traits::{ops::overflowing::OverflowingMul, FromPrimitive};
 use std::ops::*;
 
 /// A signed integer, of +- 64*N bits (stored with sign and magnitude),
@@ -323,47 +324,6 @@ impl<const N: usize> std::ops::Div<UIntN<N>> for IntN<N> {
     }
 }
 
-impl<const N: usize> num_traits::FromPrimitive for IntN<N> {
-    fn from_i64(n: i64) -> Option<Self> {
-        Some(n.into())
-    }
-    fn from_u64(n: u64) -> Option<Self> {
-        Some(n.into())
-    }
-}
-
-impl<const N: usize> num_traits::identities::One for IntN<N> {
-    fn one() -> Self {
-        Self {
-            value: UIntN::one(),
-            ..Default::default()
-        }
-    }
-}
-
-impl<const N: usize> num_traits::identities::Zero for IntN<N> {
-    fn zero() -> Self {
-        Self::default()
-    }
-    fn is_zero(&self) -> bool {
-        self.value_is_zero()
-    }
-}
-
-impl<const N: usize> num_traits::identities::ConstZero for IntN<N> {
-    const ZERO: Self = Self {
-        is_neg: false,
-        value: UIntN::ZERO,
-    };
-}
-
-impl<const N: usize> num_traits::identities::ConstOne for IntN<N> {
-    const ONE: Self = Self {
-        is_neg: false,
-        value: <UIntN<_> as num_traits::identities::ConstOne>::ONE,
-    };
-}
-
 impl<const N: usize> IntN<N> {
     /// Create a new value
     pub const fn new(is_neg: bool, value: [u64; N]) -> Self {
@@ -529,8 +489,6 @@ impl<const N: usize> IntN<N> {
     }
 }
 
-use num_traits::{ops::overflowing::OverflowingMul, FromPrimitive};
-
 impl<const N: usize> num_traits::ToPrimitive for IntN<N> {
     fn to_i64(&self) -> Option<i64> {
         self.value
@@ -543,6 +501,15 @@ impl<const N: usize> num_traits::ToPrimitive for IntN<N> {
         } else {
             self.value.to_u64()
         }
+    }
+}
+
+impl<const N: usize> num_traits::FromPrimitive for IntN<N> {
+    fn from_i64(n: i64) -> Option<Self> {
+        Some(n.into())
+    }
+    fn from_u64(n: u64) -> Option<Self> {
+        Some(n.into())
     }
 }
 
@@ -567,4 +534,36 @@ impl<const N: usize> num_traits::Num for IntN<N> {
         }
         Ok(Self { is_neg, value })
     }
+}
+
+impl<const N: usize> num_traits::identities::One for IntN<N> {
+    fn one() -> Self {
+        Self {
+            value: UIntN::one(),
+            ..Default::default()
+        }
+    }
+}
+
+impl<const N: usize> num_traits::identities::Zero for IntN<N> {
+    fn zero() -> Self {
+        Self::default()
+    }
+    fn is_zero(&self) -> bool {
+        self.value_is_zero()
+    }
+}
+
+impl<const N: usize> num_traits::identities::ConstZero for IntN<N> {
+    const ZERO: Self = Self {
+        is_neg: false,
+        value: UIntN::ZERO,
+    };
+}
+
+impl<const N: usize> num_traits::identities::ConstOne for IntN<N> {
+    const ONE: Self = Self {
+        is_neg: false,
+        value: <UIntN<_> as num_traits::identities::ConstOne>::ONE,
+    };
 }

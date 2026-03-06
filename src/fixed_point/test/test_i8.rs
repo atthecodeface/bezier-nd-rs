@@ -10,7 +10,7 @@ fn basic() {
     constants::float_constants::<Fixed<i8, 4>, i8, 4>();
 
     constants::float_constants::<Fixed<i64, 60>, i64, 60>();
-    //   constants::float_constants::<Fixed<IntN<4>, 240>, IntN<4>, 240>();
+    constants::float_constants::<Fixed<IntN<4>, 240>, IntN<4>, 240>();
 
     //    assert!(false, "Forced failure");
 }

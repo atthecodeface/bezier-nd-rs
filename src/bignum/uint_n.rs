@@ -10,7 +10,7 @@ use std::ops::*;
 ///
 /// The purpose of this 'bignum' is to enable larger numbers simply for algorithms that
 /// require num_traits::Num
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct UIntN<const N: usize> {
     /// Value is stored with most significant at index 0 so that PartialOrd operates correctly
     value: [u64; N],
@@ -142,6 +142,16 @@ impl<const N: usize> std::iter::Iterator for UIntNDigitIter<N> {
             self.remaining = rem;
             Some(digit)
         }
+    }
+}
+
+impl<const N: usize> std::fmt::Debug for UIntN<N> {
+    fn fmt(&self, fmt: &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        write!(fmt, "[")?;
+        for v in &self.value {
+            write!(fmt, "{:016x}, ", v)?;
+        }
+        write!(fmt, "]")
     }
 }
 
@@ -502,12 +512,14 @@ impl<const N: usize> UIntN<N> {
         s
     }
 
-    /// Return the value with just the specified bit set
+    /// Return the value with the bottom 'num_bits' set
+    ///
+    /// Should change this to a binary search kind of approach
     pub fn mask(num_bits: u32) -> Self {
         let mut s = Self { value: [0; N] };
         for i in 0..num_bits {
             let bit = 1 << (i & 63);
-            s.value[N - 1 - (bit >> 6) as usize] |= bit;
+            s.value[N - 1 - (i >> 6) as usize] |= bit;
         }
         s
     }
