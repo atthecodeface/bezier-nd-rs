@@ -218,4 +218,5 @@ impl HowIsFixedPoint<IntN<4>> for FPType<IntN<4>, 240> {
     const NB_FRAC: usize = 240;
     const NB_INT: usize = Self::NB - Self::NB_FRAC;
     const ONE: IntN<4> = IntN::<4>::with_bit_set(240);
+    const DEDICATED_SIGN: bool = true;
 }

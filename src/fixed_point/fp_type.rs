@@ -34,6 +34,8 @@ pub trait HowIsFixedPoint<T: Int> {
     ///
     /// Must equal T::ONE << Self::NB_FRAC;
     const ONE: T;
+    /// True if there is a dedicated sign bit and the value is held as an unsigned value; false if the value is held using two's complement
+    const DEDICATED_SIGN: bool = false;
 }
 
 /// Type for which `HowIsFixedPoint<T>` must be implemented for `Fixed<T,N>` to be valid

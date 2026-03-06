@@ -47,6 +47,9 @@ pub trait UsefulConsts: Int {
     const FRAC_PI_3: Self;
     /// The value '1/sqrt(PI)' (0.5641895835477563...) shifted to provide maximum precision
     const FRAC_1_SQRT_PI: Self;
+
+    const TO_RADIANS: Self = Self::ZERO;
+    const TO_DEGREES: Self = Self::ZERO;
 }
 
 impl UsefulConsts for u128 {

@@ -6,7 +6,7 @@ impl<T: UsefulInt + UsefulConsts, const N: usize> Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
 {
-    fn cnst(c: T, int_bits: isize) -> Self {
+    pub(crate) fn cnst(c: T, int_bits: isize) -> Self {
         let shr = ((<FPType<T, N> as HowIsFixedPoint<T>>::NB_INT as isize) - int_bits) as usize;
         Self { value: c >> shr }
     }

@@ -1,8 +1,8 @@
-use super::{FPType, Fixed, HowIsFixedPoint, UsefulInt};
+use super::{FPType, Fixed, HowIsFixedPoint, UsefulConsts, UsefulInt};
 
 use num_traits::{ConstOne, ConstZero, Float, Zero};
 
-impl<T: UsefulInt, const N: usize> Float for Fixed<T, N>
+impl<T: UsefulInt + UsefulConsts, const N: usize> Float for Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
 {
@@ -50,6 +50,7 @@ where
             std::num::FpCategory::Normal
         }
     }
+
     fn floor(self) -> Self {
         // This is trunc for values with a sign bit
         Self {
@@ -83,6 +84,7 @@ where
     fn fract(self) -> Self {
         self - self.trunc()
     }
+
     fn abs(self) -> Self {
         if self.value < T::ZERO {
             Self { value: -self.value }
@@ -102,39 +104,6 @@ where
     }
     fn is_sign_negative(self) -> bool {
         self.value < T::ZERO
-    }
-    fn mul_add(self, _a: Self, _b: Self) -> Self {
-        todo!();
-    }
-    fn recip(self) -> Self {
-        todo!();
-    }
-    fn powi(self, _n: i32) -> Self {
-        todo!();
-    }
-    fn powf(self, _n: Self) -> Self {
-        todo!();
-    }
-    fn sqrt(self) -> Self {
-        todo!();
-    }
-    fn exp(self) -> Self {
-        todo!();
-    }
-    fn exp2(self) -> Self {
-        todo!();
-    }
-    fn ln(self) -> Self {
-        todo!();
-    }
-    fn log(self, _base: Self) -> Self {
-        todo!();
-    }
-    fn log2(self) -> Self {
-        todo!();
-    }
-    fn log10(self) -> Self {
-        todo!();
     }
     fn max(self, other: Self) -> Self {
         if self.value > other.value {
@@ -157,9 +126,78 @@ where
             other - self
         }
     }
+
+    fn mul_add(self, a: Self, b: Self) -> Self {
+        self * a + b
+    }
+
+    fn recip(self) -> Self {
+        Self::ONE / self
+    }
+
+    fn sqrt(self) -> Self {
+        // Invoke the fixed point function sqrt() on self (possibly shifted right by one) and shift left by frac_bits/2
+        todo!();
+    }
     fn cbrt(self) -> Self {
         todo!();
     }
+
+    fn powi(self, _n: i32) -> Self {
+        todo!();
+    }
+    fn powf(self, _n: Self) -> Self {
+        // y^x = 2^(x/log2(y))
+        todo!();
+    }
+    fn exp(self) -> Self {
+        todo!();
+    }
+    fn exp2(self) -> Self {
+        // 2^x = (2^x.frac())<<x.floor()
+        todo!();
+    }
+    fn ln(self) -> Self {
+        // ln(x) = ln(2)*log2(x)
+        todo!();
+    }
+    fn log(self, _base: Self) -> Self {
+        // log2(e^x) = x*log2(e)
+        // e^x = 2^(log2(e^x)) = 2^(x.log2(e))
+        // logb(x) = ln(x) * ln(b)
+        todo!();
+    }
+    fn log2(self) -> Self {
+        todo!();
+    }
+    fn log10(self) -> Self {
+        todo!();
+    }
+    fn exp_m1(self) -> Self {
+        todo!();
+    }
+    fn ln_1p(self) -> Self {
+        todo!();
+    }
+    fn sinh(self) -> Self {
+        todo!();
+    }
+    fn cosh(self) -> Self {
+        todo!();
+    }
+    fn tanh(self) -> Self {
+        todo!();
+    }
+    fn asinh(self) -> Self {
+        todo!();
+    }
+    fn acosh(self) -> Self {
+        todo!();
+    }
+    fn atanh(self) -> Self {
+        todo!();
+    }
+
     fn hypot(self, _other: Self) -> Self {
         todo!();
     }
@@ -187,30 +225,7 @@ where
     fn sin_cos(self) -> (Self, Self) {
         todo!();
     }
-    fn exp_m1(self) -> Self {
-        todo!();
-    }
-    fn ln_1p(self) -> Self {
-        todo!();
-    }
-    fn sinh(self) -> Self {
-        todo!();
-    }
-    fn cosh(self) -> Self {
-        todo!();
-    }
-    fn tanh(self) -> Self {
-        todo!();
-    }
-    fn asinh(self) -> Self {
-        todo!();
-    }
-    fn acosh(self) -> Self {
-        todo!();
-    }
-    fn atanh(self) -> Self {
-        todo!();
-    }
+
     fn integer_decode(self) -> (u64, i16, i8) {
         if self.is_zero() {
             (0, 0, 1)
@@ -255,10 +270,10 @@ where
         false
     }
     fn to_degrees(self) -> Self {
-        todo!();
+        self * Self::cnst(T::TO_DEGREES, 6)
     }
     fn to_radians(self) -> Self {
-        todo!();
+        self * Self::cnst(T::TO_RADIANS, -5)
     }
     fn clamp(self, min: Self, max: Self) -> Self {
         if self < min {
