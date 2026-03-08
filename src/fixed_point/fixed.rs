@@ -1,3 +1,5 @@
+use std::sync::atomic::AtomicBool;
+
 use super::UsefulInt;
 
 use super::{ArithCode, FPType, HowIsFixedPoint};
@@ -96,6 +98,23 @@ where
     }
 
     #[inline(always)]
+    pub(crate) fn do_bit_and(&mut self, other: &Self) -> ArithCode {
+        self.value &= other.value;
+        ArithCode::Ok
+    }
+    #[inline(always)]
+    pub(crate) fn do_bit_or(&mut self, other: &Self) -> ArithCode {
+        self.value |= other.value;
+        ArithCode::Ok
+    }
+    #[inline(always)]
+    pub(crate) fn do_bit_xor(&mut self, other: &Self) -> ArithCode {
+        self.value ^= other.value;
+        ArithCode::Ok
+    }
+
+    #[inline(always)]
+    #[must_use]
     pub(crate) fn do_add(&mut self, other: &Self) -> ArithCode {
         let (r, o) = self.value.overflowing_add(&other.value);
         self.value = r;
@@ -109,6 +128,7 @@ where
     }
 
     #[inline(always)]
+    #[must_use]
     pub(crate) fn do_sub(&mut self, other: &Self) -> ArithCode {
         let (r, o) = self.value.overflowing_sub(&other.value);
         self.value = r;
@@ -120,31 +140,32 @@ where
             ArithCode::OverflowMax
         }
     }
-    #[inline(always)]
-    pub(crate) fn do_bit_and(&mut self, other: &Self) {
-        self.value &= other.value;
-    }
-    #[inline(always)]
-    pub(crate) fn do_bit_or(&mut self, other: &Self) {
-        self.value |= other.value;
-    }
-    #[inline(always)]
-    pub(crate) fn do_bit_xor(&mut self, other: &Self) {
-        self.value ^= other.value;
-    }
+
     // Should probably change to checked mul returning a bool for overflow (and possibly underflow, where result is 0 but neither input is)
     #[inline(always)]
-    pub(crate) fn do_mul(&mut self, other: &Self) {
+    #[must_use]
+    pub(crate) fn do_mul(&mut self, other: &Self) -> ArithCode {
         // If T = x*2^NB_FRAC, then dbl = x*y*2^(NB_FRAC*2), and the result should be x*y*2^NB_FRAC, so shift right by NB_FRAC
         let shr = <FPType<T, N> as HowIsFixedPoint<T>>::NB_FRAC;
         let dbl = self.value.dbl_mult(&other.value);
         if !self.reduce_double(&dbl, shr) {
-            panic!("Overflow in multiply");
-        };
+            if (self.value < T::ZERO) == (other.value < T::ZERO) {
+                ArithCode::OverflowMax
+            } else {
+                ArithCode::OverflowMin
+            }
+        } else {
+            ArithCode::Ok
+        }
     }
+
     // Should probably change to checked div returning a bool for underflow, overflow, div by zero
     #[inline(always)]
-    pub(crate) fn do_div(&mut self, other: &Self) {
+    #[must_use]
+    pub(crate) fn do_div(&mut self, other: &Self) -> ArithCode {
+        if other.value.is_zero() {
+            return ArithCode::DivideByZero;
+        }
         // If T = x*2^NB_FRAC, then s=x*2^(NB_FRAC+NB), o=y*2^NB_FRAC, r=x/y*2^NB, and the result should be x/y*2^NB_FRAC, so shift right by NB-NB_FRAC = NB_INT
         let shr = <FPType<T, N> as HowIsFixedPoint<T>>::NB_SIGN_AND_INT;
 
@@ -152,44 +173,39 @@ where
         let o = other.value.as_dbl();
         // r = self/other * 2^(T::NB);
         let r = s / o;
+
         if !self.reduce_double(&r, shr) {
-            panic!("Overflow in divide");
-        };
+            if (self.value < T::ZERO) == (other.value < T::ZERO) {
+                ArithCode::OverflowMax
+            } else {
+                ArithCode::OverflowMin
+            }
+        } else {
+            ArithCode::Ok
+        }
     }
+
     // x remainder y = x - (x / y).trunc() * y
     //
     // If x=64 (2^14 in i16_8) and y = 1/256 (1 in i16_8) then x/y = 2^14
     //
     // If x,y are each X or Y*2^N, then x/y = is an integer (i.e. already truncated or rounded in some fashion)
     #[inline(always)]
-    pub(crate) fn do_rem(&mut self, other: &Self) {
-        // Not conviced this works for negative values
-        //
-        // And possibly it can just be self.value % other.value...
-        let x_div_y_trunc = self.value / other.value;
-        self.value -= x_div_y_trunc * other.value;
+    pub(crate) fn do_rem(&mut self, other: &Self) -> ArithCode {
+        if other.value.is_zero() {
+            ArithCode::DivideByZero
+        } else {
+            // Not conviced this works for negative values
+            //
+            // And possibly it can just be self.value % other.value...
+            let x_div_y_trunc = self.value / other.value;
+            self.value -= x_div_y_trunc * other.value;
+            ArithCode::Ok
+        }
     }
 }
 
 #[test]
 fn test_thing() {
     let _x = Fixed::<i8, 4>::ONE;
-}
-
-// num_traits::PrimInt ?
-// num_traits::Signed (not Unsigned)
-// num_traits::Pow ?
-// num_traits::Inv ?
-// num_traits::Wrapping*
-// num_traits::Saturating*
-// num_traits::Checked*
-// num_traits::ops::overflowing::*
-impl<T: UsefulInt, const N: usize> num_traits::Num for Fixed<T, N>
-where
-    FPType<T, N>: HowIsFixedPoint<T>,
-{
-    type FromStrRadixErr = ();
-    fn from_str_radix(_str: &str, _radix: u32) -> Result<Self, Self::FromStrRadixErr> {
-        Ok(Self::default())
-    }
 }

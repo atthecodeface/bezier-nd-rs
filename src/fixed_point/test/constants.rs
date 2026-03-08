@@ -260,8 +260,14 @@ where
     I: BackingKind,
 {
     let int_bits = utils::int_bits(&T::ZERO);
+    eprintln!(
+        "Float_constants test on type {} with {N} fractional bits {int_bits} integer bits",
+        std::any::type_name::<I>()
+    );
+
     let mut half = T::ONE;
     half = half / (half + half);
+    assert_eq!(half + half, T::ONE);
 
     let half_pi = T::FRAC_PI_2();
 

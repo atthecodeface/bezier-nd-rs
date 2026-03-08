@@ -20,12 +20,17 @@ mod binary;
 mod unary;
 
 mod nt_casts;
+mod nt_checked;
 mod nt_consts;
 mod nt_float;
 mod nt_float_const;
 mod nt_num_ops;
+mod nt_overflowing;
 mod nt_saturating;
 mod nt_signed;
+mod nt_wrapping;
+
+mod nt_num;
 
 /// A marker trait that is implemented for `Fixed<T,N>` for any type T providing a fixed point value with N fraction bits
 ///

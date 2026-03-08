@@ -24,3 +24,66 @@ pub enum ArithCode {
     /// This may be returned for example for a square root of a negative number, or asin of 2, or log of a negative number, etc
     NotANumber,
 }
+
+impl ArithCode {
+    /// Check that the code is okay, else panic with an appropriate message
+    #[track_caller]
+    pub fn check(self, reason: &str) {
+        match self {
+            ArithCode::Ok => (),
+            ArithCode::NotANumber => {
+                panic!("Not a number in {reason}");
+            }
+            ArithCode::OverflowMax => {
+                panic!("Overflow (maximum) in {reason}");
+            }
+            ArithCode::OverflowMin => {
+                panic!("Overflow (minimum) in {reason}");
+            }
+            ArithCode::DivideByZero => {
+                panic!("Divide by zero in {reason}");
+            }
+        }
+    }
+
+    /// Check that the code is okay or overflowing, else panic with an appropriate message
+    #[track_caller]
+    pub fn wrapping(self, reason: &str) {
+        match self {
+            ArithCode::Ok => (),
+            ArithCode::OverflowMax => (),
+            ArithCode::OverflowMin => (),
+            ArithCode::NotANumber => {
+                panic!("Not a number in {reason}");
+            }
+            ArithCode::DivideByZero => {
+                panic!("Divide by zero in {reason}");
+            }
+        }
+    }
+
+    /// Check that the code is okay or overflowing, else panic with an appropriate message
+    #[track_caller]
+    pub fn overflowing(self, reason: &str) -> bool {
+        match self {
+            ArithCode::Ok => false,
+            ArithCode::OverflowMax => true,
+            ArithCode::OverflowMin => true,
+            ArithCode::NotANumber => {
+                panic!("Not a number in {reason}");
+            }
+            ArithCode::DivideByZero => {
+                panic!("Divide by zero in {reason}");
+            }
+        }
+    }
+
+    /// Check that the code is okay or overflowing, else panic with an appropriate message
+    #[track_caller]
+    pub fn checked<T>(self, value: T) -> Option<T> {
+        match self {
+            ArithCode::Ok => Some(value),
+            _ => None,
+        }
+    }
+}
