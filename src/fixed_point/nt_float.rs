@@ -18,18 +18,16 @@ where
     fn neg_zero() -> Self {
         Self::ZERO
     }
-    fn min_value() -> Self {
-        Self {
-            value: T::min_value(),
-        }
-    }
     fn min_positive_value() -> Self {
         Self { value: T::ONE }
     }
+    #[inline]
+    fn min_value() -> Self {
+        <Self as num_traits::Bounded>::min_value()
+    }
+    #[inline]
     fn max_value() -> Self {
-        Self {
-            value: T::max_value(),
-        }
+        <Self as num_traits::Bounded>::max_value()
     }
     fn is_nan(self) -> bool {
         false
@@ -51,60 +49,101 @@ where
         }
     }
 
-    fn floor(self) -> Self {
-        // This is trunc for values with a sign bit
-        Self {
-            value: self.value & (!T::ZERO << N),
-        }
-    }
-    fn ceil(self) -> Self {
-        // This is not ceil for values with a sign bit
-        let s = self.floor();
-        if s != self {
-            Self {
-                value: s.value + (<FPType<T, N> as HowIsFixedPoint<T>>::ONE),
-            }
-        } else {
-            s
-        }
-    }
-    fn round(self) -> Self {
-        todo!();
-        // This is trunc for values with a sign bit, floor for two's complement values
-        Self {
-            value: self.value & (!T::ZERO << N),
-        }
-    }
     fn trunc(self) -> Self {
-        // This is trunc for values with a sign bit, floor for two's complement values
-        Self {
-            value: self.value & (!T::ZERO << N),
+        let dedicated_sign = <FPType<T, N> as HowIsFixedPoint<T>>::DEDICATED_SIGN;
+        let one = <FPType<T, N> as HowIsFixedPoint<T>>::ONE;
+        let int_mask = (!T::ZERO) << N;
+        if dedicated_sign || self.value >= T::ZERO {
+            Self {
+                value: self.value & int_mask,
+            }
+        } else if (self.value & int_mask) == self.value {
+            self
+        } else {
+            // negative two's complement
+            Self {
+                value: (self.value & int_mask) + one,
+            }
         }
-    }
-    fn fract(self) -> Self {
-        self - self.trunc()
     }
 
+    fn floor(self) -> Self {
+        let dedicated_sign = <FPType<T, N> as HowIsFixedPoint<T>>::DEDICATED_SIGN;
+        let one = <FPType<T, N> as HowIsFixedPoint<T>>::ONE;
+        let int_mask = (!T::ZERO) << N;
+        if !dedicated_sign || self.value >= T::ZERO {
+            Self {
+                value: self.value & int_mask,
+            }
+        } else if (self.value & int_mask) == self.value {
+            self
+        } else {
+            // negative non-integer with a dedicated sign
+            Self {
+                value: (self.value & int_mask) - one,
+            }
+        }
+    }
+
+    fn ceil(self) -> Self {
+        let dedicated_sign = <FPType<T, N> as HowIsFixedPoint<T>>::DEDICATED_SIGN;
+        let one = <FPType<T, N> as HowIsFixedPoint<T>>::ONE;
+        let int_mask = (!T::ZERO) << N;
+        if !dedicated_sign || self.value <= T::ZERO {
+            Self {
+                value: self.value & int_mask,
+            }
+        } else if (self.value & int_mask) == self.value {
+            self
+        } else {
+            // positive non-integer with a dedicated sign
+            Self {
+                value: (self.value & int_mask) + one,
+            }
+        }
+    }
+
+    // This is trunc for values with a sign bit, floor for two's complement values
+    fn round(self) -> Self {
+        todo!();
+    }
+
+    fn fract(self) -> Self {
+        let dedicated_sign = <FPType<T, N> as HowIsFixedPoint<T>>::DEDICATED_SIGN;
+        let one = <FPType<T, N> as HowIsFixedPoint<T>>::ONE;
+        let frac_mask = !((!T::ZERO) << N);
+        if dedicated_sign || self.value >= T::ZERO {
+            Self {
+                value: self.value & frac_mask,
+            }
+        } else {
+            // negative two's complement: fraction - 1
+            Self {
+                value: (self.value - one) & frac_mask,
+            }
+        }
+    }
+
+    #[inline]
     fn abs(self) -> Self {
-        if self.value < T::ZERO {
-            Self { value: -self.value }
-        } else {
-            Self { value: self.value }
-        }
+        <Self as num_traits::Signed>::abs(&self)
     }
+
+    #[inline]
     fn signum(self) -> Self {
-        if self.value < T::ZERO {
-            -Self::ONE
-        } else {
-            Self::ONE
-        }
+        <Self as num_traits::Signed>::signum(&self)
     }
+
+    #[inline]
     fn is_sign_positive(self) -> bool {
-        self.value >= T::ZERO
+        !<Self as num_traits::Signed>::is_negative(&self)
     }
+
+    #[inline]
     fn is_sign_negative(self) -> bool {
-        self.value < T::ZERO
+        <Self as num_traits::Signed>::is_negative(&self)
     }
+
     fn max(self, other: Self) -> Self {
         if self.value > other.value {
             self
@@ -119,12 +158,9 @@ where
             other
         }
     }
+
     fn abs_sub(self, other: Self) -> Self {
-        if self.value > other.value {
-            self - other
-        } else {
-            other - self
-        }
+        <Self as num_traits::Signed>::abs_sub(&self, &other)
     }
 
     fn mul_add(self, a: Self, b: Self) -> Self {
@@ -139,13 +175,15 @@ where
         // Invoke the fixed point function sqrt() on self (possibly shifted right by one) and shift left by frac_bits/2
         todo!();
     }
+
     fn cbrt(self) -> Self {
         todo!();
     }
 
-    fn powi(self, _n: i32) -> Self {
-        todo!();
+    fn powi(self, n: i32) -> Self {
+        <Self as num_traits::pow::Pow<_>>::pow(self, n)
     }
+
     fn powf(self, _n: Self) -> Self {
         // y^x = 2^(x/log2(y))
         todo!();

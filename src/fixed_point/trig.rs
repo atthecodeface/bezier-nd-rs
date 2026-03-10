@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::fixed_point::functions;
 
 use super::functions::sqrt;
@@ -66,12 +67,6 @@ impl Trig for i32 {
 
 #[test]
 fn test_sincos() {
-    fn i32_30(angle: f32) -> i32 {
-        (angle * 2.0_f32.powi(30)) as i32
-    }
-    fn from_i32_30(angle: i32) -> f32 {
-        (angle as f32) / 2.0_f32.powi(30)
-    }
     fn i32_28(angle: f32) -> i32 {
         (angle * 2.0_f32.powi(28)) as i32
     }

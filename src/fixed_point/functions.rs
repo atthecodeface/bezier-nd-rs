@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use super::{UsefulInt, UsefulUInt};
 use num_traits::{ConstOne, ConstZero};
 
@@ -625,7 +626,7 @@ fn test_i32_28_trig() {
     let to_float = from_i32_28;
     let from_float = i32_28;
 
-    /// Vector is overflowing when it is 0.707 * 1<<30 = 0x2d413ccc and we add 0x3243f6a9 (for +atan(0.5)=26.56 degrees twice)
+    // Vector is overflowing when it is 0.707 * 1<<30 = 0x2d413ccc and we add 0x3243f6a9 (for +atan(0.5)=26.56 degrees twice)
     let x = i32_28::atan2(1 << 27, 1 << 27);
     let x_f = to_float(x);
     eprintln!("{x:x} {x_f} {}", x_f.to_degrees());

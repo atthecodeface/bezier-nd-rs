@@ -1,4 +1,3 @@
-//a Documentation
 #![warn(missing_docs)]
 #![doc = include_str!("lib_doc.md")]
 

@@ -1,5 +1,3 @@
-use std::sync::atomic::AtomicBool;
-
 use super::UsefulInt;
 
 use super::{ArithCode, FPType, HowIsFixedPoint};

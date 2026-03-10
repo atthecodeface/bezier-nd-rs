@@ -1,8 +1,6 @@
 use super::UsefulInt;
 
-use super::{ArithCode, FPType, Fixed, HowIsFixedPoint};
-
-use num_traits::Bounded;
+use super::{FPType, Fixed, HowIsFixedPoint};
 
 impl<T: UsefulInt, const N: usize> num_traits::CheckedAdd for Fixed<T, N>
 where

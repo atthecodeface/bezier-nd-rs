@@ -21,8 +21,6 @@ where
         Self::default()
     }
 
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
     fn reciprocal(self) -> Self {
         Self::ONE / self
     }

@@ -171,7 +171,7 @@ fn calcuation_of_constants() {
         let x = calculate_constants::atan_two_neg_power::<4>(128, i);
         let (m, e, s) = x.integer_decode();
         let x_f = (m as f64) * (s as f64) * (2.0_f64.powi(e as i32 - 127));
-        let t_f = ((0.5_f64).powi((i as i32))).atan();
+        let t_f = ((0.5_f64).powi(i as i32)).atan();
         let diff = (t_f - x_f).abs();
         eprintln!("{i} : {x:#034x} {x_f} {t_f}");
         assert!(diff < 1E-10, "Difference in atan(2^-{i}) was too large");
