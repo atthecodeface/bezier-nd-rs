@@ -1,4 +1,4 @@
-use super::{FPType, Fixed, HowIsFixedPoint, UsefulInt};
+use super::{FPType, Fixed, HowIsFixedPoint, UsefulConsts, UsefulInt};
 
 use num_traits::{FromPrimitive, NumCast, ToPrimitive};
 
@@ -47,9 +47,15 @@ where
             None
         }
     }
+    fn from_f64(n: f64) -> Option<Self> {
+        Self::try_from(n).ok()
+    }
+    fn from_f32(n: f32) -> Option<Self> {
+        Self::try_from(n).ok()
+    }
 }
 
-impl<T: UsefulInt, const N: usize> ToPrimitive for Fixed<T, N>
+impl<T: UsefulInt + UsefulConsts, const N: usize> ToPrimitive for Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
 {
@@ -65,9 +71,15 @@ where
         dbg!(&s);
         s.to_u64()
     }
+    fn to_f32(&self) -> Option<f32> {
+        Some((*self).into())
+    }
+    fn to_f64(&self) -> Option<f64> {
+        Some((*self).into())
+    }
 }
 
-impl<T: UsefulInt, const N: usize> NumCast for Fixed<T, N>
+impl<T: UsefulInt + UsefulConsts, const N: usize> NumCast for Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
 {

@@ -1,5 +1,3 @@
-use crate::fixed_point::functions::i32_28::HALF_PI_U32_28;
-
 use super::{UsefulConsts, UsefulInt, UsefulIntTrig};
 
 use super::{ArithCode, FPType, HowIsFixedPoint};
@@ -45,6 +43,58 @@ where
     }
 }
 
+impl<T: UsefulInt, const N: usize> std::convert::TryFrom<f32> for Fixed<T, N>
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    type Error = ();
+    fn try_from(value: f32) -> Result<Self, ()> {
+        use num_traits::Float;
+        let (mantissa, exponent, sign) = value.integer_decode();
+        Self::try_from_integer_decode(mantissa, exponent, sign).ok_or(())
+    }
+}
+
+impl<T: UsefulInt, const N: usize> std::convert::TryFrom<f64> for Fixed<T, N>
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    type Error = ();
+    fn try_from(value: f64) -> Result<Self, ()> {
+        use num_traits::Float;
+        let (mantissa, exponent, sign) = value.integer_decode();
+        Self::try_from_integer_decode(mantissa, exponent, sign).ok_or(())
+    }
+}
+
+impl<T: UsefulInt + UsefulConsts, const N: usize> std::convert::From<Fixed<T, N>> for f32
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    fn from(value: Fixed<T, N>) -> Self {
+        use num_traits::Float;
+        let (mantissa, exponent, sign) = value.integer_decode();
+        let sign_f = sign as f32;
+        let mantissa_f = mantissa as f32;
+        let exponent_f = 2.0_f32.powi(exponent as i32);
+        sign_f * mantissa_f * exponent_f
+    }
+}
+
+impl<T: UsefulInt + UsefulConsts, const N: usize> std::convert::From<Fixed<T, N>> for f64
+where
+    FPType<T, N>: HowIsFixedPoint<T>,
+{
+    fn from(value: Fixed<T, N>) -> Self {
+        use num_traits::Float;
+        let (mantissa, exponent, sign) = value.integer_decode();
+        let sign_f = sign as f64;
+        let mantissa_f = mantissa as f64;
+        let exponent_f = 2.0_f64.powi(exponent as i32);
+        sign_f * mantissa_f * exponent_f
+    }
+}
+
 impl<T: UsefulInt, const N: usize> Fixed<T, N>
 where
     FPType<T, N>: HowIsFixedPoint<T>,
@@ -63,6 +113,32 @@ where
         &mut self.value
     }
 
+    /// Convert from an integer decode of a fractional number (often provided by
+    /// num_traits::Float integer_decode()), if possible
+    ///
+    /// Returns None if the value is out of range.
+    pub fn try_from_integer_decode(mantissa: u64, exponent: i16, sign: i8) -> Option<Self> {
+        let mut mantissa = T::from_u64(mantissa)?;
+        if mantissa.is_zero() {
+            return Some(Self::ZERO);
+        }
+        let shift_right = -exponent - (N as i16);
+        if shift_right >= T::NB as i16 {
+            mantissa = T::ZERO;
+        } else if shift_right >= 0 {
+            mantissa = mantissa >> (shift_right as usize)
+        } else {
+            let shift_left = -shift_right;
+            if shift_left >= T::NB as i16 {
+                return None;
+            }
+            mantissa = mantissa << (shift_left as usize);
+        }
+        if sign == -1 {
+            mantissa = -mantissa;
+        }
+        Some(Self { value: mantissa })
+    }
     /// Take a double and shift it down, using the dropped bits to help round appropriately; return True if it does not overflow,
     /// but always set the value
     ///
@@ -265,8 +341,7 @@ fn test_thing() {
     use num_traits::FromPrimitive;
     for n in 0..100 {
         let angle_f = (n as f32) * std::f32::consts::PI / 12.0;
-        let mut angle = Fixed::<i32, 16>::from_f32(angle_f).unwrap();
-        *angle.raw_mut() = (angle_f * 65536.0) as i32;
+        let mut angle: Fixed<i32, 16> = angle_f.try_into().unwrap();
         let (sin, cos) = angle.sincos();
         eprintln!(
             "{angle_f} sin:{}=={} cos:{}=={}",
