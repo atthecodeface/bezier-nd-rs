@@ -1,4 +1,6 @@
-use super::UsefulInt;
+use crate::fixed_point::functions::i32_28::HALF_PI_U32_28;
+
+use super::{UsefulConsts, UsefulInt};
 
 use super::{ArithCode, FPType, HowIsFixedPoint};
 
@@ -50,8 +52,15 @@ where
     /// Return the underlying value
     ///
     /// Do we want to support Borrow instead? As well?
-    pub fn raw(&self) -> T {
-        self.value
+    pub fn raw(&self) -> &T {
+        &self.value
+    }
+
+    /// Return the underlying value
+    ///
+    /// Do we want to support Borrow instead? As well?
+    pub fn raw_mut(&mut self) -> &mut T {
+        &mut self.value
     }
 
     /// Take a double and shift it down, using the dropped bits to help round appropriately; return True if it does not overflow,
@@ -93,6 +102,36 @@ where
         let (value, overflow) = T::of_dbl(reduced);
         self.value = value;
         !overflow
+    }
+
+    /// Calculate which octant, and what angle within the octant to use for sin/cos
+    ///
+    /// Octant zero is [0,PI/4); octant one is [PI/4, PI/2); etc
+    ///
+    /// Angle is always [-1, 1) of *T*, as the fraction of PI/4 within the octant
+    ///
+    /// If T is twos complement:
+    ///  Since self is angle * 2^N, and PI is stored
+    ///  as PI * 2^(T::NB-3), if we calculate self * 2^(T::NB) / (PI * 2^(T::NB-3))
+    ///  we will get angle/PI * 2^(N+3)
+    ///
+    ///  The octant is therefore in bits (N+1)..+3, and the fraction of PI/2 is in bits 1..(N)
+    pub fn octant_angle(&self) -> (u8, T)
+    where
+        T: UsefulConsts,
+    {
+        use num_traits::ToPrimitive;
+        let s = self.value.as_dbl_upper();
+        // n_pi is actually PI*2^(T::NB-3) for T being 2s complement, PI*2^(T::NB-2) for T with a dedicated sign bit
+        let n_pi = T::PI.as_dbl();
+        let r = s / n_pi;
+        // Select the correct 3 bits as the octant
+        let octant = (r >> (N + 1)) & !(!T::Dbl::ZERO << 3_usize);
+        // Select the angle - note this will have the top bit (of T) set for odd
+        // octants, so it is a negative value, which is what we want
+        let angle = (r << (T::NB - (N + 2))) & !(!T::Dbl::ZERO << T::NB);
+        let octant = octant.to_u8().unwrap();
+        (octant, T::of_dbl(angle).0)
     }
 
     #[inline(always)]
@@ -205,5 +244,62 @@ where
 
 #[test]
 fn test_thing() {
-    let _x = Fixed::<i8, 4>::ONE;
+    /// Calculate sin and cos of an angle in the range -PI/2 to +PI/2
+    ///
+    /// Should clamp in range
+    pub fn sincos_first_quad(angle: i32) -> (i32, i32) {
+        use super::functions::i32_28::{
+            ATAN_ANGLES_I32_28, COS_SCALE_U32_28, HALF_PI_U32_28, NEG_POW2_I32_28,
+        };
+        let (c, s) = super::functions::apply_rotation_table::<_, 1>(
+            angle,
+            (COS_SCALE_U32_28 as i32, 0),
+            ATAN_ANGLES_I32_28,
+            NEG_POW2_I32_28,
+        )
+        .1;
+        (s, c)
+    }
+
+    use num_traits::{FloatConst, FromPrimitive};
+    for n in 0..100 {
+        let angle_f = (n as f32) * std::f32::consts::PI / 50.0;
+        let mut angle = Fixed::<i32, 16>::from_f32(angle_f).unwrap();
+        *angle.raw_mut() = (angle_f * 65536.0) as i32;
+        eprintln!(
+            "Angle: {angle_f} {angle} {} sin:{} cos:{}",
+            angle.value as f32 / (65536.0),
+            angle_f.sin(),
+            angle_f.cos()
+        );
+        let (octant, subangle) = angle.octant_angle();
+        eprintln!(
+            "{octant} {} {}",
+            subangle as f32 / 65536.0,
+            subangle as f32 / (65536.0 * 32768.0)
+        );
+        *angle.raw_mut() = subangle;
+        if octant & 1 != 0 {
+            //*angle.raw_mut() ^= 0x80000000_u32 as i32;
+        }
+        let a = angle.value.as_dbl() * (HALF_PI_U32_28 as i64);
+        let sincos = sincos_first_quad((a >> 32) as i32);
+        let (sin, cos) = match octant {
+            0 => (sincos.0, sincos.1),
+            1 => (sincos.1, -sincos.0),
+            2 => (sincos.1, -sincos.0),
+            3 => (-sincos.0, -sincos.1),
+            4 => (-sincos.0, -sincos.1),
+            5 => (-sincos.1, sincos.0),
+            6 => (-sincos.1, sincos.0),
+            _ => (sincos.0, sincos.1),
+        };
+        eprintln!(
+            "{} {} {}",
+            a as f32 / (1_u64 << 44) as f32,
+            sin as f32 / (1_u64 << 28) as f32,
+            cos as f32 / (1_u64 << 28) as f32,
+        );
+    }
+    assert!(false, "Force failure");
 }
