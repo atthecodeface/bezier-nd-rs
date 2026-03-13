@@ -5,7 +5,7 @@ pub use arith_code::ArithCode;
 mod consts;
 mod useful;
 pub use consts::{u64_4, UsefulConsts};
-pub use useful::{Int, UsefulInt, UsefulUInt};
+pub use useful::{Int, UsefulInt, UsefulIntTrig, UsefulUInt};
 
 pub(crate) mod functions;
 mod trig;

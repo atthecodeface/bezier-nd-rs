@@ -120,6 +120,20 @@ pub trait UsefulInt: SignedInt {
     /// The maximum value representable; for two's complement this is the value with only the top bit clear
     fn max_value() -> Self;
 }
+/// The trait supplying the methods and associated types required for a value to be used in fixed point calculations
+pub trait UsefulIntTrig: UsefulInt {
+    /// Given self in the range -1/2 to +1/2 reflecting an angle of -PI/4 to +PI/4, calculate sin and cos
+    fn sincos_first_quad(self) -> (Self, Self);
+    fn atan2(self, x: Self) -> Self {
+        Self::ZERO
+    }
+    fn asin(self) -> Self {
+        Self::ZERO
+    }
+    fn acos(self) -> Self {
+        Self::ZERO
+    }
+}
 
 /// The trait that must be implemented for the Fixed value to be able to use stuff
 ///
@@ -186,3 +200,20 @@ make_useful!(i8, u8, i16, u16, 8);
 make_useful!(i16, u16, i32, u32, 16);
 make_useful!(i32, u32, i64, u64, 32);
 make_useful!(i64, u64, i128, u128, 64);
+
+impl UsefulIntTrig for i32 {
+    fn sincos_first_quad(self) -> (Self, Self) {
+        use super::functions::i32_28::{
+            ATAN_ANGLES_I32_28, COS_SCALE_U32_28, HALF_PI_U32_28, NEG_POW2_I32_28,
+        };
+        let a = self as i64 * (HALF_PI_U32_28 as i64);
+        let (c, s) = super::functions::apply_rotation_table::<_, 1>(
+            (a >> 32) as i32,
+            (COS_SCALE_U32_28 as i32, 0),
+            ATAN_ANGLES_I32_28,
+            NEG_POW2_I32_28,
+        )
+        .1;
+        (s, c)
+    }
+}

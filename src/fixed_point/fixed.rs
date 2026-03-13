@@ -1,6 +1,6 @@
 use crate::fixed_point::functions::i32_28::HALF_PI_U32_28;
 
-use super::{UsefulConsts, UsefulInt};
+use super::{UsefulConsts, UsefulInt, UsefulIntTrig};
 
 use super::{ArithCode, FPType, HowIsFixedPoint};
 
@@ -135,6 +135,22 @@ where
         (quadrant, T::of_dbl(angle).0)
     }
 
+    /// Calculate sin and cos of an angle in radians
+    pub fn sincos(self) -> (T, T)
+    where
+        T: UsefulIntTrig + UsefulConsts,
+    {
+        let (quadrant, subangle) = self.quadrant_angle();
+        let sincos = subangle.sincos_first_quad();
+        let (sin, cos) = match quadrant {
+            0 => (sincos.0, sincos.1),
+            1 => (sincos.1, -sincos.0),
+            2 => (-sincos.0, -sincos.1),
+            _ => (-sincos.1, sincos.0),
+        };
+        (sin, cos)
+    }
+
     #[inline(always)]
     pub(crate) fn do_bit_and(&mut self, other: &Self) -> ArithCode {
         self.value &= other.value;
@@ -245,53 +261,18 @@ where
 
 #[test]
 fn test_thing() {
-    /// Calculate sin and cos of an angle in the range -PI/2 to +PI/2
-    ///
-    /// Should clamp in range
-    pub fn sincos_first_quad(angle: i32) -> (i32, i32) {
-        use super::functions::i32_28::{
-            ATAN_ANGLES_I32_28, COS_SCALE_U32_28, HALF_PI_U32_28, NEG_POW2_I32_28,
-        };
-        let (c, s) = super::functions::apply_rotation_table::<_, 1>(
-            angle,
-            (COS_SCALE_U32_28 as i32, 0),
-            ATAN_ANGLES_I32_28,
-            NEG_POW2_I32_28,
-        )
-        .1;
-        (s, c)
-    }
-
-    use num_traits::{FloatConst, FromPrimitive};
+    use super::UsefulIntTrig;
+    use num_traits::FromPrimitive;
     for n in 0..100 {
-        let angle_f = (n as f32) * std::f32::consts::PI / 50.0;
+        let angle_f = (n as f32) * std::f32::consts::PI / 12.0;
         let mut angle = Fixed::<i32, 16>::from_f32(angle_f).unwrap();
         *angle.raw_mut() = (angle_f * 65536.0) as i32;
+        let (sin, cos) = angle.sincos();
         eprintln!(
-            "Angle: {angle_f} {angle} {} sin:{} cos:{}",
-            angle.value as f32 / (65536.0),
+            "{angle_f} sin:{}=={} cos:{}=={}",
             angle_f.sin(),
-            angle_f.cos()
-        );
-        let (quadrant, subangle) = angle.quadrant_angle();
-        eprintln!(
-            "{quadrant} {} {}",
-            subangle as f32 / 65536.0,
-            subangle as f32 / (65536.0 * 32768.0)
-        );
-        *angle.raw_mut() = subangle;
-        let a = angle.value.as_dbl() * (HALF_PI_U32_28 as i64);
-        let sincos = sincos_first_quad((a >> 32) as i32);
-        let (sin, cos) = match quadrant {
-            0 => (sincos.0, sincos.1),
-            1 => (sincos.1, -sincos.0),
-            2 => (-sincos.0, -sincos.1),
-            _ => (-sincos.1, sincos.0),
-        };
-        eprintln!(
-            "{} {} {}",
-            a as f32 / (1_u64 << 44) as f32,
             sin as f32 / (1_u64 << 28) as f32,
+            angle_f.cos(),
             cos as f32 / (1_u64 << 28) as f32,
         );
     }
