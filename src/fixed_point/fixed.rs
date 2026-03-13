@@ -104,19 +104,19 @@ where
         !overflow
     }
 
-    /// Calculate which octant, and what angle within the octant to use for sin/cos
+    /// Calculate which quadrant, and what fraction within the octant to use for sin/cos
     ///
-    /// Octant zero is [0,PI/4); octant one is [PI/4, PI/2); etc
-    ///
-    /// Angle is always [-1, 1) of *T*, as the fraction of PI/4 within the octant
+    /// The quadrants are PI/2 around each of the four axes; quadrant 0 is thus
+    /// from 'self' being [-PI/4, +PI/4) The fraction returned is [-1, 1). The
+    /// fraction returned is always in T as a complete fraction.
     ///
     /// If T is twos complement:
-    ///  Since self is angle * 2^N, and PI is stored
+    ///  Since self is angle * 2^N, and PI is stored in [UsefulConsts]
     ///  as PI * 2^(T::NB-3), if we calculate self * 2^(T::NB) / (PI * 2^(T::NB-3))
     ///  we will get angle/PI * 2^(N+3)
     ///
     ///  The octant is therefore in bits (N+1)..+3, and the fraction of PI/2 is in bits 1..(N)
-    pub fn octant_angle(&self) -> (u8, T)
+    pub fn quadrant_angle(&self) -> (u8, T)
     where
         T: UsefulConsts,
     {
@@ -127,11 +127,12 @@ where
         let r = s / n_pi;
         // Select the correct 3 bits as the octant
         let octant = (r >> (N + 1)) & !(!T::Dbl::ZERO << 3_usize);
+        let octant = octant.to_u8().unwrap();
+        let quadrant = ((octant + 1) & 6) >> 1;
         // Select the angle - note this will have the top bit (of T) set for odd
         // octants, so it is a negative value, which is what we want
         let angle = (r << (T::NB - (N + 2))) & !(!T::Dbl::ZERO << T::NB);
-        let octant = octant.to_u8().unwrap();
-        (octant, T::of_dbl(angle).0)
+        (quadrant, T::of_dbl(angle).0)
     }
 
     #[inline(always)]
@@ -272,27 +273,20 @@ fn test_thing() {
             angle_f.sin(),
             angle_f.cos()
         );
-        let (octant, subangle) = angle.octant_angle();
+        let (quadrant, subangle) = angle.quadrant_angle();
         eprintln!(
-            "{octant} {} {}",
+            "{quadrant} {} {}",
             subangle as f32 / 65536.0,
             subangle as f32 / (65536.0 * 32768.0)
         );
         *angle.raw_mut() = subangle;
-        if octant & 1 != 0 {
-            //*angle.raw_mut() ^= 0x80000000_u32 as i32;
-        }
         let a = angle.value.as_dbl() * (HALF_PI_U32_28 as i64);
         let sincos = sincos_first_quad((a >> 32) as i32);
-        let (sin, cos) = match octant {
+        let (sin, cos) = match quadrant {
             0 => (sincos.0, sincos.1),
             1 => (sincos.1, -sincos.0),
-            2 => (sincos.1, -sincos.0),
-            3 => (-sincos.0, -sincos.1),
-            4 => (-sincos.0, -sincos.1),
-            5 => (-sincos.1, sincos.0),
-            6 => (-sincos.1, sincos.0),
-            _ => (sincos.0, sincos.1),
+            2 => (-sincos.0, -sincos.1),
+            _ => (-sincos.1, sincos.0),
         };
         eprintln!(
             "{} {} {}",
