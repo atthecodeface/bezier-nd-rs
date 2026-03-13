@@ -139,6 +139,23 @@ where
         }
         Some(Self { value: mantissa })
     }
+
+    pub fn try_from_t_int(value: T) -> Option<Self> {
+        // value must be shifted left by NB_FRAC; if it is +ve and any of the *other* bits are set then the
+        // value will not fit. If it is -ve and any of the *other* bits are clear then the value will not fit
+        let nb_frac = <FPType<T, N> as HowIsFixedPoint<T>>::NB_FRAC;
+        let nb_int = <FPType<T, N> as HowIsFixedPoint<T>>::NB_INT;
+        let nb_max_int_mask = !((!T::ZERO) << nb_int);
+        let value_upper_bits = value & !nb_max_int_mask;
+        if value_upper_bits.is_zero() || value_upper_bits == !nb_max_int_mask {
+            Some(Self {
+                value: value << nb_frac,
+            })
+        } else {
+            None
+        }
+    }
+
     /// Take a double and shift it down, using the dropped bits to help round appropriately; return True if it does not overflow,
     /// but always set the value
     ///
@@ -350,6 +367,17 @@ fn test_thing() {
             angle_f.cos(),
             cos as f32 / (1_u64 << 28) as f32,
         );
+
+        let sin_diff = (angle_f.sin() - (sin as f32 / (1_u64 << 28) as f32)).abs();
+        let cos_diff = (angle_f.cos() - (cos as f32 / (1_u64 << 28) as f32)).abs();
+        assert!(
+            sin_diff < 1E-4,
+            "Maximum difference in sin should be less than 1E-4"
+        );
+        assert!(
+            cos_diff < 1E-4,
+            "Maximum difference in cos should be less than 1E-4"
+        );
     }
-    assert!(false, "Force failure");
+    // assert!(false, "Force failure");
 }
