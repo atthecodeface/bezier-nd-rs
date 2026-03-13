@@ -1,29 +1,10 @@
 mod utils;
 use bezier_nd::bernstein_fns::elevate_reduce_matrix::generate_elevate_by_one_matrix;
-use bezier_nd::bignum::RationalN;
 use bezier_nd::{
     BezierElevate, BezierEval, BezierMetric, BezierND, BezierReduce, BezierReduction, Num,
 };
 use geo_nd::{matrix, vector};
 use utils::*;
-
-#[test]
-fn bernstein_matrix_br() {
-    type N = RationalN<8>;
-    let mut bern_n = [N::default(); 100];
-    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[0_i64.into()]);
-    assert_eq!(bern_n[0], 1_i64.into());
-    assert_eq!(bern_n[1], 0_i64.into());
-    assert_eq!(bern_n[2], 0_i64.into());
-    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[(1_i64, 2_u64).into()]);
-    assert_eq!(bern_n[0], (1_i64, 4_u64).into());
-    assert_eq!(bern_n[1], (1_i64, 2_u64).into());
-    assert_eq!(bern_n[2], (1_i64, 4_u64).into());
-    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[1_i64.into()]);
-    assert_eq!(bern_n[0], 0_i64.into());
-    assert_eq!(bern_n[1], 0_i64.into());
-    assert_eq!(bern_n[2], 1_i64.into());
-}
 
 /// Generate a Bernstein reduction matrix *to* degree (using ts provided)
 ///
@@ -174,6 +155,25 @@ fn generate_bs_reduce_matrix<N: Num + From<f32> + Into<f64>>(
     );
 }
 
+/*
+#[test]
+fn bernstein_matrix_br() {
+    type N = RationalN<8>;
+    let mut bern_n = [N::default(); 100];
+    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[0_i64.into()]);
+    assert_eq!(bern_n[0], 1_i64.into());
+    assert_eq!(bern_n[1], 0_i64.into());
+    assert_eq!(bern_n[2], 0_i64.into());
+    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[(1_i64, 2_u64).into()]);
+    assert_eq!(bern_n[0], (1_i64, 4_u64).into());
+    assert_eq!(bern_n[1], (1_i64, 2_u64).into());
+    assert_eq!(bern_n[2], (1_i64, 4_u64).into());
+    generate_bernstein_matrix_br(&mut bern_n[0..3], 2, &[1_i64.into()]);
+    assert_eq!(bern_n[0], 0_i64.into());
+    assert_eq!(bern_n[1], 0_i64.into());
+    assert_eq!(bern_n[2], 1_i64.into());
+}
+
 #[test]
 fn validate_bs_reductions_to_quad() {
     let mut reduce = [RationalN::<8>::default(); 200];
@@ -206,6 +206,7 @@ fn validate_bs_reductions_to_quad() {
     }
     // assert!(false);
 }
+*/
 
 #[test]
 fn bernstein_reduce_matrix_c_to_q() {

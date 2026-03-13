@@ -25,7 +25,7 @@ mod implementations;
 /// Useful functions for generating Bernstein coefficients and operating on Berstein Bezier curves
 pub mod bernstein_fns;
 
-pub mod bignum;
+// pub mod bignum;
 
 pub mod metrics;
 

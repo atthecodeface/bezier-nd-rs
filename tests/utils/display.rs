@@ -1,7 +1,5 @@
 use std::fmt::Write;
 
-use bezier_nd::{bignum::RationalN, Num};
-
 pub fn matrix_to_strings<F: std::fmt::Display>(m: &[F], num_cols: usize) -> Vec<String> {
     let mut result = vec![];
     for row in m.chunks_exact(num_cols) {
@@ -22,7 +20,10 @@ pub fn eprintln_matrix<F: std::fmt::Display>(m: &[F], num_cols: usize) {
     }
 }
 
-pub fn eprintln_rational_matrix<const N: usize>(m: &[RationalN<N>], num_cols: usize) {
+/*
+ * pub fn eprintln_rational_matrix<const N: usize>(m: &[RationalN<N>], num_cols: usize) {
+    use bezier_nd::{bignum::RationalN, Num};
+
     let (i, lcm) = RationalN::<_>::with_common_denom(m.iter());
     let m2: Vec<_> = i.collect();
     eprintln!("1/{lcm}*");
@@ -51,6 +52,7 @@ pub fn string_of_f64_matrix<const N: usize>(m: &[RationalN<N>]) -> String {
         s
     }) + "]"
 }
+*/
 
 pub fn string_of_f64_matrix_f64(m: &[f64]) -> String {
     m.iter().fold(format!("["), |mut s, f| {
