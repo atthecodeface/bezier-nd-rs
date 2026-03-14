@@ -244,11 +244,11 @@ fn improve_root<F: Num>(poly: &[F], x: F) -> Option<(F, F)> {
             None
         } else {
             let new_x = x - f / df;
-            Some((new_x, (new_x - x).nabs()))
+            Some((new_x, (new_x - x).abs()))
         }
     } else {
         let new_x = x - f * df / denom;
-        Some((new_x, (new_x - x).nabs()))
+        Some((new_x, (new_x - x).abs()))
     }
 }
 
@@ -356,7 +356,7 @@ pub fn find_real_roots_cubic<F: Num + num_traits::Float>(
             // Note that / big_C is the same as * big_C comp / |C|^2
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.nabs() < small {
+            if thing.abs() < small {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r0 = Some(x);
@@ -367,7 +367,7 @@ pub fn find_real_roots_cubic<F: Num + num_traits::Float>(
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.nabs() < small {
+            if thing.abs() < small {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r1 = Some(x);
@@ -378,7 +378,7 @@ pub fn find_real_roots_cubic<F: Num + num_traits::Float>(
             let big_c_i = new_big_c_i;
             let thing = big_c_i - delta_0 * big_c_i / (cbrt_mag * cbrt_mag);
             // dbg!(thing);
-            if thing.nabs() < small {
+            if thing.abs() < small {
                 let x = (b + big_c_r + delta_0 * big_c_r / (cbrt_mag * cbrt_mag)) / (-a * three);
                 // eprintln!("Value at {x} {}", poly.calc(x));
                 r2 = Some(x);

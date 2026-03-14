@@ -231,13 +231,13 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         for t in [0_i32, 1, 2, -1] {
             let (root_est, _root_dt) =
                 poly.find_root_nr_with_err(F::of_i32(t), F::frac(1, 1_000_000), 20);
-            let p_t = poly.calc(root_est).nabs();
+            let p_t = poly.calc(root_est).abs();
             if p_t < p_t0 {
                 t0 = root_est;
                 p_t0 = p_t;
             }
         }
-        if p_t0.nabs() > F::frac(1, 1_000) {
+        if p_t0.abs() > F::frac(1, 1_000) {
             // If it is not actually a root, i.e poly(t) > 0.001
             // panic!("Failed to find root for polynomial {poly:?}");
             return (None, None, None);

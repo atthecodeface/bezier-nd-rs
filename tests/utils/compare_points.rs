@@ -16,14 +16,14 @@ pub fn pt_eq<F: Num, const D: usize>(v: &[F; D], x: F, y: F) {
     #[allow(non_snake_case)]
     let EPSILON = F::frac(1, 100_000);
     assert!(
-        (v[0] - x).nabs() < EPSILON,
+        (v[0] - x).abs() < EPSILON,
         "mismatch in x {:?} {:?} {:?}",
         v,
         x,
         y
     );
     assert!(
-        (v[1] - y).nabs() < EPSILON,
+        (v[1] - y).abs() < EPSILON,
         "mismatch in y {:?} {:?} {:?}",
         v,
         x,

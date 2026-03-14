@@ -63,52 +63,36 @@ pub enum BezierMetric {
 mod private {
     pub trait SealedNumOps:
         Copy
-        + std::any::Any
-        + PartialEq
-        + PartialOrd
+        + Sized
         + Send
         + Sync
+        + PartialEq
+        + PartialOrd
+        + std::any::Any
         + std::fmt::Display
         + std::fmt::Debug
-        + std::ops::Neg<Output = Self>
         + num_traits::Float
         + num_traits::NumAssignOps
         + num_traits::ConstOne
         + num_traits::ConstZero
         + num_traits::FromPrimitive
-        + Sized
-        + std::ops::Neg<Output = Self>
-        + std::cmp::PartialOrd
-        + num_traits::ConstZero
-        + num_traits::ConstOne
-        + num_traits::FromPrimitive
-        + std::ops::Div<Output = Self>
-        + Copy
     {
     }
     impl<T> SealedNumOps for T where
         T: Copy
-            + std::any::Any
-            + PartialEq
-            + PartialOrd
+            + Sized
             + Send
             + Sync
+            + PartialEq
+            + PartialOrd
+            + std::any::Any
             + std::fmt::Display
             + std::fmt::Debug
-            + std::ops::Neg<Output = Self>
             + num_traits::Float
             + num_traits::NumAssignOps
             + num_traits::ConstOne
             + num_traits::ConstZero
             + num_traits::FromPrimitive
-            + Sized
-            + std::ops::Neg<Output = Self>
-            + std::cmp::PartialOrd
-            + num_traits::ConstZero
-            + num_traits::ConstOne
-            + num_traits::FromPrimitive
-            + std::ops::Div<Output = Self>
-            + Copy
     {
     }
 }
@@ -154,15 +138,6 @@ pub trait Num: private::SealedNumOps {
 
     /// Return an estimate of the cube root
     fn cbrt_est(self) -> Self;
-
-    /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
-    fn nabs(self) -> Self {
-        if self.is_sign_negative() {
-            -self
-        } else {
-            self
-        }
-    }
 }
 
 impl Num for f32 {
