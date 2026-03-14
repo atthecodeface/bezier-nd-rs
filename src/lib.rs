@@ -44,8 +44,8 @@ pub use builder::BezierBuilder;
 pub use constants::*;
 pub use polynomial::{PolyFindRoots, PolyNewtonRaphson, Polynomial};
 
-// mod distance;
-// pub use distance::BezierDistance2D;
+mod flattened;
+pub use flattened::FlattenedPath;
 
 pub use implementations::bezier_nd::BezierND;
 
