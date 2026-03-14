@@ -62,7 +62,7 @@ pub fn bezier_quad_t_dsq_closest_to_pt<F: Num, const D: usize, B: BezierEval<F, 
     }
 
     // eprintln!("Cloeset endpoint {t_min}:{dsq_min}");
-    let p012 = vector::sum_scaled(&pts, &[F::ONE, F::of_i32(-2), F::ONE]);
+    let p012 = vector::sum_scaled(&pts, &[F::ONE, -F::of_usize(2), F::ONE]);
     let p01 = vector::sum_scaled(&pts, &[-F::ONE, F::ONE]);
     let p0p = vector::add(pts[0], pt, -F::ONE);
     let a = vector::dot(&p012, &p012);

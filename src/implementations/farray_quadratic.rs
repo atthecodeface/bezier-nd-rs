@@ -11,7 +11,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     }
     fn point_at(&self, t: F) -> [F; D] {
         let u = F::ONE - t;
-        vector::sum_scaled(self, &[u * u, F::of_i32(2) * u * t, t * t])
+        vector::sum_scaled(self, &[u * u, F::of_usize(2) * u * t, t * t])
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
         let u = F::ONE - t;
@@ -106,13 +106,13 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
         let p0 = self[0][pt_index];
         let p1 = self[1][pt_index];
         let p2 = self[2][pt_index];
-        let d_dt_denom = p0 + p2 - p1 * F::of_i32(2);
+        let d_dt_denom = p0 + p2 - p1 * F::of_usize(2);
         let d_dt_numer = p0 - p1;
         if !d_dt_denom.is_unreliable_divisor() {
             let t = d_dt_numer / d_dt_denom;
             if t > F::ZERO && t < F::ONE {
                 let u = F::ONE - t;
-                let c = u * u * p0 + u * t * p1 * F::of_i32(2) + t * t * p2;
+                let c = u * u * p0 + u * t * p1 * F::of_usize(2) + t * t * p2;
                 return utils::opt_min_and_max_tc(
                     give_min,
                     give_max,

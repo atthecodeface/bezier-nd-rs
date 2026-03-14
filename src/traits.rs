@@ -120,15 +120,6 @@ pub trait Num: private::SealedNumOps {
         Self::from_usize(n).unwrap()
     }
 
-    /// Convert an f64 to this value
-    fn of_f64(v: f64) -> Self {
-        Self::from_f64(v).unwrap()
-    }
-
-    /// Return true if the divisor is too close to zero
-    /// to provide a useful result
-    fn reciprocal(self) -> Self;
-
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
     fn is_unreliable_divisor(self) -> bool;
@@ -145,21 +136,8 @@ impl Num for f32 {
         (n as f32) / (u as f32)
     }
 
-    /// Convert an f64 to this value
-    fn of_f64(v: f64) -> Self {
-        v as f32
-    }
-
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f32::EPSILON
-    }
-
-    fn reciprocal(self) -> Self {
-        if self.is_unreliable_divisor() {
-            self.recip() //            self.signum()
-        } else {
-            self.recip()
-        }
     }
 
     fn sqrt_est(self) -> Self {
@@ -176,20 +154,8 @@ impl Num for f64 {
         (n as f64) / (u as f64)
     }
 
-    fn of_f64(v: f64) -> Self {
-        v
-    }
-
     fn is_unreliable_divisor(self) -> bool {
         self.abs() <= f64::EPSILON
-    }
-
-    fn reciprocal(self) -> Self {
-        if self.is_unreliable_divisor() {
-            self.signum()
-        } else {
-            self.recip()
-        }
     }
 
     fn sqrt_est(self) -> Self {

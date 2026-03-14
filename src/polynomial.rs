@@ -275,7 +275,7 @@ pub fn find_real_roots_quad<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
         let two_a = poly[2] + poly[2];
         let b = poly[1];
         let c = poly[0];
-        let disc = b * b - F::of_i32(2) * two_a * c;
+        let disc = b * b - F::of_usize(2) * two_a * c;
         if disc < F::zero() {
             (None, None)
         } else {
@@ -413,7 +413,7 @@ pub trait PolyNewtonRaphson<F: Num> {
     where
         Self: Polynomial<F>,
     {
-        let mut last_dx = F::of_i32(i32::MAX);
+        let mut last_dx = F::max_value();
         while let Some((improved_x, improved_dx)) = self.improve_root(x) {
             // eprintln!("x:{x}, {improved_x} {improved_dx}");
             x = improved_x;

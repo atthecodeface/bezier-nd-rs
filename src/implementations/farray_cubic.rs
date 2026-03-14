@@ -21,7 +21,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         )
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
-        let three = F::of_i32(3);
+        let three = F::of_usize(3);
         let u = F::ONE - t;
         (
             three,
@@ -84,8 +84,8 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         let p3 = self[3][pt_index];
         let (mut opt_min, mut opt_max) =
             utils::opt_min_and_max_tc(give_min, give_max, (F::ZERO, p0), (F::ONE, p3), None);
-        let a = p3 - p0 + (p1 - p2) * F::of_i32(3);
-        let b = (p0 + p2 - p1 - p1) * F::of_i32(2);
+        let a = p3 - p0 + (p1 - p2) * F::of_usize(3);
+        let b = (p0 + p2 - p1 - p1) * F::of_usize(2);
         let c = p1 - p0;
         let (opt_t0, opt_t1) = utils::find_real_roots_quad_num(&[c, b, a]);
         if let Some(t0) = opt_t0 {

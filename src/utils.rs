@@ -198,7 +198,7 @@ pub fn find_real_roots_quad_num<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
         let two_a = poly[2] + poly[2];
         let b = poly[1];
         let c = poly[0];
-        let disc = b * b - F::of_i32(2) * two_a * c;
+        let disc = b * b - F::of_usize(2) * two_a * c;
         if disc < F::zero() {
             (None, None)
         } else {
@@ -227,10 +227,10 @@ pub fn find_root_cubic_num<F: Num>(mut poly: [F; 4]) -> (Option<F>, Option<F>, O
         //
         // If it fails again at the same point from t=2
         let mut t0 = F::ZERO;
-        let mut p_t0 = F::of_i32(i32::MAX);
+        let mut p_t0 = F::max_value();
         for t in [0_i32, 1, 2, -1] {
             let (root_est, _root_dt) =
-                poly.find_root_nr_with_err(F::of_i32(t), F::frac(1, 1_000_000), 20);
+                poly.find_root_nr_with_err(F::from_i32(t).unwrap(), F::frac(1, 1_000_000), 20);
             let p_t = poly.calc(root_est).abs();
             if p_t < p_t0 {
                 t0 = root_est;
