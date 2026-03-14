@@ -62,7 +62,21 @@ pub enum BezierMetric {
 
 mod private {
     pub trait SealedNumOps:
-        Sized
+        Copy
+        + std::any::Any
+        + PartialEq
+        + PartialOrd
+        + Send
+        + Sync
+        + std::fmt::Display
+        + std::fmt::Debug
+        + std::ops::Neg<Output = Self>
+        + num_traits::Num
+        + num_traits::NumAssignOps
+        + num_traits::ConstOne
+        + num_traits::ConstZero
+        + num_traits::FromPrimitive
+        + Sized
         + std::ops::Neg<Output = Self>
         + std::cmp::PartialOrd
         + num_traits::ConstZero
@@ -73,7 +87,21 @@ mod private {
     {
     }
     impl<T> SealedNumOps for T where
-        T: Sized
+        T: Copy
+            + std::any::Any
+            + PartialEq
+            + PartialOrd
+            + Send
+            + Sync
+            + std::fmt::Display
+            + std::fmt::Debug
+            + std::ops::Neg<Output = Self>
+            + num_traits::Num
+            + num_traits::NumAssignOps
+            + num_traits::ConstOne
+            + num_traits::ConstZero
+            + num_traits::FromPrimitive
+            + Sized
             + std::ops::Neg<Output = Self>
             + std::cmp::PartialOrd
             + num_traits::ConstZero
@@ -211,23 +239,7 @@ impl NumOps for f64 {
 /// A blanket implementation is provided for any type that provides the required trait implementations, and hence is implemented for example by [f32] and [f64].
 ///
 /// This is also readily supported by rational number types (with some good approximation of From f32).
-pub trait Num:
-    Copy
-    + std::any::Any
-    + PartialEq
-    + PartialOrd
-    + Send
-    + Sync
-    + std::fmt::Display
-    + std::fmt::Debug
-    + std::ops::Neg<Output = Self>
-    + num_traits::Num
-    + num_traits::NumAssignOps
-    + num_traits::ConstOne
-    + num_traits::ConstZero
-    + num_traits::FromPrimitive
-    + NumOps
-{
+pub trait Num: NumOps {
     /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
     fn nabs(self) -> Self {
         if self.is_sign_negative() {
@@ -256,25 +268,7 @@ pub trait Num:
     }
 }
 
-impl<T> Num for T where
-    T: Copy
-        + std::any::Any
-        + PartialEq
-        + PartialOrd
-        + Send
-        + Sync
-        + std::fmt::Display
-        + std::fmt::Debug
-        + std::ops::Neg<Output = Self>
-        + num_traits::Num
-        + num_traits::NumAssignOps
-        + num_traits::ConstOne
-        + num_traits::ConstZero
-        + num_traits::FromPrimitive
-        + 'static
-        + NumOps
-{
-}
+impl<T> Num for T where T: NumOps {}
 
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
 ///
