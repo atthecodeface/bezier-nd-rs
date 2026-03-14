@@ -60,31 +60,51 @@ pub enum BezierMetric {
     SumControlSquared,
 }
 
+mod private {
+    pub trait SealedNumOps:
+        Sized
+        + std::ops::Neg<Output = Self>
+        + std::cmp::PartialOrd
+        + num_traits::ConstZero
+        + num_traits::ConstOne
+        + num_traits::FromPrimitive
+        + std::ops::Div<Output = Self>
+        + Copy
+    {
+    }
+    impl<T> SealedNumOps for T where
+        T: Sized
+            + std::ops::Neg<Output = Self>
+            + std::cmp::PartialOrd
+            + num_traits::ConstZero
+            + num_traits::ConstOne
+            + num_traits::FromPrimitive
+            + std::ops::Div<Output = Self>
+            + Copy
+    {
+    }
+}
 /// Trait that must be supplied to enable a value to be used as a parameter or point in a Bezier
-pub trait NumOps:
-    Sized
-    + 'static
-    + std::ops::Neg<Output = Self>
-    + std::cmp::PartialOrd
-    + num_traits::ConstZero
-    + num_traits::ConstOne
-    + Copy
-{
+pub trait NumOps: private::SealedNumOps {
     /// Create a value from a fraction with signed numerator and unsigned denominator
-    fn frac(n: i32, u: u32) -> Self;
+    fn frac(n: i32, u: u32) -> Self {
+        Self::from_i32(n).unwrap() / Self::from_u32(u).unwrap()
+    }
 
     /// Create a value from an [i32]
     fn of_i32(n: i32) -> Self {
-        Self::frac(n, 1)
+        Self::from_i32(n).unwrap()
     }
 
     /// Create a value from a [usize]
     fn of_usize(n: usize) -> Self {
-        Self::frac(n as i32, 1)
+        Self::from_usize(n).unwrap()
     }
 
     /// Convert an f64 to this value
-    fn of_f64(v: f64) -> Self;
+    fn of_f64(v: f64) -> Self {
+        Self::from_f64(v).unwrap()
+    }
 
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
@@ -206,7 +226,6 @@ pub trait Num:
     + num_traits::ConstOne
     + num_traits::ConstZero
     + num_traits::FromPrimitive
-    + 'static
     + NumOps
 {
     /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
