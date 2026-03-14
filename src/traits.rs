@@ -71,7 +71,7 @@ mod private {
         + std::fmt::Display
         + std::fmt::Debug
         + std::ops::Neg<Output = Self>
-        + num_traits::Num
+        + num_traits::Float
         + num_traits::NumAssignOps
         + num_traits::ConstOne
         + num_traits::ConstZero
@@ -96,7 +96,7 @@ mod private {
             + std::fmt::Display
             + std::fmt::Debug
             + std::ops::Neg<Output = Self>
-            + num_traits::Num
+            + num_traits::Float
             + num_traits::NumAssignOps
             + num_traits::ConstOne
             + num_traits::ConstZero
@@ -149,43 +149,18 @@ pub trait Num: private::SealedNumOps {
     /// to provide a useful result
     fn is_unreliable_divisor(self) -> bool;
 
-    /// Raise to the i'th power
-    fn powi(self, p: i32) -> Self;
-
     /// Return an estimate of the square root
     fn sqrt_est(self) -> Self;
 
     /// Return an estimate of the cube root
     fn cbrt_est(self) -> Self;
 
-    /// Return true if the value is negative
-    fn is_sign_negative(self) -> bool {
-        self < Self::ZERO
-    }
     /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
     fn nabs(self) -> Self {
         if self.is_sign_negative() {
             -self
         } else {
             self
-        }
-    }
-
-    /// Return the minimum of two values
-    fn min(self, other: Self) -> Self {
-        if self <= other {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// Return the maximum of two values
-    fn max(self, other: Self) -> Self {
-        if other <= self {
-            self
-        } else {
-            other
         }
     }
 }
@@ -212,20 +187,12 @@ impl Num for f32 {
         }
     }
 
-    fn powi(self, p: i32) -> Self {
-        <Self as num_traits::Float>::powi(self, p)
-    }
-
     fn sqrt_est(self) -> Self {
         self.sqrt()
     }
 
     fn cbrt_est(self) -> Self {
         self.cbrt()
-    }
-
-    fn is_sign_negative(self) -> bool {
-        <Self as num_traits::Float>::is_sign_negative(self)
     }
 }
 
@@ -250,19 +217,12 @@ impl Num for f64 {
         }
     }
 
-    fn powi(self, p: i32) -> Self {
-        <Self as num_traits::Float>::powi(self, p)
-    }
-
     fn sqrt_est(self) -> Self {
         self.sqrt()
     }
 
     fn cbrt_est(self) -> Self {
         self.cbrt()
-    }
-    fn is_sign_negative(self) -> bool {
-        <Self as num_traits::Float>::is_sign_negative(self)
     }
 }
 

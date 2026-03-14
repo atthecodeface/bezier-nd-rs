@@ -53,7 +53,8 @@ pub use implementations::bezier_nd::BezierND;
 
 use num_traits::{ConstOne, ConstZero, FromPrimitive};
 
-impl<T: fixed_pt::UsefulInt, const N: usize> crate::Num for fixed_pt::Fixed<T, N>
+impl<T: fixed_pt::UsefulInt + fixed_pt::UsefulConsts, const N: usize> crate::Num
+    for fixed_pt::Fixed<T, N>
 where
     fixed_pt::IsAFixedType<T, N>: fixed_pt::HowIsFixed<T>,
 {
@@ -82,10 +83,6 @@ where
         false
     }
 
-    fn powi(self, p: i32) -> Self {
-        (0..p).fold(Self::ONE, |acc, _| acc * self)
-    }
-
     /// Return an estimate of the square root to within a precision
     fn sqrt_est(self) -> Self {
         // sqrt with a u32_24 input produces a u32_28 output
@@ -104,10 +101,6 @@ where
     /// to provide a useful result
     fn cbrt_est(self) -> Self {
         crate::utils::cbrt_est::<_, 5>(self)
-    }
-    /// Return true if the value is negative
-    fn is_sign_negative(self) -> bool {
-        self < Self::ZERO
     }
 }
 
