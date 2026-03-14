@@ -286,12 +286,12 @@ pub fn sqrt_est<F: Num, const N: usize>(sq: F, min: bool) -> F {
 
         let mut tsq = sq;
         while tsq < F::ONE {
-            est *= scale_r;
-            tsq *= scale_sq;
+            est = est * scale_r;
+            tsq = tsq * scale_sq;
         }
         while tsq > scale_sq {
-            est *= scale;
-            tsq *= scale_sq_r;
+            est = est * scale;
+            tsq = tsq * scale_sq_r;
         }
         for _ in 0..N {
             est = half * (est + sq / est);
@@ -344,17 +344,17 @@ pub fn cbrt_est<F: Num, const N: usize>(cb: F) -> F {
         }
     };
     while tcb < F::ONE {
-        est *= scale_r;
-        tcb *= scale_cb;
+        est = est * scale_r;
+        tcb = tcb * scale_cb;
     }
     while tcb > scale_cb {
-        est *= scale;
-        tcb *= scale_cb_r;
+        est = est * scale;
+        tcb = tcb * scale_cb_r;
     }
     let two_cb = cb + cb;
     for _ in 0..N {
         let est_cb = est * est * est;
-        est *= (est_cb + two_cb) / (est_cb + est_cb + cb);
+        est = est * (est_cb + two_cb) / (est_cb + est_cb + cb);
     }
     est
 }

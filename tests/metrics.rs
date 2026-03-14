@@ -19,7 +19,7 @@ fn check_metrics_of_beziers<
         let p0 = b0.point_at(t);
         let p1 = b1.point_at(t);
         let dp = vector::distance_sq(&p0, &p1);
-        total_d += dp / 1001.0_f32.into();
+        total_d = total_d + dp / 1001.0_f32.into();
         if dp > max_d {
             max_d = dp;
             max_t = t;

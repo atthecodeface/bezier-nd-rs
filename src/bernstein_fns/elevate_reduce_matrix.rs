@@ -111,7 +111,7 @@ pub fn reduce_l2_min_by_one_matrix<F: Num>(degree: usize) -> Vec<F> {
     // e is n2 rows of n1 columns
     let (scale, mut e) = generate_elevate_by_one_matrix(degree);
     for e in e.iter_mut() {
-        *e /= scale;
+        *e = *e / scale;
     }
 
     let mut e_t = e.clone();

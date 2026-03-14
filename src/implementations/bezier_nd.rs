@@ -469,7 +469,7 @@ where
                 .zip(self.pts.iter().zip(self.pts.iter().skip(1)))
             {
                 *p = vector::sum_scaled(&[*p0, *p1], &[s0 / n_f, F::ONE - s0 / n_f]);
-                s0 += F::ONE;
+                s0 = s0 + F::ONE;
             }
             Some(s)
         }

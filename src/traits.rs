@@ -72,7 +72,6 @@ mod private {
         + std::fmt::Display
         + std::fmt::Debug
         + num_traits::Float
-        + num_traits::NumAssignOps
         + num_traits::ConstOne
         + num_traits::ConstZero
         + num_traits::FromPrimitive
@@ -89,7 +88,6 @@ mod private {
             + std::fmt::Display
             + std::fmt::Debug
             + num_traits::Float
-            + num_traits::NumAssignOps
             + num_traits::ConstOne
             + num_traits::ConstZero
             + num_traits::FromPrimitive
@@ -460,7 +458,7 @@ where
                     return Some(t0 + (t1 - t0) * distance / dp);
                 }
             }
-            distance -= dp;
+            distance = distance - dp;
         }
         None
     }

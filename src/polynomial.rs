@@ -112,7 +112,7 @@ fn poly_multiply<F: Num>(poly: &[F], multiplicand: &[F], result: &mut [F]) {
     );
     for (m_i, m) in multiplicand.iter().take(mul_deg + 1).enumerate() {
         for (p_i, p) in poly.iter().take(poly_deg + 1).enumerate() {
-            result[m_i + p_i] += (*m) * (*p);
+            result[m_i + p_i] = result[m_i + p_i] + (*m) * (*p);
         }
     }
 }
@@ -138,7 +138,7 @@ fn poly_divide<F: Num>(poly: &mut [F], divisor: &[F], result: &mut [F], eps: F) 
             let amount = p_max / div_max;
             result[n_iter - i - 1] = amount;
             for j in 0..(div_deg + 1) {
-                poly[poly_deg - i - j] -= amount * divisor[div_deg - j];
+                poly[poly_deg - i - j] = poly[poly_deg - i - j] - amount * divisor[div_deg - j];
             }
         }
     }

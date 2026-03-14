@@ -67,9 +67,9 @@ pub fn bernstein_basis_coeff_br<N: Num>(degree: usize, i: usize, t: N) -> N {
     let mut result = N::ONE;
     for c in 0..degree {
         if c < i {
-            result *= t;
+            result = result * t;
         } else {
-            result *= u;
+            result = result * u;
         }
     }
     // Multiply by n! / (n-i)! / i!
@@ -78,12 +78,12 @@ pub fn bernstein_basis_coeff_br<N: Num>(degree: usize, i: usize, t: N) -> N {
     for j in 0..=i {
         if j < i {
             let f = N::of_usize(degree - j);
-            result *= f;
+            result = result * f;
         }
 
         if j >= 1 {
             let f = N::of_usize(j);
-            result /= f;
+            result = result / f;
         }
     }
     result
@@ -122,7 +122,7 @@ pub fn generate_elevate_by_n_matrix<N: Num>(degree: usize, by_n: usize) -> Vec<N
     if by_n == 1 {
         let (scale, mut result) = generate_elevate_by_one_matrix(degree);
         for e in result.iter_mut() {
-            *e /= scale;
+            *e = *e / scale;
         }
         result
     } else {

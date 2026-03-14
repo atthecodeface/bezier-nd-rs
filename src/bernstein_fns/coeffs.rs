@@ -45,10 +45,10 @@ pub fn basis_coeff_enum_num<F: Num>(degree: usize, t: F) -> impl Iterator<Item =
     (0..=degree).map(move |i| {
         let mut x = F::from_u64(coeffs[1 + i]).unwrap();
         for _ in 0..i {
-            x *= t;
+            x = x * t;
         }
         for _ in i..degree {
-            x *= u;
+            x = x * u;
         }
         (i, x)
     })
@@ -202,7 +202,7 @@ pub fn nth_derivative<F: Num, const D: usize>(pts: &[[F; D]], n: usize, d_pts: &
     let degree = pts.len() - 1;
     let mut scale = F::one();
     for i in 0..n {
-        scale *= F::from_usize(degree - i).unwrap();
+        scale = scale * F::from_usize(degree - i).unwrap();
     }
     for (i, sp) in d_pts.iter_mut().take(degree + 1 - n).enumerate() {
         let mut m1_n_positive = (n & 1) == 0;
