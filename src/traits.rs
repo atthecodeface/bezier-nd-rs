@@ -112,8 +112,15 @@ mod private {
     {
     }
 }
+
+/// A trait that is the basic requirement for the 't' parameter for Beziers; it
+/// requires basic arithmetic operations, and conversion from f32.
+///
+/// A blanket implementation is provided for any type that provides the required trait implementations, and hence is implemented for example by [f32] and [f64].
+///
+/// This is also readily supported by rational number types (with some good approximation of From f32).
 /// Trait that must be supplied to enable a value to be used as a parameter or point in a Bezier
-pub trait NumOps: private::SealedNumOps {
+pub trait Num: private::SealedNumOps {
     /// Create a value from a fraction with signed numerator and unsigned denominator
     fn frac(n: i32, u: u32) -> Self {
         Self::from_i32(n).unwrap() / Self::from_u32(u).unwrap()
@@ -155,9 +162,35 @@ pub trait NumOps: private::SealedNumOps {
     fn is_sign_negative(self) -> bool {
         self < Self::ZERO
     }
+    /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
+    fn nabs(self) -> Self {
+        if self.is_sign_negative() {
+            -self
+        } else {
+            self
+        }
+    }
+
+    /// Return the minimum of two values
+    fn min(self, other: Self) -> Self {
+        if self <= other {
+            self
+        } else {
+            other
+        }
+    }
+
+    /// Return the maximum of two values
+    fn max(self, other: Self) -> Self {
+        if other <= self {
+            self
+        } else {
+            other
+        }
+    }
 }
 
-impl NumOps for f32 {
+impl Num for f32 {
     fn frac(n: i32, u: u32) -> Self {
         (n as f32) / (u as f32)
     }
@@ -196,7 +229,7 @@ impl NumOps for f32 {
     }
 }
 
-impl NumOps for f64 {
+impl Num for f64 {
     fn frac(n: i32, u: u32) -> Self {
         (n as f64) / (u as f64)
     }
@@ -232,43 +265,6 @@ impl NumOps for f64 {
         <Self as num_traits::Float>::is_sign_negative(self)
     }
 }
-
-/// A trait that is the basic requirement for the 't' parameter for Beziers; it
-/// requires basic arithmetic operations, and conversion from f32.
-///
-/// A blanket implementation is provided for any type that provides the required trait implementations, and hence is implemented for example by [f32] and [f64].
-///
-/// This is also readily supported by rational number types (with some good approximation of From f32).
-pub trait Num: NumOps {
-    /// Return the absolute value (not all [Num] types support the [num_traits::Float] trait)
-    fn nabs(self) -> Self {
-        if self.is_sign_negative() {
-            -self
-        } else {
-            self
-        }
-    }
-
-    /// Return the minimum of two values
-    fn min(self, other: Self) -> Self {
-        if self <= other {
-            self
-        } else {
-            other
-        }
-    }
-
-    /// Return the maximum of two values
-    fn max(self, other: Self) -> Self {
-        if other <= self {
-            self
-        } else {
-            other
-        }
-    }
-}
-
-impl<T> Num for T where T: NumOps {}
 
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
 ///

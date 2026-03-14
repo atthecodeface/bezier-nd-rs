@@ -36,11 +36,11 @@ pub(crate) use bezier_iter::{BezierLineTIter, BezierPointTIter, BezierSplitTIter
 pub use constants_table::{
     ConstantsTable, SharedConstantsTable, StaticConstantsTable, CONSTANTS_TABLE,
 };
+pub use traits::Num;
 pub use traits::{
     BezierConstruct, BezierElevate, BezierEval, BezierFlatIterator, BezierIterationType, BezierMap,
     BezierMetric, BezierOps, BezierReduce, BezierReduction, BezierSplit,
 };
-pub use traits::{Num, NumOps};
 
 pub use builder::BezierBuilder;
 pub use constants::*;
@@ -53,7 +53,7 @@ pub use implementations::bezier_nd::BezierND;
 
 use num_traits::{ConstOne, ConstZero, FromPrimitive};
 
-impl<T: fixed_pt::UsefulInt, const N: usize> crate::NumOps for fixed_pt::Fixed<T, N>
+impl<T: fixed_pt::UsefulInt, const N: usize> crate::Num for fixed_pt::Fixed<T, N>
 where
     fixed_pt::IsAFixedType<T, N>: fixed_pt::HowIsFixed<T>,
 {
