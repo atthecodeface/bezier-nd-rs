@@ -476,9 +476,10 @@ where
     }
 }
 
+// CONSTANTS_TABLE.use_constants_table requires Send+Sync
 impl<F, const N: usize, const D: usize> BezierReduce<F, [F; D]> for BezierND<F, N, D>
 where
-    F: crate::Num,
+    F: crate::Num + Send + Sync,
 {
     type Reduced = Self;
 

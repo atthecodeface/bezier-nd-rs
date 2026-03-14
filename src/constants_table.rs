@@ -3,6 +3,14 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::sync::{OnceLock, RwLock};
 
+/// An entry in a cached table
+///
+/// The table has to be 'static, as the entries are `Any` and therefore static
+///
+/// The table is usually actually `OnceLock` of a `RwLock`, which requires Send + Sync
+///
+/// If the table were not in a *static* cached table then Send + Sync would not
+/// be required; there does not seem to be a good way to manage that.
 struct TableEntry {
     type_id: TypeId,
     table: Box<dyn Any + Send + Sync>,
@@ -10,7 +18,7 @@ struct TableEntry {
 
 impl TableEntry {
     /// Create a [Table] whose contents is a `Vec<F>` from a slice of `[T]`
-    fn new_f_table<F: Num, T: Copy, C: Fn(T) -> F>(convert: C, table: &[T]) -> Self {
+    fn new_f_table<F: Num + Send + Sync, T: Copy, C: Fn(T) -> F>(convert: C, table: &[T]) -> Self {
         let vec_f: Vec<F> = table.iter().copied().map(convert).collect();
         Self {
             type_id: TypeId::of::<F>(),
@@ -24,7 +32,7 @@ impl TableEntry {
         return f(self.table.downcast_ref::<Vec<F>>().unwrap());
     }
 
-    /// Invoke a function of `&[F]` where `F==f64` on a table whose contents are `&'static [f64]`
+    /// Invoke a function of `&[F]` where `F==T` on a table whose contents are `&[T]`
     ///
     /// Note that `Any` requires the table to be *static*
     fn invoke_f_of_ts<F: Num, T: Copy, R, FN: FnMut(&[F]) -> R>(
@@ -64,7 +72,7 @@ impl StaticConstantsTable {
     /// with the converted values. This conversion is performed *once* when the lazy constants table is used.
     pub fn use_constants_table<F, T, R, M>(&self, map: M, table: &'static [T]) -> R
     where
-        F: Num,
+        F: Num + Send + Sync,
         M: FnMut(&[F]) -> R,
         T: Copy,
         SharedConstantsTable: ConstantsTable<T>,
@@ -85,12 +93,16 @@ impl StaticConstantsTable {
 pub trait ConstantsTable<T: Copy> {
     /// Invoke the mapping function `map` on the table, having converted the mapping
     /// first into something that permits a `&[F]`
-    fn invoke_using_table<F: Num, R, M: FnMut(&[F]) -> R>(&self, map: M, table: &[T]) -> R;
+    fn invoke_using_table<F: Num + Send + Sync, R, M: FnMut(&[F]) -> R>(
+        &self,
+        map: M,
+        table: &[T],
+    ) -> R;
 
     /// Attempt to cache a constants table after conversion, given a static version thereof
     ///
     /// Returns `false` if the cache addition could not be performed (a non-caching table, for example)
-    fn cache_constants_table<F: Num>(&self, _table: &'static [T]) -> bool {
+    fn cache_constants_table<F: Num + Send + Sync>(&self, _table: &'static [T]) -> bool {
         false
     }
 
@@ -100,7 +112,7 @@ pub trait ConstantsTable<T: Copy> {
     ///
     /// If `F` is a different type then an intermediate `Vec` must be allocated, and filled
     /// with the converted values. This conversion may be cached in the table.
-    fn use_constants_table<F: Num, R, M: FnMut(&[F]) -> R>(
+    fn use_constants_table<F: Num + Send + Sync, R, M: FnMut(&[F]) -> R>(
         &self,
         map: M,
         table: &'static [T],
@@ -138,7 +150,7 @@ macro_rules! ConstantsTableImpl {
     {$t:ty, $conv:expr} => {
         impl ConstantsTable<$t> for SharedConstantsTable {
             /// Invoke a function on a table in the set
-            fn invoke_using_table<F: Num, R, M: FnMut(&[F]) -> R>(&self, f: M, table: &[$t]) -> R {
+            fn invoke_using_table<F: Num + Send + Sync, R, M: FnMut(&[F]) -> R>(&self, f: M, table: &[$t]) -> R {
                 let f_type = TypeId::of::<F>();
                 let table_address: *const [$t] = table;
                 let table_address = table_address.addr();
@@ -157,7 +169,7 @@ macro_rules! ConstantsTableImpl {
                 table.invoke_f(f)
             }
 
-            fn cache_constants_table<F: Num>(&self, table: &'static [$t]) -> bool {
+            fn cache_constants_table<F: Num + Send + Sync>(&self, table: &'static [$t]) -> bool {
                 let f_type = TypeId::of::<F>();
                 let table_address: *const [$t] = table;
                 let table_address = table_address.addr();

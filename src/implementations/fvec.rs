@@ -177,9 +177,10 @@ impl<F: Num, const D: usize> BezierElevate<F, [F; D]> for Vec<[F; D]> {
     }
 }
 
+// Send + Sync are required for CONSTANTS_TABLE.use_constants_table
 impl<F, const D: usize> BezierReduce<F, [F; D]> for Vec<[F; D]>
 where
-    F: Num,
+    F: Num + Send + Sync,
 {
     type Reduced = Self;
     fn can_reduce(&self, method: BezierReduction) -> bool {

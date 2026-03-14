@@ -279,7 +279,7 @@ pub fn find_real_roots_quad<F: Num>(poly: &[F]) -> (Option<F>, Option<F>) {
         if disc < F::zero() {
             (None, None)
         } else {
-            let disc_sq = disc.sqrt_est();
+            let disc_sq = disc.sqrt();
             (Some((-b + disc_sq) / two_a), Some((-b - disc_sq) / two_a))
         }
     }

@@ -15,7 +15,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 3] {
     }
     fn derivative_at(&self, t: F) -> (F, [F; D]) {
         let u = F::ONE - t;
-        (F::of_i32(2), vector::sum_scaled(self, &[-u, u - t, t]))
+        (F::of_usize(2), vector::sum_scaled(self, &[-u, u - t, t]))
     }
     fn endpoints(&self) -> ([F; D], [F; D]) {
         (self[0], self[2])

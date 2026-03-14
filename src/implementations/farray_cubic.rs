@@ -13,7 +13,7 @@ impl<F: Num, const D: usize> BezierEval<F, [F; D]> for [[F; D]; 4] {
         vector::distance_sq(p0, p1)
     }
     fn point_at(&self, t: F) -> [F; D] {
-        let three = F::of_i32(3);
+        let three = F::of_usize(3);
         let u = F::ONE - t;
         vector::sum_scaled(
             self,

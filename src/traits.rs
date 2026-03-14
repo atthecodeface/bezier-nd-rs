@@ -64,8 +64,6 @@ mod private {
     pub trait SealedNumOps:
         Copy
         + Sized
-        + Send
-        + Sync
         + PartialEq
         + PartialOrd
         + std::any::Any
@@ -80,8 +78,6 @@ mod private {
     impl<T> SealedNumOps for T where
         T: Copy
             + Sized
-            + Send
-            + Sync
             + PartialEq
             + PartialOrd
             + std::any::Any
@@ -108,11 +104,6 @@ pub trait Num: private::SealedNumOps {
         Self::from_i32(n).unwrap() / Self::from_u32(u).unwrap()
     }
 
-    /// Create a value from an [i32]
-    fn of_i32(n: i32) -> Self {
-        Self::from_i32(n).unwrap()
-    }
-
     /// Create a value from a [usize]
     fn of_usize(n: usize) -> Self {
         Self::from_usize(n).unwrap()
@@ -120,50 +111,12 @@ pub trait Num: private::SealedNumOps {
 
     /// Return true if the divisor is too close to zero
     /// to provide a useful result
-    fn is_unreliable_divisor(self) -> bool;
-
-    /// Return an estimate of the square root
-    fn sqrt_est(self) -> Self;
-
-    /// Return an estimate of the cube root
-    fn cbrt_est(self) -> Self;
-}
-
-impl Num for f32 {
-    fn frac(n: i32, u: u32) -> Self {
-        (n as f32) / (u as f32)
-    }
-
     fn is_unreliable_divisor(self) -> bool {
-        self.abs() <= f32::EPSILON
-    }
-
-    fn sqrt_est(self) -> Self {
-        self.sqrt()
-    }
-
-    fn cbrt_est(self) -> Self {
-        self.cbrt()
+        self.abs() <= Self::epsilon()
     }
 }
 
-impl Num for f64 {
-    fn frac(n: i32, u: u32) -> Self {
-        (n as f64) / (u as f64)
-    }
-
-    fn is_unreliable_divisor(self) -> bool {
-        self.abs() <= f64::EPSILON
-    }
-
-    fn sqrt_est(self) -> Self {
-        self.sqrt()
-    }
-
-    fn cbrt_est(self) -> Self {
-        self.cbrt()
-    }
-}
+impl<T> Num for T where T: private::SealedNumOps {}
 
 /// A trait of a Bezier that has a parameter of type 'F' and points of type 'P'
 ///
@@ -442,14 +395,14 @@ where
     fn iter_length(&self, iter_type: BezierIterationType<F>) -> F {
         self.as_t_lines(iter_type)
             .fold(F::ZERO, |acc, (_t0, p0, _t1, p1)| {
-                acc + self.distance_sq_between(&p0, &p1).sqrt_est()
+                acc + self.distance_sq_between(&p0, &p1).sqrt()
             })
     }
 
     /// Calculates the length of a setion of the Bezier
     fn iter_t_of_distance(&self, iter_type: BezierIterationType<F>, mut distance: F) -> Option<F> {
         for (t0, p0, t1, p1) in self.as_t_lines(iter_type) {
-            let dp = self.distance_sq_between(&p0, &p1).sqrt_est();
+            let dp = self.distance_sq_between(&p0, &p1).sqrt();
 
             if distance <= dp {
                 if dp.is_unreliable_divisor() {

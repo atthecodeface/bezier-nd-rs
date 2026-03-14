@@ -189,8 +189,8 @@ pub fn of_round_corner<F: Num, const D: usize>(
     let nearly_one = F::frac(999_999, 1_000_000);
     let one = F::ONE;
     let two = F::of_usize(2);
-    let v0_l = vector::length_sq(v0).sqrt_est();
-    let v1_l = vector::length_sq(v1).sqrt_est();
+    let v0_l = vector::length_sq(v0).sqrt();
+    let v1_l = vector::length_sq(v1).sqrt();
     let v0 = if v0_l.is_unreliable_divisor() {
         *v0
     } else {
@@ -213,8 +213,8 @@ pub fn of_round_corner<F: Num, const D: usize>(
         let r2 = radius * radius;
         let d2 = two * r2 / (one - cos_alpha);
         let k2 = d2 - r2;
-        let d = d2.sqrt_est();
-        let k = k2.sqrt_est();
+        let d = d2.sqrt();
+        let k = k2.sqrt();
 
         let lambda = radius * lambda_of_k_d(k, d);
 
@@ -274,6 +274,6 @@ pub fn center_radius_of_bezier_arc<F: Num, const D: usize, B: BezierEval<F, [F; 
     let r_sq_est_0 = vector::distance_sq(&c, &p0);
     let r_sq_est_1 = vector::distance_sq(&c, &p1);
     let r_sq_est = (r_sq_est_0 + r_sq_est_1) * F::frac(1, 2);
-    let r = r_sq_est.sqrt_est();
+    let r = r_sq_est.sqrt();
     (c, r)
 }
