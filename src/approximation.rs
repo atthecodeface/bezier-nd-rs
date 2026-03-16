@@ -135,6 +135,22 @@ where
     pub fn iter_lines(&self) -> impl Iterator<Item = (&[F; D], &[F; D])> + '_ {
         self.points.iter().zip(self.points.iter().skip(1))
     }
+
+    /// Find the approximate t_dsq using the lines
+    pub fn approx_t_dsq_closest_to_pt(&self, pt: &[F; D]) -> (F, F) {
+        self.points
+            .windows(2)
+            .map(|w| <&[[F; D]] as TryInto<&[[F; D]; 2]>>::try_into(&w[0..2]).unwrap())
+            .zip(self.ts.windows(2))
+            .fold((F::ZERO, F::max_value()), |acc, (line, ts)| {
+                let t_dsq = line.t_dsq_closest_to_pt(pt).unwrap();
+                if t_dsq.1 < acc.1 {
+                    (t_dsq.0 * (ts[1] - ts[0]) + ts[0], t_dsq.1)
+                } else {
+                    acc
+                }
+            })
+    }
 }
 
 impl<B, F, const D: usize> BezierEval<F, [F; D]> for Approximation<B, F, D>
@@ -200,9 +216,12 @@ where
     fn metric_from(&self, other: Option<&[[F; D]]>, metric: BezierMetric) -> Option<F> {
         self.bezier.metric_from(other, metric)
     }
-    // Can probably do better
     fn t_dsq_closest_to_pt(&self, pt: &[F; D]) -> Option<(F, F)> {
-        self.bezier.t_dsq_closest_to_pt(pt)
+        Some(
+            self.bezier
+                .t_dsq_closest_to_pt(pt)
+                .unwrap_or_else(|| self.approx_t_dsq_closest_to_pt(pt)),
+        )
     }
     fn est_min_distance_sq_to(&self, _p: &[F; D]) -> F {
         F::ZERO
