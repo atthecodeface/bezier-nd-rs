@@ -1,7 +1,7 @@
 [package]
 name = "bezier-nd"
 edition = "2021"
-version = "0.6.0"
+version = "0.8.0"
 readme = "README.md"
 authors = ["Gavin J Stark"]
 # exclude = ["/bors.toml", "/ci/*", "/.github/*"]
@@ -22,7 +22,7 @@ version="0.1"
 path = "../fixed_pt"
 
 [dependencies.geo-nd]
-version="0.6"
+version="0.8"
 path = "../geo-nd-rs"
 
 [dependencies.num-traits]

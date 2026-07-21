@@ -95,6 +95,11 @@ pub struct BezierBuilder<F: Num, const D: usize> {
 }
 
 impl<F: Num, const D: usize> BezierBuilder<F, D> {
+    /// Clear the constructor
+    pub fn clear(&mut self) {
+        self.constraints.clear();
+    }
+
     /// Add a constraint that the Bezier passes throught a point at parameter value 't'
     pub fn add_point_at(&mut self, t: F, pt: [F; D]) {
         self.constraints
