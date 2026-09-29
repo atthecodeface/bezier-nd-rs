@@ -368,12 +368,9 @@ pub trait BezierSplit<F: Num>: Sized {
 /// on the returned (potentially implied) lines are within a 'closeness_sq' of
 /// the Bezier
 ///
-/// This trait is frequently used to, for example, render a Bezier as lines which
+/// This trait is frequently used, for example, to render a Bezier as lines which
 /// can then be drawn on a canvas; if the closeness_sq is set to be half the width
 /// of a pixel then the Bezier is rendered to within a pixel (which is the best possible approximation).
-///
-/// There is a *blanket* implementation of this trait for any Bezier that supports
-/// the required traits of [BezierSplit], [BezierEval] and [Clone]
 ///
 /// This is not dyn-compatible
 ///
@@ -383,15 +380,24 @@ where
     F: Num,
     P: Clone,
 {
-    /// Return an iterator of N points along the Bezier at even steps of `t`
+    /// Return an iterator of line segments, (t, point) pairs, along the Bezier
+    ///
+    /// The BezierIterationType controls whether it is through uniform steps in
+    /// the parameter t, or by a closeness to a straight line
     fn as_t_lines(&self, iter_type: BezierIterationType<F>) -> impl Iterator<Item = (F, P, F, P)>;
 
-    /// Return an iterator of N points along the Bezier at even steps of `t`
+    /// Return an iterator of (t parameter, point) along the Bezier
+    ///
+    /// The BezierIterationType controls whether it is through uniform steps in
+    /// the parameter t, or by a closeness to a straight line
     fn as_t_points(&self, iter_type: BezierIterationType<F>) -> impl Iterator<Item = (F, P)> {
         BezierPointTIter::new(self.as_t_lines(iter_type))
     }
 
-    /// Calculates the length of an iterator
+    /// Calculates the length of an Bezier, split using the iteration method supplied
+    ///
+    /// The BezierIterationType controls whether it is through uniform steps in
+    /// the parameter t, or by a closeness to a straight line
     fn iter_length(&self, iter_type: BezierIterationType<F>) -> F {
         self.as_t_lines(iter_type)
             .fold(F::ZERO, |acc, (_t0, p0, _t1, p1)| {
@@ -399,7 +405,14 @@ where
             })
     }
 
-    /// Calculates the length of a setion of the Bezier
+    /// Find the parameter 't' that is at some (Euclidean) distance from the start (t=0) of the Bezier
+    ///
+    /// The bezier is split into lines according to the BezierIterationType, and
+    /// the appropriate parameter for the required point along the appropriate
+    /// line segment is returned.
+    ///
+    /// The BezierIterationType controls whether it is through uniform steps in
+    /// the parameter t, or by a closeness to a straight line
     fn iter_t_of_distance(&self, iter_type: BezierIterationType<F>, mut distance: F) -> Option<F> {
         for (t0, p0, t1, p1) in self.as_t_lines(iter_type) {
             let dp = self.distance_sq_between(&p0, &p1).sqrt();
