@@ -190,8 +190,8 @@ where
     //mp point_at
     /// Returns the point at parameter 't' along the Bezier
     pub fn point_at(&self, t: F) -> [F; D] {
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
+        let two: F = F::frac(2, 1);
+        let three: F = F::frac(3, 1);
         let omt = F::one() - t;
         match self.num {
             2 => self.vector_of(&[omt, t], F::one()),
@@ -217,9 +217,9 @@ where
     /// Note that this is not necessarily a unit vector
     pub fn tangent_at(&self, t: F) -> [F; D] {
         let one = F::one();
-        let two: F = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
+        let two: F = F::frac(2, 1);
+        let three: F = F::frac(3, 1);
+        let four: F = F::frac(4, 1);
         match self.num {
             2 => self.vector_of(&[-one, one], one),
             3 => {
@@ -245,10 +245,10 @@ where
     pub fn bisect(&self) -> (Self, Self) {
         let zero = F::zero();
         let one = F::one();
-        let two = (2.0_f32).into();
-        let three: F = (3.0_f32).into();
-        let four: F = (4.0_f32).into();
-        let eight: F = (8.0_f32).into();
+        let two = F::frac(2, 1);
+        let three: F = F::frac(3, 1);
+        let four: F = F::frac(4, 1);
+        let eight: F = F::frac(8, 1);
         match self.num {
             2 => {
                 let pm = self.vector_of(&[one, one], two);
@@ -258,7 +258,7 @@ where
                 let c0 = self.vector_of(&[one, zero, one], two);
                 let c1 = self.vector_of(&[zero, one, one], two);
                 let pm = vector::add(c0, &c1, F::one());
-                let pm = vector::reduce(pm, 2.0_f32.into());
+                let pm = vector::reduce(pm, two);
                 (
                     Self::quadratic(&self.pts[0], &c0, &pm),
                     Self::quadratic(&pm, &c1, &self.pts[1]),
@@ -290,7 +290,7 @@ where
                 Self::line(&r0, &r1)
             }
             3 => {
-                let two: F = (2.0_f32).into();
+                let two: F = F::frac(2, 1);
                 let u0 = F::one() - t0;
                 let u1 = F::one() - t1;
                 let rp0 = self.vector_of(&[u0 * u0, t0 * t0, two * u0 * t0], F::one());
@@ -472,7 +472,7 @@ where
         acc_length: F,
     ) -> (Option<F>, F) {
         let zero = F::zero();
-        let two = (2.0_f32).into();
+        let two = F::frac(2, 1);
         if distance <= acc_length {
             (Some(t_start), zero)
         } else if self.is_straight(straightness) {
@@ -608,12 +608,12 @@ where
         // let  lambda = four_thirds * theta.tan();
         // lambda
         let k_d = k_d * k_d;
-        let a0: F = 3.160_323_6e-2_f32.into();
-        let a1: F = 2.795_054_2_f32.into();
-        let a2: F = (-1.148_674_3e1_f32).into();
-        let a3: F = 2.897_536_8e1_f32.into();
-        let a4: F = (-3.284_522_2e1_f32).into();
-        let a5: F = 1.377_942_9e1_f32.into();
+        let a0: F = F::from_f32(3.160_323_6e-2).unwrap();
+        let a1: F = F::from_f32(2.795_054_2).unwrap();
+        let a2: F = F::from_f32(-1.148_674_3e1).unwrap();
+        let a3: F = F::from_f32(2.897_536_8e1).unwrap();
+        let a4: F = F::from_f32(-3.284_522_2e1).unwrap();
+        let a5: F = F::from_f32(1.377_942_9e1).unwrap();
         a0 + a1 * k_d
             + a2 * k_d * k_d
             + a3 * k_d * k_d * k_d
@@ -640,7 +640,7 @@ where
         normal: &[F; D],
         rotate: F,
     ) -> Self {
-        let two = (2.0_f32).into();
+        let two = F::frac(2, 1);
         let half_angle = angle / two;
         let s = half_angle.sin();
         let lambda = radius * Self::lambda_of_k_d(s, F::one());
@@ -703,9 +703,9 @@ where
     ///
     /// Then we require an arc given the angle of the arc is 2*theta
     pub fn of_round_corner(corner: &[F; D], v0: &[F; D], v1: &[F; D], radius: F) -> Self {
-        let nearly_one = (0.999_999_f32).into();
+        let nearly_one = F::from_f32(0.999_999).unwrap();
         let one = F::one();
-        let two: F = (2.0_f32).into();
+        let two: F = F::frac(2, 1);
         let v0 = vector::normalize(*v0);
         let v1 = vector::normalize(*v1);
         let cos_alpha = vector::dot(&v0, &v1);
@@ -795,7 +795,7 @@ where
             c[i] = t0[i] * k0 + t1[i] * k1;
         }
 
-        let r = (vector::distance(&c, &p0) + vector::distance(&c, &p1)) / (2.0_f32).into();
+        let r = (vector::distance(&c, &p0) + vector::distance(&c, &p1)) / F::frac(2, 1);
         (c, r)
     }
 
