@@ -1,3 +1,7 @@
+# Release 0.6.4 (2026-09-30)
+
+- Upgraded to geo-nd 0.6.4, which has an API break over 0.6.0 :-(
+
 # Release 0.6.1 (2025-11-25)
 
 - Removed requirement for FArray / Vector for types that are needed
@@ -56,4 +60,3 @@
 - Publishing on crates.io for the first time
 
 **Contributors**: @atthecodeface
-
