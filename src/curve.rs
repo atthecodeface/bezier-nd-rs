@@ -181,7 +181,7 @@ where
         let mut r = [F::zero(); D];
         for (i, sc) in sc.iter().enumerate() {
             for (j, rj) in r.iter_mut().enumerate() {
-                *rj += *sc * self.pts[i][j];
+                *rj = *rj + *sc * self.pts[i][j];
             }
         }
         vector::reduce(r, reduce)
