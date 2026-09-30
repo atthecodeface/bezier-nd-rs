@@ -1,6 +1,9 @@
 //a Imports
 use bezier_nd::Bezier;
-use geo_nd::{vector, FArray, Float, Vector};
+use geo_nd::{vector, FArray, Vector};
+
+pub trait Float: From<f32> + geo_nd::Float {}
+impl<T> Float for T where T: From<f32> + geo_nd::Float {}
 
 // type Point<F:Float> = FArray<F,2>;
 // type B<F:Float> = Bezier<F, Point<F>, 2>;
